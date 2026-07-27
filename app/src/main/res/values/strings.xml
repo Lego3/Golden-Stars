@@ -14,4 +14,5 @@
     <string name="details_fair">With %1$d dots available, moving %2$d dots at a time results in a %3$d-pointed star.</string>
     <string name="help">Help</string>
     <string name="help_details">This tiny app renders an N-pointed regular star (if possible) using only straight lines without leaving the surface with the pen. The rules are that it starts in one point, and then draws straight lines always moving the same amount of dots at a time, until it comes back to the dot it started drawing from. The classic example is the 5-pointed golden star, where you move 2 dots while drawing. After render you can choose to show more details about which stars can be drawn given that amount of dots. For more mathematical details, search on the Internet for GCD (Greatest Common Divisor).</string>
+    <string name="version_format">v %1$s</string>
 </resources>

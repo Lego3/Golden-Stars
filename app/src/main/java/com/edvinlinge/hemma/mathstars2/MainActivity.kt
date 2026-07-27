@@ -9,7 +9,10 @@ import androidx.core.view.WindowInsetsCompat
 
 import android.widget.Button
 import android.widget.EditText
+import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
+import android.content.pm.PackageManager
+import android.os.Build
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,6 +50,19 @@ class MainActivity : AppCompatActivity() {
                     dialog.dismiss()
                 }
                 .show()
+        }
+
+        val versionText = findViewById<TextView>(R.id.versionText)
+        try {
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageName, 0)
+            }
+            versionText.text = getString(R.string.version_format, packageInfo.versionName)
+        } catch (_: PackageManager.NameNotFoundException) {
+            versionText.text = ""
         }
     }
 }
