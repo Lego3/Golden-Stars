@@ -11,6 +11,8 @@ import androidx.core.content.ContextCompat
 import kotlin.math.*
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.os.Parcel
+import android.os.Parcelable
 
 class DrawView
     (context: Context, attrs: AttributeSet?) : View(context, attrs) {
@@ -26,6 +28,9 @@ class DrawView
     private var path = Path()
     private var pathLength = 0f
 
+    private var currentPhase = 1f
+    private var animator: ObjectAnimator? = null
+
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -33,6 +38,7 @@ class DrawView
         viewWidth = w.toFloat()
         viewHeight = h.toFloat()
 
+        points.clear()
         val centerX = viewWidth / 2f
         val centerY = viewHeight / 2f
         val radius = min(viewWidth, viewHeight) * 0.4f
@@ -45,6 +51,7 @@ class DrawView
         }
 
 
+        path.reset()
         tryPathWithSkips(path, skips)
 
         val measure = PathMeasure(path, false)
@@ -73,26 +80,92 @@ class DrawView
     }
 
     private fun startAnimation() {
-        val animator = ObjectAnimator.ofFloat(this, "phase", 1f, 0f)
-        animator.setDuration(5000)
+        animator?.cancel()
+        if (currentPhase <= 0f) {
+            paint.style = Paint.Style.FILL
+            paint.setPathEffect(null)
+            invalidate()
+            return
+        }
 
-        animator.addListener(object : AnimatorListenerAdapter() {
+        animator = ObjectAnimator.ofFloat(this, "phase", currentPhase, 0f)
+        animator?.duration = (currentPhase * 5000).toLong()
+
+        animator?.addListener(object : AnimatorListenerAdapter() {
             override fun onAnimationEnd(animation: Animator) {
                 paint.style = Paint.Style.FILL
+                paint.setPathEffect(null)
                 invalidate()
             }
         })
 
-        animator.start()
+        animator?.start()
     }
 
     fun setPhase(phase: Float) {
+        this.currentPhase = phase
         paint.setPathEffect(
             DashPathEffect(
                 floatArrayOf(pathLength, pathLength),
                 (phase * pathLength).coerceAtLeast(0.0f)
             ))
         invalidate()
+    }
+
+    fun getPhase(): Float = currentPhase
+
+    override fun onSaveInstanceState(): Parcelable? {
+        val superState = super.onSaveInstanceState()
+        val savedState = SavedState(superState)
+        savedState.phase = this.currentPhase
+        savedState.dots = this.dots
+        savedState.skips = this.skips
+        return savedState
+    }
+
+    override fun onRestoreInstanceState(state: Parcelable?) {
+        if (state is SavedState) {
+            super.onRestoreInstanceState(state.superState)
+            this.currentPhase = state.phase
+            this.dots = state.dots
+            this.skips = state.skips
+        } else {
+            super.onRestoreInstanceState(state)
+        }
+    }
+
+    internal class SavedState : BaseSavedState {
+        var phase: Float = 1f
+        var dots: Int = 0
+        var skips: Int = 0
+
+        constructor(superState: Parcelable?) : super(superState)
+
+        constructor(source: Parcel) : super(source) {
+            phase = source.readFloat()
+            dots = source.readInt()
+            skips = source.readInt()
+        }
+
+        override fun writeToParcel(out: Parcel, flags: Int) {
+            super.writeToParcel(out, flags)
+            out.writeFloat(phase)
+            out.writeInt(dots)
+            out.writeInt(skips)
+        }
+
+        companion object {
+            @JvmField
+            val CREATOR = object : Parcelable.Creator<SavedState> {
+                override fun createFromParcel(source: Parcel): SavedState {
+                    return SavedState(source)
+                }
+
+                override fun newArray(size: Int): Array<SavedState?> {
+                    return arrayOfNulls(size)
+                }
+            }
+        }
     }
 
     fun showDetails(context: Context) {
