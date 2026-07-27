@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.edvinlinge.hemma.mathstars2"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.edvinlinge.hemma.mathstars2"
         minSdk = 29
-        targetSdk = 35
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 

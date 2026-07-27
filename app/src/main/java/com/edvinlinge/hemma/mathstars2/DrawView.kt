@@ -7,6 +7,7 @@ import android.text.Html
 import android.util.AttributeSet
 import android.view.View
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import kotlin.math.*
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
@@ -49,7 +50,7 @@ class DrawView
         val measure = PathMeasure(path, false)
         pathLength = measure.length
 
-        paint.color = resources.getColor(R.color.gold)
+        paint.color = ContextCompat.getColor(context, R.color.gold)
         paint.strokeWidth = 8f
         paint.style = Paint.Style.STROKE
         paint.flags = Paint.ANTI_ALIAS_FLAG
