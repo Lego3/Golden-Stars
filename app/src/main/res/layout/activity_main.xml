@@ -1,84 +1,96 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/drawLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity"
-    tools:layout_editor_absoluteX="-1dp"
-    tools:layout_editor_absoluteY="0dp">
+    android:fillViewport="true">
 
-    <TextView
-        android:id="@+id/textView"
-        android:layout_width="wrap_content"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/drawLayout"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/app_name"
-        android:textSize="24sp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="50dp"/>
+        tools:context=".MainActivity"
+        android:paddingBottom="32dp">
 
-    <TextView
-        android:id="@+id/textView2"
-        android:layout_width="315dp"
-        android:layout_height="104dp"
-        android:text="@string/first_info"
-        app:layout_constraintTop_toBottomOf="@id/textView"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp" />
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textSize="24sp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="50dp"/>
 
-    <EditText
-        android:id="@+id/editNumberDots"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:ems="10"
-        android:hint="@string/dots_hint"
-        android:inputType="number"
-        android:text="5"
-        android:textAlignment="center"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/textView2" />
+        <TextView
+            android:id="@+id/textView2"
+            android:layout_width="315dp"
+            android:layout_height="wrap_content"
+            android:text="@string/first_info"
+            app:layout_constraintTop_toBottomOf="@id/textView"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="16dp" />
 
-    <EditText
-        android:id="@+id/editNumberSkips"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:ems="10"
-        android:hint="@string/skips_hint"
-        android:inputType="number"
-        android:text="2"
-        android:textAlignment="center"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/editNumberDots" />
+        <androidx.constraintlayout.helper.widget.Flow
+            android:id="@+id/inputFlow"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="@integer/input_flow_orientation"
+            app:constraint_referenced_ids="editNumberDots,editNumberSkips"
+            app:flow_horizontalGap="16dp"
+            app:flow_verticalGap="16dp"
+            app:flow_wrapMode="aligned"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/textView2" />
+
+        <EditText
+            android:id="@+id/editNumberDots"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:hint="@string/dots_hint"
+            android:inputType="number"
+            android:text="5"
+            android:textAlignment="center"
+            tools:ignore="MissingConstraints" />
+
+        <EditText
+            android:id="@+id/editNumberSkips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:hint="@string/skips_hint"
+            android:inputType="number"
+            android:text="2"
+            android:textAlignment="center"
+            tools:ignore="MissingConstraints" />
+
+        <Button
+            android:id="@+id/buttonRender"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/render_button"
+            app:layout_constraintTop_toBottomOf="@id/inputFlow"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/buttonHelp"
+            app:layout_constraintHorizontal_chainStyle="packed"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="8dp"/>
+
+        <Button
+            android:id="@+id/buttonHelp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help"
+            app:layout_constraintTop_toTopOf="@id/buttonRender"
+            app:layout_constraintStart_toEndOf="@id/buttonRender"
+            app:layout_constraintEnd_toEndOf="parent" />
 
 
-
-    <Button
-        android:id="@+id/buttonRender"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/render_button"
-        app:layout_constraintTop_toBottomOf="@id/editNumberSkips"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp"/>
-
-    <Button
-        android:id="@+id/buttonHelp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/help"
-        app:layout_constraintTop_toBottomOf="@id/editNumberSkips"
-        app:layout_constraintStart_toEndOf="@id/buttonRender"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp" />
-
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>
