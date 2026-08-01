@@ -1,16 +1,13 @@
 package com.edvinlinge.hemma.mathstars2
 
-import android.animation.ObjectAnimator
-import android.content.Context
-import android.graphics.*
-import android.text.Html
-import android.util.AttributeSet
-import android.view.View
-import androidx.appcompat.app.AlertDialog
-import androidx.core.content.ContextCompat
-import kotlin.math.*
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
+import android.content.Context
+import android.graphics.*
+import android.util.AttributeSet
+import android.view.View
+import kotlin.math.*
 import android.os.Parcel
 import android.os.Parcelable
 
@@ -29,7 +26,11 @@ class DrawView
     private var pathLength = 0f
 
     private var currentPhase = 1f
-    private var animator: ObjectAnimator? = null
+    private var animator: ValueAnimator? = null
+
+    private var drawColor = Color.YELLOW
+    private var strokeWidth = 8f
+    private var animationDuration = 5000L
 
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -44,7 +45,7 @@ class DrawView
         val radius = min(viewWidth, viewHeight) * 0.4f
 
         for (i in 0 until dots) {
-            val angle = (2 * Math.PI * i / dots).toFloat()
+            val angle = (2 * Math.PI * i.toDouble() / dots).toFloat()
             val x = centerX + radius * cos(angle)
             val y = centerY + radius * sin(angle)
             points.add(Pair(x, y))
@@ -57,8 +58,8 @@ class DrawView
         val measure = PathMeasure(path, false)
         pathLength = measure.length
 
-        paint.color = ContextCompat.getColor(context, R.color.gold)
-        paint.strokeWidth = 8f
+        paint.color = drawColor
+        paint.strokeWidth = strokeWidth
         paint.style = Paint.Style.STROKE
         paint.flags = Paint.ANTI_ALIAS_FLAG
 
@@ -68,6 +69,32 @@ class DrawView
     fun setDotsAndSkips(dots: Int, skips: Int) {
         this.dots = dots
         this.skips = skips
+    }
+
+    fun setDrawColor(color: Int) {
+        this.drawColor = color
+        paint.color = color
+        invalidate()
+    }
+
+    fun setStrokeWidth(width: Float) {
+        this.strokeWidth = width
+        paint.strokeWidth = width
+        invalidate()
+    }
+
+    fun getStrokeWidth(): Float = strokeWidth
+
+    fun setAnimationSpeed(speedMultiplier: Float) {
+        // speedMultiplier = 1.0 is default (5000ms)
+        // 2.0 is faster (2500ms)
+        // 0.5 is slower (10000ms)
+        this.animationDuration = (5000 / speedMultiplier).toLong()
+    }
+
+    fun replay() {
+        currentPhase = 1f
+        startAnimation()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -83,23 +110,26 @@ class DrawView
         animator?.cancel()
         if (currentPhase <= 0f) {
             paint.style = Paint.Style.FILL
-            paint.setPathEffect(null)
+            paint.pathEffect = null
             invalidate()
             return
         }
 
-        animator = ObjectAnimator.ofFloat(this, "phase", currentPhase, 0f)
-        animator?.duration = (currentPhase * 5000).toLong()
-
-        animator?.addListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: Animator) {
-                paint.style = Paint.Style.FILL
-                paint.setPathEffect(null)
-                invalidate()
+        paint.style = Paint.Style.STROKE
+        animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
+            duration = (currentPhase * animationDuration).toLong()
+            addUpdateListener { animation ->
+                setPhase(animation.animatedValue as Float)
             }
-        })
-
-        animator?.start()
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    paint.style = Paint.Style.FILL
+                    paint.pathEffect = null
+                    invalidate()
+                }
+            })
+            start()
+        }
     }
 
     fun setPhase(phase: Float) {
@@ -112,9 +142,7 @@ class DrawView
         invalidate()
     }
 
-    fun getPhase(): Float = currentPhase
-
-    override fun onSaveInstanceState(): Parcelable? {
+    override fun onSaveInstanceState(): Parcelable {
         val superState = super.onSaveInstanceState()
         val savedState = SavedState(superState)
         savedState.phase = this.currentPhase
@@ -168,7 +196,7 @@ class DrawView
         }
     }
 
-    fun showDetails(context: Context) {
+    fun getDetailsHtml(context: Context): String {
         val stringParts = mutableListOf<String>()
 
         val possibleVariants = allSuccessSkips()
@@ -176,7 +204,7 @@ class DrawView
         path = Path()
         val resultVisits = tryPathWithSkips(path, skips)
 
-        if (possibleVariants.size == 0) {
+        if (possibleVariants.isEmpty()) {
             stringParts.add(context.getString(R.string.details_fail, dots))
         }
 
@@ -190,23 +218,13 @@ class DrawView
             stringParts.add(context.getString(R.string.details_fair, dots, skips, resultVisits))
         }
 
-        if (possibleVariants.size > 0) {
+        if (possibleVariants.isNotEmpty()) {
             stringParts.add(context.getString(R.string.details_info, dots, possibleVariants.size))
             stringParts.add(context.getString(R.string.details_help, dots))
             stringParts.add(possibleVariants.joinToString(", "))
         }
 
-        val message = Html.fromHtml(
-            stringParts.joinToString("<br><br>"),
-            Html.FROM_HTML_MODE_LEGACY
-        )
-            AlertDialog.Builder(context)
-                .setTitle(R.string.more_info_button)
-                .setMessage(message)
-                .setPositiveButton("OK") { dialog, _ ->
-                    dialog.dismiss()
-                }
-                .show()
+        return stringParts.joinToString("<br><br>")
     }
 
     private fun isPrime(number: Int): Boolean {

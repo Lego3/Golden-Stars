@@ -16,4 +16,9 @@
     <string name="help">Hjälp</string>
     <string name="help_details">Den här minimala appen renderar N-uddiga stjärnor (om det går) med bara raka linjer utan att lämna pappret med penseln. Börja i en punkt och dra sedan linjerna moturs i lika långa hopp till varje ny punkt till dess att du är tillbaka på punkt 1. Det klassiska exemplet är den 5-uddiga guldstjärnan med hopp om 2 punkter. När du väl renderat en stjärna kan du välja att få mer detaljer om vilka andra stjärnor som skulle kunna ritas med samma antal punkter. För mer matematiska detaljer, sök på SGD (Största Gemensamma Delare).</string>
     <string name="version_format">v %1$s</string>
+    <string name="speed">Hastighet</string>
+    <string name="customize_star">Anpassa stjärna</string>
+    <string name="line_thickness">Linjetjocklek</string>
+    <string name="color">Färg</string>
+    <string name="close">Stäng</string>
 </resources>

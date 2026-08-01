@@ -2,17 +2,15 @@ package com.edvinlinge.hemma.mathstars2
 
 import android.content.Intent
 import android.os.Bundle
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
-import android.content.pm.PackageManager
-import android.os.Build
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,7 +41,7 @@ class MainActivity : AppCompatActivity() {
         val buttonHelp = findViewById<Button>(R.id.buttonHelp)
 
         buttonHelp.setOnClickListener {
-            AlertDialog.Builder(this)
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.help)
                 .setMessage(getString(R.string.help_details))
                 .setPositiveButton("OK") { dialog, _ ->
