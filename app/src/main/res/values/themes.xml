@@ -1,18 +1,26 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+<resources>
+    <!--
+        Base application theme. Material3's DayNight parent already supplies the dark palette, so
+        there is no values-night override: one used to exist and silently dropped the gold accents
+        below in dark mode.
+
+        System bar colours and icon appearance are deliberately absent. Under edge to edge
+        android:statusBarColor no longer has an effect, and enableEdgeToEdge() in each activity is
+        the single place that decides whether the bar icons are light or dark.
+    -->
     <style name="Base.Theme.MathStars2" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/gold</item>
         <item name="colorOnPrimary">@color/black</item>
         <item name="colorSecondary">@color/gold_light</item>
-        <item name="android:statusBarColor">?attr/colorSurface</item>
-        <item name="android:windowLightStatusBar">true</item>
     </style>
 
+    <!-- The drawing screens stay dark whatever the system setting is. -->
     <style name="Theme.MathStars2.Dark" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="android:windowBackground">@color/surface_dark</item>
+        <item name="colorPrimary">@color/gold</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorSecondary">@color/gold_light</item>
         <item name="colorSurface">@color/surface_dark</item>
-        <item name="android:statusBarColor">@color/surface_dark</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">@color/surface_dark</item>
     </style>
 
     <style name="Theme.MathStars2" parent="Base.Theme.MathStars2" />

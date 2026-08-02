@@ -1,51 +1,55 @@
 package com.edvinlinge.hemma.mathstars2
 
 import android.content.Intent
-import android.os.Bundle
 import android.content.pm.PackageManager
 import android.os.Build
-import android.widget.TextView
+import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.google.android.material.card.MaterialCardView
+import com.edvinlinge.hemma.mathstars2.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMainBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContentView(R.layout.activity_main)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.drawLayout)) { v, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.drawLayout) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             WindowInsetsCompat.CONSUMED
         }
 
-        findViewById<MaterialCardView>(R.id.cardStars).setOnClickListener {
+        binding.cardStars.setOnClickListener {
             val intent = Intent(this, DrawActivity::class.java).apply {
-                putExtra("dots", 5)
-                putExtra("skips", 2)
+                putExtra(DrawActivity.EXTRA_DOTS, SettingsBottomSheet.DEFAULT_DOTS)
+                putExtra(DrawActivity.EXTRA_SKIPS, SettingsBottomSheet.DEFAULT_SKIPS)
             }
             startActivity(intent)
         }
 
-        findViewById<MaterialCardView>(R.id.cardMandelbrot).setOnClickListener {
-            val intent = Intent(this, MandelbrotActivity::class.java)
-            startActivity(intent)
+        binding.cardMandelbrot.setOnClickListener {
+            startActivity(Intent(this, MandelbrotActivity::class.java))
         }
 
-        val versionText = findViewById<TextView>(R.id.versionText)
-        try {
+        binding.versionText.text = try {
             val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
             } else {
                 @Suppress("DEPRECATION")
                 packageManager.getPackageInfo(packageName, 0)
             }
-            versionText.text = getString(R.string.version_format, packageInfo.versionName)
+            getString(R.string.version_format, packageInfo.versionName)
         } catch (_: PackageManager.NameNotFoundException) {
-            versionText.text = ""
+            ""
         }
     }
 }

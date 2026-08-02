@@ -1,131 +1,463 @@
 package com.edvinlinge.hemma.mathstars2
 
 import android.content.Context
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
+import android.os.Parcel
+import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import androidx.core.graphics.createBitmap
+import androidx.core.graphics.withSave
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.math.log10
 
 class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
-    private var bitmap: Bitmap? = null
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    private var zoom = 1.0
-    private var offsetX = -0.5
-    private var offsetY = 0.0
-    private var needsRedraw = true
+    /** The image on screen. Always matches the view size. */
+    private var bitmap: Bitmap? = null
 
-    private val maxIterations = 100
+    /** Scratch bitmap used to upscale a low resolution preview into [bitmap]. */
+    private var previewScratch: Bitmap? = null
+    private var fullPixels: IntArray? = null
+    private var previewPixels: IntArray? = null
+
+    private var zoom = DEFAULT_ZOOM
+    private var offsetX = DEFAULT_OFFSET_X
+    private var offsetY = DEFAULT_OFFSET_Y
+
+    // The viewport [bitmap] was rendered for. While a new render is in flight the existing image
+    // is scaled and shifted to approximate the current viewport, so gestures stay responsive.
+    private var bitmapZoom = DEFAULT_ZOOM
+    private var bitmapOffsetX = DEFAULT_OFFSET_X
+    private var bitmapOffsetY = DEFAULT_OFFSET_Y
+    private var hasRenderedOnce = false
+    private var bitmapIsPreview = false
+
     private var colorPalette = Palette.GOLDEN
 
-    private val scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-        override fun onScale(detector: ScaleGestureDetector): Boolean {
-            zoom *= detector.scaleFactor
-            needsRedraw = true
-            invalidate()
-            return true
-        }
-    })
+    private val renderScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var renderJob: Job? = null
+    private var renderGeneration = 0L
 
-    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-        override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-            offsetX += (distanceX / width) * (4.0 / zoom)
-            offsetY += (distanceY / height) * (4.0 / zoom)
-            needsRedraw = true
-            invalidate()
-            return true
-        }
-    })
+    private var isInteracting = false
+    private var zoomCallback: ((Double) -> Unit)? = null
+    private var renderingStateCallback: ((Boolean) -> Unit)? = null
 
     enum class Palette {
         GOLDEN, SILVER, BLUE, GREEN
     }
 
-    fun setColorPalette(palette: Palette) {
-        this.colorPalette = palette
-        needsRedraw = true
-        invalidate()
+    init {
+        contentDescription = context.getString(R.string.mandelbrot_description_a11y)
     }
+
+    private val scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            isInteracting = true
+            return true
+        }
+
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            zoomAround(detector.focusX, detector.focusY, detector.scaleFactor.toDouble())
+            return true
+        }
+    })
+
+    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+        override fun onDown(e: MotionEvent): Boolean {
+            isInteracting = true
+            return true
+        }
+
+        override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
+            val unitsPerPixel = unitsPerPixel(zoom, width, height)
+            offsetX += distanceX * unitsPerPixel
+            offsetY += distanceY * unitsPerPixel
+            invalidate()
+            requestPreviewRender()
+            return true
+        }
+
+        override fun onDoubleTap(e: MotionEvent): Boolean {
+            zoomAround(e.x, e.y, DOUBLE_TAP_ZOOM_FACTOR)
+            return true
+        }
+    })
+
+    fun setColorPalette(palette: Palette) {
+        if (palette == colorPalette) return
+        colorPalette = palette
+        requestFullRender()
+    }
+
+    fun setOnZoomChangedListener(callback: (Double) -> Unit) {
+        zoomCallback = callback
+        callback(zoom)
+    }
+
+    fun setOnRenderingStateChangedListener(callback: (Boolean) -> Unit) {
+        renderingStateCallback = callback
+    }
+
+    fun resetZoomAndPan() {
+        zoom = DEFAULT_ZOOM
+        offsetX = DEFAULT_OFFSET_X
+        offsetY = DEFAULT_OFFSET_Y
+        zoomCallback?.invoke(zoom)
+        invalidate()
+        requestFullRender()
+    }
+
+    /**
+     * Scales by [factor] while keeping the complex number under the given screen point fixed, so
+     * a pinch zooms towards the fingers rather than towards the middle of the view.
+     */
+    private fun zoomAround(focusX: Float, focusY: Float, factor: Double) {
+        val target = (zoom * factor).coerceIn(MIN_ZOOM, MAX_ZOOM)
+        if (target == zoom) return
+
+        val focusRealBefore = screenToComplexX(focusX)
+        val focusImaginaryBefore = screenToComplexY(focusY)
+        zoom = target
+        offsetX += focusRealBefore - screenToComplexX(focusX)
+        offsetY += focusImaginaryBefore - screenToComplexY(focusY)
+
+        zoomCallback?.invoke(zoom)
+        invalidate()
+        requestPreviewRender()
+    }
+
+    private fun screenToComplexX(screenX: Float): Double =
+        offsetX + (screenX - width / 2.0) * unitsPerPixel(zoom, width, height)
+
+    private fun screenToComplexY(screenY: Float): Double =
+        offsetY + (screenY - height / 2.0) * unitsPerPixel(zoom, width, height)
+
+    /**
+     * Size of one pixel in the complex plane. Derived from the shorter view edge so pixels stay
+     * square and the set is not stretched by the screen's aspect ratio.
+     */
+    private fun unitsPerPixel(zoomLevel: Double, viewWidth: Int, viewHeight: Int): Double =
+        (VIEWPORT_SPAN / zoomLevel) / minOf(viewWidth, viewHeight).coerceAtLeast(1)
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         scaleGestureDetector.onTouchEvent(event)
         gestureDetector.onTouchEvent(event)
-        if (event.action == MotionEvent.ACTION_UP) {
-            performClick()
+
+        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+            if (isInteracting) {
+                isInteracting = false
+                if (needsFullRender()) {
+                    requestFullRender()
+                }
+            }
+            if (event.actionMasked == MotionEvent.ACTION_UP) {
+                performClick()
+            }
         }
         return true
     }
+
+    /** False when the bitmap already holds a full resolution render of the current viewport. */
+    private fun needsFullRender(): Boolean =
+        !hasRenderedOnce ||
+            bitmapIsPreview ||
+            zoom != bitmapZoom ||
+            offsetX != bitmapOffsetX ||
+            offsetY != bitmapOffsetY
 
     override fun performClick(): Boolean {
         super.performClick()
         return true
     }
 
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        if (width <= 0 || height <= 0) return
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w <= 0 || h <= 0) return
 
-        if (bitmap == null || bitmap?.width != width || bitmap?.height != height) {
-            bitmap = createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            needsRedraw = true
-        }
-
-        if (needsRedraw) {
-            renderMandelbrot()
-            needsRedraw = false
-        }
-        bitmap?.let { canvas.drawBitmap(it, 0f, 0f, paint) }
+        // Deliberately not recycled: a render that has not unwound yet may still reference it.
+        bitmap = createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        hasRenderedOnce = false
+        requestFullRender()
     }
 
-    private fun renderMandelbrot() {
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
         val bmp = bitmap ?: return
-        val w = bmp.width
-        val h = bmp.height
-        val pixels = IntArray(w * h)
+        if (!hasRenderedOnce) return
 
-        val xStep = 4.0 / (w * zoom)
-        val yStep = 4.0 / (h * zoom)
+        val imageScale = (zoom / bitmapZoom).toFloat()
+        val unitsPerPixel = unitsPerPixel(zoom, width, height)
+        val dx = ((bitmapOffsetX - offsetX) / unitsPerPixel).toFloat()
+        val dy = ((bitmapOffsetY - offsetY) / unitsPerPixel).toFloat()
 
-        val xMin = offsetX - (2.0 / zoom)
-        val yMin = offsetY - (2.0 / zoom)
+        canvas.withSave {
+            translate(width / 2f + dx, height / 2f + dy)
+            scale(imageScale, imageScale)
+            translate(-width / 2f, -height / 2f)
+            drawBitmap(bmp, 0f, 0f, paint)
+        }
+    }
 
-        for (y in 0 until h) {
-            val ci = yMin + y * yStep
-            for (x in 0 until w) {
-                val cr = xMin + x * xStep
-                
-                var zr = 0.0
-                var zi = 0.0
-                var iterations = 0
-                
-                while (zr * zr + zi * zi <= 4.0 && iterations < maxIterations) {
-                    val temp = zr * zr - zi * zi + cr
-                    zi = 2.0 * zr * zi + ci
-                    zr = temp
-                    iterations++
+    /**
+     * Renders a low resolution preview, unless one is already running. Skipping rather than
+     * restarting stops a continuous gesture from cancelling the render it just started.
+     */
+    private fun requestPreviewRender() {
+        if (renderJob?.isActive == true) return
+        startRender(preview = true)
+    }
+
+    private fun requestFullRender() {
+        startRender(preview = false)
+    }
+
+    private fun startRender(preview: Boolean) {
+        val viewWidth = width
+        val viewHeight = height
+        if (viewWidth <= 0 || viewHeight <= 0) return
+
+        val previous = renderJob
+        previous?.cancel()
+
+        val generation = ++renderGeneration
+        val renderZoom = zoom
+        val renderOffsetX = offsetX
+        val renderOffsetY = offsetY
+        val palette = colorPalette
+        val downscale = if (preview) PREVIEW_DOWNSCALE else 1
+        val renderWidth = (viewWidth / downscale).coerceAtLeast(1)
+        val renderHeight = (viewHeight / downscale).coerceAtLeast(1)
+        val maxIterations = iterationsFor(renderZoom)
+
+        val unitsPerPixel = unitsPerPixel(renderZoom, viewWidth, viewHeight)
+        val sampleStep = unitsPerPixel * downscale
+        val xMin = renderOffsetX - unitsPerPixel * viewWidth / 2.0
+        val yMin = renderOffsetY - unitsPerPixel * viewHeight / 2.0
+
+        renderingStateCallback?.invoke(true)
+
+        renderJob = renderScope.launch {
+            try {
+                // Let the cancelled render unwind first so only one writer touches the buffers.
+                previous?.join()
+
+                val pixels = pixelBuffer(preview, renderWidth * renderHeight)
+                withContext(Dispatchers.Default) {
+                    computeMandelbrot(
+                        pixels = pixels,
+                        renderWidth = renderWidth,
+                        renderHeight = renderHeight,
+                        xMin = xMin,
+                        yMin = yMin,
+                        sampleStep = sampleStep,
+                        maxIterations = maxIterations,
+                        palette = palette,
+                    )
                 }
 
-                pixels[y * w + x] = if (iterations == maxIterations) {
-                    Color.BLACK
+                if (generation != renderGeneration) return@launch
+                val target = bitmap ?: return@launch
+                if (target.width != viewWidth || target.height != viewHeight) return@launch
+
+                if (preview) {
+                    val scratch = previewScratchOf(renderWidth, renderHeight)
+                    scratch.setPixels(pixels, 0, renderWidth, 0, 0, renderWidth, renderHeight)
+                    Canvas(target).drawBitmap(
+                        scratch,
+                        Rect(0, 0, renderWidth, renderHeight),
+                        Rect(0, 0, viewWidth, viewHeight),
+                        paint,
+                    )
                 } else {
-                    getColorForIteration(iterations)
+                    target.setPixels(pixels, 0, renderWidth, 0, 0, renderWidth, renderHeight)
+                }
+
+                // Record what the image now shows, including previews, otherwise onDraw would
+                // transform an already up to date image a second time.
+                bitmapZoom = renderZoom
+                bitmapOffsetX = renderOffsetX
+                bitmapOffsetY = renderOffsetY
+                bitmapIsPreview = preview
+                hasRenderedOnce = true
+                invalidate()
+            } finally {
+                if (generation == renderGeneration) {
+                    renderingStateCallback?.invoke(false)
                 }
             }
         }
-        bmp.setPixels(pixels, 0, w, 0, 0, w, h)
     }
 
-    private fun getColorForIteration(iterations: Int): Int {
+    private suspend fun computeMandelbrot(
+        pixels: IntArray,
+        renderWidth: Int,
+        renderHeight: Int,
+        xMin: Double,
+        yMin: Double,
+        sampleStep: Double,
+        maxIterations: Int,
+        palette: Palette,
+    ) = coroutineScope {
+        val cores = Runtime.getRuntime().availableProcessors()
+        val rowsPerChunk = (renderHeight / cores).coerceAtLeast(1)
+
+        (0 until renderHeight step rowsPerChunk).map { startRow ->
+            async {
+                val endRow = (startRow + rowsPerChunk).coerceAtMost(renderHeight)
+                for (y in startRow until endRow) {
+                    if (!isActive) return@async
+                    val ci = yMin + y * sampleStep
+                    var index = y * renderWidth
+                    for (x in 0 until renderWidth) {
+                        val cr = xMin + x * sampleStep
+                        var zr = 0.0
+                        var zi = 0.0
+                        var iteration = 0
+                        while (zr * zr + zi * zi <= ESCAPE_RADIUS_SQUARED && iteration < maxIterations) {
+                            val nextZr = zr * zr - zi * zi + cr
+                            zi = 2.0 * zr * zi + ci
+                            zr = nextZr
+                            iteration++
+                        }
+                        pixels[index++] = if (iteration == maxIterations) {
+                            Color.BLACK
+                        } else {
+                            colorFor(iteration, maxIterations, palette)
+                        }
+                    }
+                }
+            }
+        }.awaitAll()
+    }
+
+    /**
+     * Deeper zoom needs more iterations to keep the boundary detailed, but the count is capped so
+     * a single frame cannot grow into an unbounded amount of work.
+     */
+    private fun iterationsFor(zoomLevel: Double): Int =
+        (BASE_ITERATIONS + log10(zoomLevel).coerceAtLeast(0.0) * ITERATIONS_PER_DECADE)
+            .toInt()
+            .coerceIn(BASE_ITERATIONS, MAX_ITERATIONS)
+
+    private fun colorFor(iterations: Int, maxIterations: Int, palette: Palette): Int {
         val t = iterations.toFloat() / maxIterations
-        return when (colorPalette) {
-            Palette.GOLDEN -> Color.HSVToColor(floatArrayOf(45f, 0.8f, t * 1.5f.coerceAtMost(1f)))
+        return when (palette) {
+            Palette.GOLDEN -> Color.HSVToColor(floatArrayOf(45f, 0.8f, (t * 1.5f).coerceAtMost(1f)))
             Palette.SILVER -> Color.HSVToColor(floatArrayOf(0f, 0f, t))
             Palette.BLUE -> Color.HSVToColor(floatArrayOf(200f, 0.7f, t))
             Palette.GREEN -> Color.HSVToColor(floatArrayOf(120f, 0.7f, t))
         }
+    }
+
+    private fun pixelBuffer(preview: Boolean, size: Int): IntArray {
+        val cached = if (preview) previewPixels else fullPixels
+        if (cached != null && cached.size == size) return cached
+        return IntArray(size).also {
+            if (preview) previewPixels = it else fullPixels = it
+        }
+    }
+
+    private fun previewScratchOf(width: Int, height: Int): Bitmap {
+        val cached = previewScratch
+        if (cached != null && cached.width == width && cached.height == height) return cached
+        return createBitmap(width, height, Bitmap.Config.ARGB_8888).also { previewScratch = it }
+    }
+
+    // The palette is owned by MandelbrotActivity, which reapplies it before this state is
+    // restored, so only the viewport is saved here.
+    override fun onSaveInstanceState(): Parcelable {
+        val savedState = SavedState(super.onSaveInstanceState())
+        savedState.zoom = zoom
+        savedState.offsetX = offsetX
+        savedState.offsetY = offsetY
+        return savedState
+    }
+
+    override fun onRestoreInstanceState(state: Parcelable?) {
+        if (state is SavedState) {
+            super.onRestoreInstanceState(state.superState)
+            zoom = state.zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
+            offsetX = state.offsetX
+            offsetY = state.offsetY
+            zoomCallback?.invoke(zoom)
+        } else {
+            super.onRestoreInstanceState(state)
+        }
+    }
+
+    internal class SavedState : BaseSavedState {
+        var zoom: Double = 1.0
+        var offsetX: Double = -0.5
+        var offsetY: Double = 0.0
+
+        constructor(superState: Parcelable?) : super(superState)
+
+        constructor(source: Parcel) : super(source) {
+            zoom = source.readDouble()
+            offsetX = source.readDouble()
+            offsetY = source.readDouble()
+        }
+
+        override fun writeToParcel(out: Parcel, flags: Int) {
+            super.writeToParcel(out, flags)
+            out.writeDouble(zoom)
+            out.writeDouble(offsetX)
+            out.writeDouble(offsetY)
+        }
+
+        companion object {
+            @JvmField
+            val CREATOR = object : Parcelable.Creator<SavedState> {
+                override fun createFromParcel(source: Parcel): SavedState = SavedState(source)
+
+                override fun newArray(size: Int): Array<SavedState?> = arrayOfNulls(size)
+            }
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        renderScope.cancel()
+    }
+
+    private companion object {
+        /** Width of the viewport in the complex plane at zoom 1, across the shorter view edge. */
+        const val VIEWPORT_SPAN = 4.0
+        const val DEFAULT_ZOOM = 1.0
+        const val DEFAULT_OFFSET_X = -0.5
+        const val DEFAULT_OFFSET_Y = 0.0
+        const val MIN_ZOOM = 0.5
+
+        /** Double precision runs out around here, so zooming further only adds noise. */
+        const val MAX_ZOOM = 1.0e13
+        const val DOUBLE_TAP_ZOOM_FACTOR = 2.0
+
+        const val BASE_ITERATIONS = 100
+        const val ITERATIONS_PER_DECADE = 200
+        const val MAX_ITERATIONS = 1500
+        const val ESCAPE_RADIUS_SQUARED = 4.0
+
+        /** Linear downscale factor for the preview rendered during gestures. */
+        const val PREVIEW_DOWNSCALE = 4
     }
 }

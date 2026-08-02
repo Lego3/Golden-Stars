@@ -2,14 +2,15 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="light_blue_400">#FF29B6F6</color>
-    <color name="light_blue_600">#FF039BE5</color>
-    <color name="gray_400">#FFBDBDBD</color>
-    <color name="gray_600">#FF757575</color>
     <color name="gold">#FFD700</color>
     <color name="gold_light">#FFF4BD</color>
-    <color name="gold_dark">#B8860B</color>
     <color name="surface_dark">#121212</color>
-    <color name="on_surface_dark">#E1E1E1</color>
+
+    <!-- Selectable draw colours. Order must match SettingsBottomSheet.SWATCH_COLORS
+         and MandelbrotView.Palette. -->
+    <color name="swatch_gold">#FFD700</color>
+    <color name="swatch_silver">#C0C0C0</color>
+    <color name="swatch_blue">#00BFFF</color>
+    <color name="swatch_green">#32CD32</color>
 
 </resources>

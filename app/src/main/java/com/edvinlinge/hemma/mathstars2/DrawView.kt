@@ -4,31 +4,43 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
-import android.graphics.*
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PathMeasure
+import android.os.Parcel
+import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
-import kotlin.math.*
-import android.os.Parcel
-import android.os.Parcelable
+import androidx.core.graphics.withSave
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.sin
 
-class DrawView
-    (context: Context, attrs: AttributeSet?) : View(context, attrs) {
-    private val paint = Paint()
+class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
+
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     private var dots = 0
     private var skips = 0
-    private val points = mutableListOf<Pair<Float, Float>>()
+    private val pointsX = mutableListOf<Float>()
+    private val pointsY = mutableListOf<Float>()
 
-    private var viewWidth = 0f
-    private var viewHeight = 0f
+    /** The complete figure. */
+    private val fullPath = Path()
 
-    private var path = Path()
+    /** The portion revealed so far, rebuilt as the reveal animation progresses. */
+    private val revealedPath = Path()
+    private val pathMeasure = PathMeasure()
     private var pathLength = 0f
 
+    /** Fraction of the figure still hidden: 1 is nothing drawn, 0 is complete. */
     private var currentPhase = 1f
+    private var isRevealing = false
     private var animator: ValueAnimator? = null
 
     private var drawColor = Color.YELLOW
@@ -37,15 +49,14 @@ class DrawView
     private var isFilled = true
     private var instantRender = false
 
-    private var zoom = 1.0f
+    private var zoom = DEFAULT_ZOOM
     private var offsetX = 0f
     private var offsetY = 0f
+    private var zoomCallback: ((Float) -> Unit)? = null
 
     private val scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
-            zoom *= detector.scaleFactor
-            zoom = zoom.coerceIn(0.5f, 10.0f)
-            invalidate()
+            zoomAround(detector.focusX, detector.focusY, detector.scaleFactor)
             return true
         }
     })
@@ -57,12 +68,53 @@ class DrawView
             invalidate()
             return true
         }
+
+        override fun onDoubleTap(e: MotionEvent): Boolean {
+            zoomAround(e.x, e.y, DOUBLE_TAP_ZOOM_FACTOR)
+            return true
+        }
     })
+
+    init {
+        paint.style = Paint.Style.STROKE
+        paint.color = drawColor
+        paint.strokeWidth = strokeWidth
+    }
+
+    fun setOnZoomChangedListener(callback: (Float) -> Unit) {
+        this.zoomCallback = callback
+        callback(zoom)
+    }
+
+    fun resetZoomAndPan() {
+        zoom = DEFAULT_ZOOM
+        offsetX = 0f
+        offsetY = 0f
+        zoomCallback?.invoke(zoom)
+        invalidate()
+    }
+
+    /**
+     * Scales by [factor] while keeping the drawing under the given screen point in place, so a
+     * pinch zooms towards the fingers instead of towards the middle of the view.
+     */
+    private fun zoomAround(focusX: Float, focusY: Float, factor: Float) {
+        val target = (zoom * factor).coerceIn(MIN_ZOOM, MAX_ZOOM)
+        if (target == zoom) return
+
+        val growth = target / zoom
+        offsetX += (focusX - width / 2f - offsetX) * (1f - growth)
+        offsetY += (focusY - height / 2f - offsetY) * (1f - growth)
+        zoom = target
+
+        zoomCallback?.invoke(zoom)
+        invalidate()
+    }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         scaleGestureDetector.onTouchEvent(event)
         gestureDetector.onTouchEvent(event)
-        if (event.action == MotionEvent.ACTION_UP) {
+        if (event.actionMasked == MotionEvent.ACTION_UP) {
             performClick()
         }
         return true
@@ -73,43 +125,81 @@ class DrawView
         return true
     }
 
-
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-
-        viewWidth = w.toFloat()
-        viewHeight = h.toFloat()
-
-        points.clear()
-        val centerX = viewWidth / 2f
-        val centerY = viewHeight / 2f
-        val radius = min(viewWidth, viewHeight) * 0.4f
-
-        for (i in 0 until dots) {
-            val angle = (2 * Math.PI * i.toDouble() / dots).toFloat()
-            val x = centerX + radius * cos(angle)
-            val y = centerY + radius * sin(angle)
-            points.add(Pair(x, y))
-        }
-
-
-        path.reset()
-        tryPathWithSkips(path, skips)
-
-        val measure = PathMeasure(path, false)
-        pathLength = measure.length
-
-        paint.color = drawColor
-        paint.strokeWidth = strokeWidth
-        paint.style = Paint.Style.STROKE
-        paint.flags = Paint.ANTI_ALIAS_FLAG
-
+        rebuildGeometry()
         startAnimation()
     }
 
+    /** Sets the geometry before the view is laid out; the path is built once a size is known. */
     fun setDotsAndSkips(dots: Int, skips: Int) {
         this.dots = dots
         this.skips = skips
+        updateContentDescription()
+    }
+
+    /**
+     * Changes the geometry of an already laid out view. Pass `false` for [animate] while a slider
+     * is being dragged, so the figure updates live without restarting the reveal on every step.
+     */
+    fun setGeometry(dots: Int, skips: Int, animate: Boolean) {
+        this.dots = dots
+        this.skips = skips
+        updateContentDescription()
+        rebuildGeometry()
+
+        if (animate && !instantRender) {
+            replay()
+        } else {
+            showComplete()
+        }
+    }
+
+    fun replay() {
+        currentPhase = 1f
+        startAnimation()
+    }
+
+    private fun updateContentDescription() {
+        contentDescription = context.getString(R.string.star_description_a11y, dots, skips)
+    }
+
+    private fun rebuildGeometry() {
+        pointsX.clear()
+        pointsY.clear()
+        fullPath.reset()
+        revealedPath.reset()
+        pathLength = 0f
+
+        val viewWidth = width.toFloat()
+        val viewHeight = height.toFloat()
+        if (viewWidth <= 0f || viewHeight <= 0f || dots <= 0) return
+
+        val centerX = viewWidth / 2f
+        val centerY = viewHeight / 2f
+        val radius = min(viewWidth, viewHeight) * RADIUS_FRACTION
+
+        for (i in 0 until dots) {
+            val angle = (2.0 * Math.PI * i / dots).toFloat()
+            pointsX.add(centerX + radius * cos(angle))
+            pointsY.add(centerY + radius * sin(angle))
+        }
+
+        buildStarPath()
+        pathMeasure.setPath(fullPath, false)
+        pathLength = pathMeasure.length
+    }
+
+    private fun buildStarPath() {
+        if (dots <= 0 || skips <= 0) return
+
+        fullPath.moveTo(pointsX[0], pointsY[0])
+        var next = skips % dots
+        val visited = HashSet<Int>(dots)
+        while (visited.add(next)) {
+            fullPath.lineTo(pointsX[next], pointsY[next])
+            next = (next + skips) % dots
+        }
     }
 
     fun setDrawColor(color: Int) {
@@ -124,111 +214,57 @@ class DrawView
         invalidate()
     }
 
-    fun getStrokeWidth(): Float = strokeWidth
-
     fun setFilled(filled: Boolean) {
         this.isFilled = filled
-        if (currentPhase <= 0f) {
-            paint.style = if (isFilled) Paint.Style.FILL else Paint.Style.STROKE
+        if (!isRevealing) {
+            applyCompletedStyle()
         }
         invalidate()
     }
 
-    fun isFilled(): Boolean = isFilled
-
     fun setInstant(instant: Boolean) {
         this.instantRender = instant
         if (instantRender) {
-            currentPhase = 0f
-            animator?.cancel()
-            paint.style = if (isFilled) Paint.Style.FILL else Paint.Style.STROKE
-            paint.pathEffect = null
-            invalidate()
+            showComplete()
         }
     }
-
-    fun isInstant(): Boolean = instantRender
 
     fun setAnimationSpeed(speedMultiplier: Float) {
-        // speedMultiplier = 1.0 is default (5000ms)
-        // 2.0 is faster (2500ms)
-        // 0.5 is slower (10000ms)
-        this.animationDuration = (5000 / speedMultiplier).toLong()
-    }
-
-    fun replay() {
-        currentPhase = 1f
-        startAnimation()
-    }
-
-    fun updatePointsAndPath(dots: Int, skips: Int) {
-        this.dots = dots
-        this.skips = skips
-        
-        points.clear()
-        val centerX = viewWidth / 2f
-        val centerY = viewHeight / 2f
-        val radius = min(viewWidth, viewHeight) * 0.4f
-
-        for (i in 0 until dots) {
-            val angle = (2 * Math.PI * i.toDouble() / dots).toFloat()
-            val x = centerX + radius * cos(angle)
-            val y = centerY + radius * sin(angle)
-            points.add(Pair(x, y))
-        }
-
-        path.reset()
-        tryPathWithSkips(path, skips)
-        
-        val measure = PathMeasure(path, false)
-        pathLength = measure.length
-        
-        if (instantRender) {
-            currentPhase = 0f
-            animator?.cancel()
-            paint.style = if (isFilled) Paint.Style.FILL else Paint.Style.STROKE
-            paint.pathEffect = null
-            invalidate()
-        } else {
-            replay()
-        }
+        // A multiplier of 1 is the default duration, 2 is twice as fast, 0.5 half as fast.
+        if (speedMultiplier <= 0f) return
+        this.animationDuration = (BASE_ANIMATION_DURATION_MS / speedMultiplier).toLong()
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        if (width == 0 || height == 0 || dots == 0 || skips == 0) return
 
-        if (width == 0 || height == 0 || dots == 0 || skips == 0) {
-            return
+        canvas.withSave {
+            translate(width / 2f + offsetX, height / 2f + offsetY)
+            scale(zoom, zoom)
+            translate(-width / 2f, -height / 2f)
+            drawPath(if (isRevealing) revealedPath else fullPath, paint)
         }
-        
-        canvas.save()
-        canvas.translate(width / 2f + offsetX, height / 2f + offsetY)
-        canvas.scale(zoom, zoom)
-        canvas.translate(-width / 2f, -height / 2f)
-        
-        canvas.drawPath(path, paint)
-        canvas.restore()
     }
 
     private fun startAnimation() {
         animator?.cancel()
         if (currentPhase <= 0f || instantRender) {
-            paint.style = if (isFilled) Paint.Style.FILL else Paint.Style.STROKE
-            paint.pathEffect = null
-            invalidate()
+            showComplete()
             return
         }
 
+        isRevealing = true
         paint.style = Paint.Style.STROKE
+        setPhase(currentPhase)
+
         animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
             duration = (currentPhase * animationDuration).toLong()
-            addUpdateListener { animation ->
-                setPhase(animation.animatedValue as Float)
-            }
+            addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    paint.style = if (isFilled) Paint.Style.FILL else Paint.Style.STROKE
-                    paint.pathEffect = null
+                    isRevealing = false
+                    applyCompletedStyle()
                     invalidate()
                 }
             })
@@ -236,22 +272,72 @@ class DrawView
         }
     }
 
-    fun setPhase(phase: Float) {
-        this.currentPhase = phase
-        paint.setPathEffect(
-            DashPathEffect(
-                floatArrayOf(pathLength, pathLength),
-                (phase * pathLength).coerceAtLeast(0.0f)
-            ))
+    private fun showComplete() {
+        animator?.cancel()
+        currentPhase = 0f
+        isRevealing = false
+        applyCompletedStyle()
         invalidate()
     }
 
+    private fun applyCompletedStyle() {
+        paint.style = if (isFilled) Paint.Style.FILL else Paint.Style.STROKE
+    }
+
+    /**
+     * Reveals the figure up to `1 - phase` of its length. Extracting a path segment avoids the
+     * per-frame [android.graphics.DashPathEffect] allocation this used to do, and keeps the draw
+     * on the hardware canvas instead of forcing path-effect tessellation on the CPU.
+     */
+    fun setPhase(phase: Float) {
+        currentPhase = phase.coerceIn(0f, 1f)
+        revealedPath.reset()
+        if (pathLength > 0f) {
+            pathMeasure.getSegment(0f, (1f - currentPhase) * pathLength, revealedPath, true)
+        }
+        invalidate()
+    }
+
+    fun getDetailsHtml(context: Context): String {
+        val parts = mutableListOf<String>()
+        val possibleSkips = StarMath.starSkips(dots)
+        val visited = StarMath.visitedDotCount(dots, skips)
+
+        if (possibleSkips.isEmpty()) {
+            parts.add(context.getString(R.string.details_fail, dots))
+        }
+
+        when {
+            // A skip of one closes in a single stroke but traces the convex polygon, not a star.
+            skips <= 1 -> parts.add(context.getString(R.string.details_polygon, dots))
+
+            visited == dots -> {
+                parts.add(context.getString(R.string.details_success, dots))
+                if (StarMath.isPrime(dots)) {
+                    parts.add(context.getString(R.string.details_is_prime, dots))
+                }
+            }
+
+            else -> parts.add(context.getString(R.string.details_fair, dots, skips, visited))
+        }
+
+        if (possibleSkips.isNotEmpty()) {
+            parts.add(context.getString(R.string.details_info, dots, possibleSkips.size))
+            parts.add(context.getString(R.string.details_help, dots))
+            parts.add(possibleSkips.joinToString(", "))
+        }
+
+        return parts.joinToString("<br><br>")
+    }
+
+    // Only the viewport and animation progress are saved here. The star's geometry and styling
+    // are owned by DrawActivity, which reapplies them before this state is restored.
     override fun onSaveInstanceState(): Parcelable {
-        val superState = super.onSaveInstanceState()
-        val savedState = SavedState(superState)
+        val savedState = SavedState(super.onSaveInstanceState())
         savedState.phase = this.currentPhase
-        savedState.dots = this.dots
-        savedState.skips = this.skips
+        savedState.zoom = this.zoom
+        savedState.offsetX = this.offsetX
+        savedState.offsetY = this.offsetY
         return savedState
     }
 
@@ -259,8 +345,10 @@ class DrawView
         if (state is SavedState) {
             super.onRestoreInstanceState(state.superState)
             this.currentPhase = state.phase
-            this.dots = state.dots
-            this.skips = state.skips
+            this.zoom = state.zoom
+            this.offsetX = state.offsetX
+            this.offsetY = state.offsetY
+            zoomCallback?.invoke(zoom)
         } else {
             super.onRestoreInstanceState(state)
         }
@@ -268,104 +356,45 @@ class DrawView
 
     internal class SavedState : BaseSavedState {
         var phase: Float = 1f
-        var dots: Int = 0
-        var skips: Int = 0
+        var zoom: Float = 1f
+        var offsetX: Float = 0f
+        var offsetY: Float = 0f
 
         constructor(superState: Parcelable?) : super(superState)
 
         constructor(source: Parcel) : super(source) {
             phase = source.readFloat()
-            dots = source.readInt()
-            skips = source.readInt()
+            zoom = source.readFloat()
+            offsetX = source.readFloat()
+            offsetY = source.readFloat()
         }
 
         override fun writeToParcel(out: Parcel, flags: Int) {
             super.writeToParcel(out, flags)
             out.writeFloat(phase)
-            out.writeInt(dots)
-            out.writeInt(skips)
+            out.writeFloat(zoom)
+            out.writeFloat(offsetX)
+            out.writeFloat(offsetY)
         }
 
         companion object {
             @JvmField
             val CREATOR = object : Parcelable.Creator<SavedState> {
-                override fun createFromParcel(source: Parcel): SavedState {
-                    return SavedState(source)
-                }
+                override fun createFromParcel(source: Parcel): SavedState = SavedState(source)
 
-                override fun newArray(size: Int): Array<SavedState?> {
-                    return arrayOfNulls(size)
-                }
+                override fun newArray(size: Int): Array<SavedState?> = arrayOfNulls(size)
             }
         }
     }
 
-    fun getDetailsHtml(context: Context): String {
-        val stringParts = mutableListOf<String>()
+    private companion object {
+        const val DEFAULT_ZOOM = 1.0f
+        const val MIN_ZOOM = 0.5f
+        const val MAX_ZOOM = 10.0f
+        const val DOUBLE_TAP_ZOOM_FACTOR = 2.0f
+        const val BASE_ANIMATION_DURATION_MS = 5000f
 
-        val possibleVariants = allSuccessSkips()
-
-        path = Path()
-        val resultVisits = tryPathWithSkips(path, skips)
-
-        if (possibleVariants.isEmpty()) {
-            stringParts.add(context.getString(R.string.details_fail, dots))
-        }
-
-        if (resultVisits == points.size) {
-            stringParts.add(context.getString(R.string.details_success, dots))
-            if (isPrime(dots)) {
-                stringParts.add(" ${context.getString(R.string.details_is_prime, dots)}")
-            }
-        }
-        else {
-            stringParts.add(context.getString(R.string.details_fair, dots, skips, resultVisits))
-        }
-
-        if (possibleVariants.isNotEmpty()) {
-            stringParts.add(context.getString(R.string.details_info, dots, possibleVariants.size))
-            stringParts.add(context.getString(R.string.details_help, dots))
-            stringParts.add(possibleVariants.joinToString(", "))
-        }
-
-        return stringParts.joinToString("<br><br>")
-    }
-
-    private fun isPrime(number: Int): Boolean {
-        if (number <= 1) {
-            return false
-        }
-
-        for (i in 2..sqrt(number.toDouble()).toInt()) {
-            if (number % i == 0) {
-                return false
-            }
-        }
-
-        return true
-    }
-
-    private fun tryPathWithSkips(path: Path, skips: Int) : Int {
-        path.moveTo(points[0].first, points[0].second)
-        val visitedPoints = mutableListOf<Int>()
-        path.moveTo(points[0].first, points[0].second)
-        var nextIndex = skips % dots
-        while (nextIndex !in visitedPoints) {
-            visitedPoints.add(nextIndex)
-            path.lineTo(points[nextIndex].first, points[nextIndex].second)
-            nextIndex = (nextIndex + skips) % dots
-        }
-        return visitedPoints.size
-    }
-
-    private fun allSuccessSkips() : MutableList<Int> {
-        val successSkips = mutableListOf<Int>()
-        for (i in 2..dots/2) {
-            path = Path()
-            if (tryPathWithSkips(path, i) == dots) {
-                successSkips.add(i)
-            }
-        }
-        return successSkips
+        /** Radius of the dot circle as a fraction of the shorter view edge. */
+        const val RADIUS_FRACTION = 0.4f
     }
 }

@@ -1,56 +1,98 @@
 package com.edvinlinge.hemma.mathstars2
 
+import android.graphics.Color
 import android.os.Bundle
-import android.view.View
 import android.view.ViewGroup.MarginLayoutParams
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.graphics.toColorInt
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import com.edvinlinge.hemma.mathstars2.databinding.ActivityMandelbrotBinding
 
 class MandelbrotActivity : AppCompatActivity() {
 
+    private lateinit var binding: ActivityMandelbrotBinding
+
+    // Owned here rather than by the view, because this activity owns the settings sheet that
+    // changes it. The view keeps only its viewport across recreation.
+    private var colorIndex = SettingsBottomSheet.DEFAULT_COLOR_INDEX
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContentView(R.layout.activity_mandelbrot)
+        // This screen is always dark, regardless of the system setting, so the system bar icons
+        // have to be forced light rather than following the night-mode configuration.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        )
+        binding = ActivityMandelbrotBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        val mandelbrotView = findViewById<MandelbrotView>(R.id.mandelbrotView)
+        colorIndex = savedInstanceState?.getInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
+            ?: colorIndex
 
-        val controlPanel = findViewById<View>(R.id.controlPanel)
-        ViewCompat.setOnApplyWindowInsetsListener(controlPanel) { v, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.updateLayoutParams<MarginLayoutParams> {
-                bottomMargin = bars.bottom + 16
-            }
-            insets
+        binding.mandelbrotView.setColorPalette(paletteFor(colorIndex))
+
+        binding.mandelbrotView.setOnZoomChangedListener { zoom ->
+            val formatted = formatZoom(zoom)
+            binding.zoomText.text = formatted
+            binding.zoomText.contentDescription = getString(R.string.zoom_level_format, formatted)
         }
 
-        findViewById<View>(R.id.settingsButton).setOnClickListener {
-            val settings = SettingsBottomSheet.newInstance(
-                0, 0, 0f, false,
-                getString(R.string.customize_mandelbrot),
-                false
-            )
-            settings.onColorChanged = { color ->
-                // Map color back to palette
-                val palette = when (color) {
-                    "#FFD700".toColorInt() -> MandelbrotView.Palette.GOLDEN
-                    "#C0C0C0".toColorInt() -> MandelbrotView.Palette.SILVER
-                    "#00BFFF".toColorInt() -> MandelbrotView.Palette.BLUE
-                    "#32CD32".toColorInt() -> MandelbrotView.Palette.GREEN
-                    else -> MandelbrotView.Palette.GOLDEN
-                }
-                mandelbrotView.setColorPalette(palette)
-            }
-            settings.show(supportFragmentManager, SettingsBottomSheet.TAG)
+        binding.mandelbrotView.setOnRenderingStateChangedListener { isRendering ->
+            binding.renderProgress.isVisible = isRendering
         }
 
-        findViewById<View>(R.id.infoButton).setOnClickListener {
+        doOnScreenInsets { insets ->
+            binding.controlPanel.updateLayoutParams<MarginLayoutParams> {
+                bottomMargin = insets.bottom + insets.edgeMargin
+                marginStart = insets.start + insets.edgeMargin
+                marginEnd = insets.end + insets.edgeMargin
+            }
+            binding.zoomText.updateLayoutParams<MarginLayoutParams> {
+                topMargin = insets.top + insets.edgeMargin
+                marginEnd = insets.end + insets.edgeMargin
+            }
+            binding.renderProgress.updateLayoutParams<MarginLayoutParams> {
+                topMargin = insets.top + insets.edgeMargin
+                marginStart = insets.start + insets.edgeMargin
+            }
+        }
+
+        supportFragmentManager.setFragmentResultListener(
+            SettingsBottomSheet.REQUEST_KEY,
+            this,
+        ) { _, result ->
+            val newColorIndex = result.getInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
+            if (newColorIndex != colorIndex) {
+                colorIndex = newColorIndex
+                binding.mandelbrotView.setColorPalette(paletteFor(colorIndex))
+            }
+        }
+
+        binding.resetButton.setOnClickListener { binding.mandelbrotView.resetZoomAndPan() }
+
+        binding.settingsButton.setOnClickListener {
+            SettingsBottomSheet.newInstance(
+                colorIndex = colorIndex,
+                title = getString(R.string.customize_mandelbrot),
+                showStarControls = false,
+            ).show(supportFragmentManager, SettingsBottomSheet.TAG)
+        }
+
+        binding.infoButton.setOnClickListener {
             val helpText = getString(R.string.mandelbrot_help)
             InfoBottomSheet.newInstance(helpText).show(supportFragmentManager, InfoBottomSheet.TAG)
         }
     }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
+    }
+
+    /** Swatch order matches the palette order, so the index maps straight across. */
+    private fun paletteFor(index: Int): MandelbrotView.Palette =
+        MandelbrotView.Palette.entries[index.coerceIn(MandelbrotView.Palette.entries.indices)]
 }

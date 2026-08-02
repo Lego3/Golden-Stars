@@ -41,10 +41,11 @@
                 android:id="@+id/dotsSlider"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:contentDescription="@string/dots_hint"
+                android:stepSize="1.0"
                 android:value="5.0"
-                android:valueFrom="3.0"
-                android:valueTo="100.0"
-                android:stepSize="1.0" />
+                android:valueFrom="5.0"
+                android:valueTo="100.0" />
 
             <TextView
                 android:layout_width="match_parent"
@@ -57,6 +58,7 @@
                 android:id="@+id/skipsSlider"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:contentDescription="@string/skips_hint"
                 android:value="2.0"
                 android:valueFrom="1.0"
                 android:valueTo="50.0"
@@ -66,7 +68,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginVertical="16dp"
-                android:background="?attr/colorOutlineVariant" />
+                android:background="?attr/colorOutlineVariant"
+                android:importantForAccessibility="no" />
         </LinearLayout>
 
         <!-- Style Controls -->
@@ -95,6 +98,7 @@
                 android:id="@+id/thicknessSlider"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:contentDescription="@string/line_thickness"
                 android:value="8.0"
                 android:valueFrom="2.0"
                 android:valueTo="24.0" />
@@ -123,25 +127,37 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:layout_marginEnd="16dp"
-                    android:background="@android:color/holo_orange_light" />
+                    android:background="@color/swatch_gold"
+                    android:clickable="true"
+                    android:contentDescription="@string/color_gold"
+                    android:focusable="true" />
                 <View
                     android:id="@+id/colorSilver"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:layout_marginEnd="16dp"
-                    android:background="@android:color/darker_gray" />
+                    android:background="@color/swatch_silver"
+                    android:clickable="true"
+                    android:contentDescription="@string/color_silver"
+                    android:focusable="true" />
                 <View
                     android:id="@+id/colorBlue"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:layout_marginEnd="16dp"
-                    android:background="@android:color/holo_blue_light" />
+                    android:background="@color/swatch_blue"
+                    android:clickable="true"
+                    android:contentDescription="@string/color_blue"
+                    android:focusable="true" />
                 <View
                     android:id="@+id/colorGreen"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:layout_marginEnd="16dp"
-                    android:background="@android:color/holo_green_light" />
+                    android:background="@color/swatch_green"
+                    android:clickable="true"
+                    android:contentDescription="@string/color_green"
+                    android:focusable="true" />
             </LinearLayout>
         </HorizontalScrollView>
 

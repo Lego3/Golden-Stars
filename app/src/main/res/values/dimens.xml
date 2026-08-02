@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Gap between a floating overlay and the screen edge, added on top of window insets. -->
+    <dimen name="overlay_edge_margin">16dp</dimen>
+</resources>

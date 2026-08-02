@@ -1,20 +1,17 @@
 <resources>
     <string name="app_name">Math Stars</string>
-    <string name="welcome">Welcome to Math Stars</string>
     <string name="hub_description">Explore the beauty of mathematics through interactive visualizations.</string>
     <string name="stars_title">Golden Stars</string>
     <string name="stars_description">Visualize N-pointed regular stars drawn in one stroke.</string>
     <string name="mandelbrot_title">Mandelbrot Set</string>
     <string name="mandelbrot_description">Explore the most famous fractal. Zoom in to find infinite complexity.</string>
-    <string name="first_info">Adjust the number of dots and skips to see different star patterns.</string>
-    <string name="render_button">Render</string>
     <string name="skips_hint">Skips</string>
     <string name="dots_hint">Dots</string>
     <string name="more_info_button">Details</string>
     <string name="filled">Filled</string>
-    <string name="instant">Instant</string>
     <string name="details_success">Congratulations! You made a %1$d-pointed star in one stroke!</string>
     <string name="details_fail">It is not possible to draw a %1$d-pointed star in one stroke.</string>
+    <string name="details_polygon">Moving 1 dot at a time joins every neighbour in turn, so you get a regular %1$d-sided polygon rather than a star. Move 2 or more dots at a time to make a star.</string>
     <string name="details_is_prime">Because %1$d is a prime you can actually choose any movement number and still get a %1$d-pointed star.</string>
     <string name="details_info">It is possible to draw %2$d different %1$d-pointed stars in one stroke. Mirrored stars are not counted. For example, moving 2 or 3 points at the same time to get a 5-pointed start is the same solution.</string>
     <string name="details_help">The following move numbers can be used to achieve a %1$d-pointed star:</string>
@@ -27,6 +24,20 @@
     <string name="line_thickness">Line Thickness</string>
     <string name="color">Color</string>
     <string name="close">Close</string>
+    <string name="reset_view">Reset View</string>
     <string name="mandelbrot_help">The Mandelbrot set is the set of complex numbers c for which the function f(z) = z² + c does not diverge to infinity when iterated from z = 0. It is one of the most famous examples of fractal geometry. \n\nUse pinch-to-zoom to explore the infinite boundaries of the set!</string>
     <string name="customize_mandelbrot">Customize Mandelbrot</string>
+
+    <!-- Accessibility labels -->
+    <string name="action_replay">Replay animation</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_details">Show details</string>
+    <string name="rendering">Rendering</string>
+    <string name="zoom_level_format">Zoom level %1$s</string>
+    <string name="star_description_a11y">Star drawing with %1$d dots, moving %2$d at a time. Pinch to zoom, drag to pan, double tap to zoom in.</string>
+    <string name="mandelbrot_description_a11y">Mandelbrot set. Pinch to zoom, drag to pan, double tap to zoom in.</string>
+    <string name="color_gold">Gold</string>
+    <string name="color_silver">Silver</string>
+    <string name="color_blue">Blue</string>
+    <string name="color_green">Green</string>
 </resources>

@@ -1,34 +1,38 @@
 package com.edvinlinge.hemma.mathstars2
 
 import android.os.Bundle
-import android.text.Html
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.TextView
+import androidx.core.text.parseAsHtml
+import com.edvinlinge.hemma.mathstars2.databinding.LayoutInfoBottomSheetBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 class InfoBottomSheet : BottomSheetDialogFragment() {
+
+    private var _binding: LayoutInfoBottomSheetBinding? = null
+    private val binding get() = _binding!!
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?,
-    ): View? {
-        return inflater.inflate(R.layout.layout_info_bottom_sheet, container, false)
+    ): View {
+        _binding = LayoutInfoBottomSheetBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         val message = arguments?.getString(ARG_MESSAGE) ?: ""
-        val infoMessage = view.findViewById<TextView>(R.id.infoMessage)
-        infoMessage.text = Html.fromHtml(message, Html.FROM_HTML_MODE_LEGACY)
+        binding.infoMessage.text = message.parseAsHtml()
+        binding.closeButton.setOnClickListener { dismiss() }
+    }
 
-        view.findViewById<Button>(R.id.closeButton).setOnClickListener {
-            dismiss()
-        }
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 
     companion object {
@@ -36,11 +40,8 @@ class InfoBottomSheet : BottomSheetDialogFragment() {
         private const val ARG_MESSAGE = "arg_message"
 
         fun newInstance(message: String): InfoBottomSheet {
-            return InfoBottomSheet().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_MESSAGE, message)
-                }
-            }
+            val args = Bundle().apply { putString(ARG_MESSAGE, message) }
+            return InfoBottomSheet().apply { arguments = args }
         }
     }
 }
