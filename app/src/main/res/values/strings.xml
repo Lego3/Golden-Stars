@@ -1,11 +1,18 @@
 <resources>
-    <string name="app_name">Golden Stars</string>
-    <string name="welcome">Welcome!</string>
-    <string name="first_info">Choose two numbers. One for how many dots and one for number of dots to count for each new line.</string>
+    <string name="app_name">Math Stars</string>
+    <string name="welcome">Welcome to Math Stars</string>
+    <string name="hub_description">Explore the beauty of mathematics through interactive visualizations.</string>
+    <string name="stars_title">Golden Stars</string>
+    <string name="stars_description">Visualize N-pointed regular stars drawn in one stroke.</string>
+    <string name="mandelbrot_title">Mandelbrot Set</string>
+    <string name="mandelbrot_description">Explore the most famous fractal. Zoom in to find infinite complexity.</string>
+    <string name="first_info">Adjust the number of dots and skips to see different star patterns.</string>
     <string name="render_button">Render</string>
-    <string name="skips_hint">Number of skips</string>
-    <string name="dots_hint">Number of dots</string>
-    <string name="more_info_button">More info</string>
+    <string name="skips_hint">Skips</string>
+    <string name="dots_hint">Dots</string>
+    <string name="more_info_button">Details</string>
+    <string name="filled">Filled</string>
+    <string name="instant">Instant</string>
     <string name="details_success">Congratulations! You made a %1$d-pointed star in one stroke!</string>
     <string name="details_fail">It is not possible to draw a %1$d-pointed star in one stroke.</string>
     <string name="details_is_prime">Because %1$d is a prime you can actually choose any movement number and still get a %1$d-pointed star.</string>
@@ -20,4 +27,6 @@
     <string name="line_thickness">Line Thickness</string>
     <string name="color">Color</string>
     <string name="close">Close</string>
+    <string name="mandelbrot_help">The Mandelbrot set is the set of complex numbers c for which the function f(z) = z² + c does not diverge to infinity when iterated from z = 0. It is one of the most famous examples of fractal geometry. \n\nUse pinch-to-zoom to explore the infinite boundaries of the set!</string>
+    <string name="customize_mandelbrot">Customize Mandelbrot</string>
 </resources>

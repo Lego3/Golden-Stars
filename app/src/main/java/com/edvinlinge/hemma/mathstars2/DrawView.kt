@@ -6,6 +6,9 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
+import android.view.GestureDetector
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import kotlin.math.*
 import android.os.Parcel
@@ -31,6 +34,44 @@ class DrawView
     private var drawColor = Color.YELLOW
     private var strokeWidth = 8f
     private var animationDuration = 5000L
+    private var isFilled = true
+    private var instantRender = false
+
+    private var zoom = 1.0f
+    private var offsetX = 0f
+    private var offsetY = 0f
+
+    private val scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            zoom *= detector.scaleFactor
+            zoom = zoom.coerceIn(0.5f, 10.0f)
+            invalidate()
+            return true
+        }
+    })
+
+    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+        override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
+            offsetX -= distanceX
+            offsetY -= distanceY
+            invalidate()
+            return true
+        }
+    })
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        scaleGestureDetector.onTouchEvent(event)
+        gestureDetector.onTouchEvent(event)
+        if (event.action == MotionEvent.ACTION_UP) {
+            performClick()
+        }
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
 
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -85,6 +126,29 @@ class DrawView
 
     fun getStrokeWidth(): Float = strokeWidth
 
+    fun setFilled(filled: Boolean) {
+        this.isFilled = filled
+        if (currentPhase <= 0f) {
+            paint.style = if (isFilled) Paint.Style.FILL else Paint.Style.STROKE
+        }
+        invalidate()
+    }
+
+    fun isFilled(): Boolean = isFilled
+
+    fun setInstant(instant: Boolean) {
+        this.instantRender = instant
+        if (instantRender) {
+            currentPhase = 0f
+            animator?.cancel()
+            paint.style = if (isFilled) Paint.Style.FILL else Paint.Style.STROKE
+            paint.pathEffect = null
+            invalidate()
+        }
+    }
+
+    fun isInstant(): Boolean = instantRender
+
     fun setAnimationSpeed(speedMultiplier: Float) {
         // speedMultiplier = 1.0 is default (5000ms)
         // 2.0 is faster (2500ms)
@@ -97,19 +161,59 @@ class DrawView
         startAnimation()
     }
 
+    fun updatePointsAndPath(dots: Int, skips: Int) {
+        this.dots = dots
+        this.skips = skips
+        
+        points.clear()
+        val centerX = viewWidth / 2f
+        val centerY = viewHeight / 2f
+        val radius = min(viewWidth, viewHeight) * 0.4f
+
+        for (i in 0 until dots) {
+            val angle = (2 * Math.PI * i.toDouble() / dots).toFloat()
+            val x = centerX + radius * cos(angle)
+            val y = centerY + radius * sin(angle)
+            points.add(Pair(x, y))
+        }
+
+        path.reset()
+        tryPathWithSkips(path, skips)
+        
+        val measure = PathMeasure(path, false)
+        pathLength = measure.length
+        
+        if (instantRender) {
+            currentPhase = 0f
+            animator?.cancel()
+            paint.style = if (isFilled) Paint.Style.FILL else Paint.Style.STROKE
+            paint.pathEffect = null
+            invalidate()
+        } else {
+            replay()
+        }
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
         if (width == 0 || height == 0 || dots == 0 || skips == 0) {
             return
         }
+        
+        canvas.save()
+        canvas.translate(width / 2f + offsetX, height / 2f + offsetY)
+        canvas.scale(zoom, zoom)
+        canvas.translate(-width / 2f, -height / 2f)
+        
         canvas.drawPath(path, paint)
+        canvas.restore()
     }
 
     private fun startAnimation() {
         animator?.cancel()
-        if (currentPhase <= 0f) {
-            paint.style = Paint.Style.FILL
+        if (currentPhase <= 0f || instantRender) {
+            paint.style = if (isFilled) Paint.Style.FILL else Paint.Style.STROKE
             paint.pathEffect = null
             invalidate()
             return
@@ -123,7 +227,7 @@ class DrawView
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    paint.style = Paint.Style.FILL
+                    paint.style = if (isFilled) Paint.Style.FILL else Paint.Style.STROKE
                     paint.pathEffect = null
                     invalidate()
                 }

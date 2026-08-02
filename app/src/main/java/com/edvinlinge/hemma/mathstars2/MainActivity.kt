@@ -4,13 +4,12 @@ import android.content.Intent
 import android.os.Bundle
 import android.content.pm.PackageManager
 import android.os.Build
-import android.widget.Button
-import android.widget.EditText
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.material.card.MaterialCardView
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,31 +22,17 @@ class MainActivity : AppCompatActivity() {
             WindowInsetsCompat.CONSUMED
         }
 
-        val buttonRender = findViewById<Button>(R.id.buttonRender)
-
-        val dots = findViewById<EditText>(R.id.editNumberDots)
-        val skips = findViewById<EditText>(R.id.editNumberSkips)
-
-        buttonRender.setOnClickListener {
-            val dotNumber = dots.text.toString().toIntOrNull() ?: 5
-            val skipNumber = skips.text.toString().toIntOrNull() ?: 2
+        findViewById<MaterialCardView>(R.id.cardStars).setOnClickListener {
             val intent = Intent(this, DrawActivity::class.java).apply {
-                putExtra("dots", dotNumber)
-                putExtra("skips", skipNumber)
+                putExtra("dots", 5)
+                putExtra("skips", 2)
             }
             startActivity(intent)
         }
 
-        val buttonHelp = findViewById<Button>(R.id.buttonHelp)
-
-        buttonHelp.setOnClickListener {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.help)
-                .setMessage(getString(R.string.help_details))
-                .setPositiveButton("OK") { dialog, _ ->
-                    dialog.dismiss()
-                }
-                .show()
+        findViewById<MaterialCardView>(R.id.cardMandelbrot).setOnClickListener {
+            val intent = Intent(this, MandelbrotActivity::class.java)
+            startActivity(intent)
         }
 
         val versionText = findViewById<TextView>(R.id.versionText)

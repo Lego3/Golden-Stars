@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Guldstjärnor</string>
-    <string name="welcome">Välkommen!</string>
-    <string name="first_info">Välj två tal. Ett för antalet punkter och ett för antalet steg att räkna för varje streck.</string>
+    <string name="app_name">Mattestjärnor</string>
+    <string name="welcome">Välkommen till Mattestjärnor</string>
+    <string name="hub_description">Utforska matematikens skönhet genom interaktiva visualiseringar.</string>
+    <string name="stars_title">Guldstjärnor</string>
+    <string name="stars_description">Visualisera N-uddiga regelbundna stjärnor ritade i ett penseldrag.</string>
+    <string name="mandelbrot_title">Mandelbrotmängden</string>
+    <string name="mandelbrot_description">Utforska den mest kända fraktalen. Zooma in för att hitta oändlig komplexitet.</string>
+    <string name="first_info">Justera antalet punkter och hopp för att se olika stjärnmönster.</string>
     <string name="render_button">Rendera</string>
-    <string name="skips_hint">Antal hopp</string>
-    <string name="dots_hint">Antal punkter</string>
-    <string name="more_info_button">Mer info</string>
+    <string name="skips_hint">Hopp</string>
+    <string name="dots_hint">Punkter</string>
+    <string name="more_info_button">Detaljer</string>
+    <string name="filled">Fylld</string>
+    <string name="instant">Direkt</string>
     <string name="details_success">Grattis! Du gjorde en %1$d-uddig stjärna med ett penseldrag!</string>
     <string name="details_fail">Det går inte att rita en %1$d-uddig stjärna i ett penseldrag.</string>
     <string name="details_is_prime">Eftersom %1$d är ett primtal går det att välja vilket nummer som helst och ändå få en %1$d-uddig stjärna.</string>
@@ -21,4 +28,6 @@
     <string name="line_thickness">Linjetjocklek</string>
     <string name="color">Färg</string>
     <string name="close">Stäng</string>
+    <string name="mandelbrot_help">Mandelbrotmängden är mängden av komplexa tal c för vilka funktionen f(z) = z² + c inte divergerar mot oändligheten när den itereras från z = 0. Det är ett av de mest kända exemplen på fraktalgeometri. \n\nAnvänd nyp-för-att-zooma för att utforska mängdens oändliga gränser!</string>
+    <string name="customize_mandelbrot">Anpassa Mandelbrot</string>
 </resources>
