@@ -54,7 +54,11 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
 
     private var colorPalette = Palette.GOLDEN
 
-    private val renderScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    /**
+     * A coroutine scope is valid only while the view is attached. A View instance can be detached
+     * and later reattached, so this must be recreated rather than permanently cancelled once.
+     */
+    private var renderScope: CoroutineScope? = null
     private var renderJob: Job? = null
     private var renderGeneration = 0L
 
@@ -235,6 +239,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         val viewWidth = width
         val viewHeight = height
         if (viewWidth <= 0 || viewHeight <= 0) return
+        val scope = renderScope ?: return
 
         val previous = renderJob
         previous?.cancel()
@@ -256,7 +261,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
 
         renderingStateCallback?.invoke(true)
 
-        renderJob = renderScope.launch {
+        renderJob = scope.launch {
             try {
                 // Let the cancelled render unwind first so only one writer touches the buffers.
                 previous?.join()
@@ -435,9 +440,24 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         }
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        renderScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+        // A palette or viewport change may have happened while detached, and a cancelled render
+        // may never have populated the bitmap. Always refresh when an existing view is reattached.
+        requestFullRender()
+    }
+
     override fun onDetachedFromWindow() {
+        // Invalidate the generation before cancellation so the old job cannot update callbacks or
+        // a bitmap after a rapid detach/reattach cycle.
+        renderGeneration++
+        renderJob?.cancel()
+        renderJob = null
+        renderScope?.cancel()
+        renderScope = null
+        renderingStateCallback?.invoke(false)
         super.onDetachedFromWindow()
-        renderScope.cancel()
     }
 
     private companion object {
