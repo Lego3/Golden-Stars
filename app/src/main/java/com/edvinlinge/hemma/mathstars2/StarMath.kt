@@ -20,6 +20,12 @@ internal object StarMath {
         dots > 0 && visitedDotCount(dots, skips) == dots
 
     /**
+     * True when the figure has enough distinct points to fill. A digon (for example 6 dots with
+     * skip 3) is only a line segment; [android.graphics.Paint.Style.FILL] would make it vanish.
+     */
+    fun canFill(dots: Int, skips: Int): Boolean = visitedDotCount(dots, skips) >= 3
+
+    /**
      * Skip counts that trace a genuine star polygon in one stroke.
      *
      * Starts at two because a skip of one traces the convex polygon rather than a star, and stops
