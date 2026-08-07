@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # Keeps the SHA-pinned actions in .github/workflows current. Pinning to a
+  # commit is what stops a hijacked tag from reaching CI; this is what stops
+  # those pins from silently rotting.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Reads gradle/libs.versions.toml as well as the build scripts.
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    groups:
+      androidx:
+        patterns: ["androidx.*"]
+      test-libraries:
+        patterns: ["junit*", "org.junit*", "androidx.test*"]
