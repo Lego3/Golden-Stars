@@ -3,8 +3,26 @@ name: Android CI
 on:
   push:
     branches: ["master"]
+    paths:
+      - ".github/workflows/android-ci.yml"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "gradlew"
+      - "gradlew.bat"
+      - "gradle/**"
+      - "app/**"
   pull_request:
     branches: ["master"]
+    paths:
+      - ".github/workflows/android-ci.yml"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "gradlew"
+      - "gradlew.bat"
+      - "gradle/**"
+      - "app/**"
   workflow_dispatch:
 
 # Cancel superseded runs on the same branch/PR to save CI minutes.
