@@ -1,0 +1,4 @@
+{
+  "name": "Math Stars 2 (Android)",
+  "install": "bash .cursor/scripts/setup-android-sdk.sh"
+}
