@@ -41,6 +41,28 @@ class StarMathTest {
     }
 
     @Test
+    fun `digons cannot be filled because they have no area`() {
+        // Even dot counts with skip = dots/2 only visit two opposite points.
+        assertFalse(StarMath.canFill(dots = 6, skips = 3))
+        assertFalse(StarMath.canFill(dots = 8, skips = 4))
+        assertFalse(StarMath.canFill(dots = 10, skips = 5))
+        for (dots in 6..40 step 2) {
+            assertFalse(
+                "dots=$dots skips=${dots / 2} is a digon and must not fill",
+                StarMath.canFill(dots, dots / 2),
+            )
+        }
+    }
+
+    @Test
+    fun `figures with three or more points can be filled`() {
+        assertTrue(StarMath.canFill(dots = 5, skips = 2))
+        assertTrue(StarMath.canFill(dots = 6, skips = 2))
+        assertTrue(StarMath.canFill(dots = 7, skips = 3))
+        assertTrue(StarMath.canFill(dots = 12, skips = 5))
+    }
+
+    @Test
     fun `a skip of one walks the whole polygon`() {
         assertEquals(6, StarMath.visitedDotCount(dots = 6, skips = 1))
         assertTrue(StarMath.isSingleStroke(dots = 6, skips = 1))

@@ -281,7 +281,12 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     }
 
     private fun applyCompletedStyle() {
-        paint.style = if (isFilled) Paint.Style.FILL else Paint.Style.STROKE
+        // Digons are line segments with no area; filling them erases the figure after the reveal.
+        paint.style = if (isFilled && StarMath.canFill(dots, skips)) {
+            Paint.Style.FILL
+        } else {
+            Paint.Style.STROKE
+        }
     }
 
     /**
