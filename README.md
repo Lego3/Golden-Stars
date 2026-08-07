@@ -1,6 +1,6 @@
 # Golden Stars
 
-Android app for exploring mathematics through interactive visualizations: Examples: single-stroke star polygons and the Mandelbrot set.
+Android app for exploring mathematics through interactive visualizations. Examples: single-stroke star polygons and the Mandelbrot set.
 
 Package: `com.edvinlinge.hemma.mathstars2` · minSdk 29 · compile/targetSdk 37 · version 1.1.0
 
