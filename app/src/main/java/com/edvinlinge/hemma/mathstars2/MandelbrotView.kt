@@ -18,11 +18,13 @@ import androidx.core.graphics.withSave
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,6 +62,8 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
      */
     private var renderScope: CoroutineScope? = null
     private var renderJob: Job? = null
+    /** Last job that touched the shared pixel buffers; kept across detach so a reattach can join it. */
+    private var bufferJob: Job? = null
     private var renderGeneration = 0L
 
     private var isInteracting = false
@@ -241,8 +245,8 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         if (viewWidth <= 0 || viewHeight <= 0) return
         val scope = renderScope ?: return
 
-        val previous = renderJob
-        previous?.cancel()
+        val previousBufferJob = bufferJob
+        previousBufferJob?.cancel()
 
         val generation = ++renderGeneration
         val renderZoom = zoom
@@ -261,10 +265,16 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
 
         renderingStateCallback?.invoke(true)
 
-        renderJob = scope.launch {
+        val job = scope.launch {
             try {
-                // Let the cancelled render unwind first so only one writer touches the buffers.
-                previous?.join()
+                // Wait for the cancelled render to release the shared pixel buffers. Join under
+                // NonCancellable so a newer render cancelling *this* job cannot break the chain:
+                // otherwise job C would join cancelled job B while B's predecessor A is still
+                // writing, and both would corrupt the same IntArray.
+                withContext(NonCancellable) {
+                    previousBufferJob?.join()
+                }
+                ensureActive()
 
                 val pixels = pixelBuffer(preview, renderWidth * renderHeight)
                 withContext(Dispatchers.Default) {
@@ -311,6 +321,8 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                 }
             }
         }
+        bufferJob = job
+        renderJob = job
     }
 
     private suspend fun computeMandelbrot(
