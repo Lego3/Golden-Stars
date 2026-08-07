@@ -28,6 +28,8 @@ in the build and release pipeline rather than the app itself:
 
 ## Note for Contributors
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution workflow.
+
 CI builds pull requests, which means a pull request that changes build logic
 executes on our runners. Such changes get extra scrutiny, and CI runs for
 external contributions require maintainer approval before they start. Keep
