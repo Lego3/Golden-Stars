@@ -2,7 +2,15 @@
 
 Android app for exploring mathematics through interactive visualizations. Examples: single-stroke star polygons and the Mandelbrot set.
 
-Package: `com.edvinlinge.hemma.mathstars2` · minSdk 29 · compile/targetSdk 37 · version 1.1.0
+The repository and GitHub project are named **Golden Stars**. The app label on the device home screen is **Math Stars** (`@string/app_name`); the star-drawing screen is titled **Golden Stars**. The Android package id is `com.edvinlinge.hemma.mathstars2` (legacy name from an earlier version).
+
+| | |
+|---|---|
+| Package | `com.edvinlinge.hemma.mathstars2` |
+| minSdk | 29 |
+| compile / targetSdk | 37 |
+| version | 1.1.0 (versionCode 2) |
+| License | [MIT](LICENSE) |
 
 ## Screens
 
@@ -151,3 +159,19 @@ app/src/androidTest/          # Instrumented smoke tests
 Unit tests in `StarMathTest` cover GCD traversal, valid star skips, fill eligibility, and primality — the rules surfaced in the app's info panel. `ZoomFormatTest` covers label formatting at magnitude boundaries.
 
 When changing star or Mandelbrot rendering logic, run `./gradlew testDebugUnitTest` before pushing; CI runs the same command plus lint and emulator tests.
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow, local checks, and review expectations.
+
+Please follow our [Code of Conduct](CODE_OF_CONDUCT.md). Security issues must be reported privately — see [SECURITY.md](SECURITY.md).
+
+## Privacy
+
+The app collects no data. The published privacy policy lives at
+[privacy_policy.html](privacy_policy.html) (also deployed to GitHub Pages on
+`master`).
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
