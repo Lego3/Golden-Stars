@@ -32,4 +32,22 @@ class ZoomFormatTest {
             java.util.Locale.setDefault(original)
         }
     }
+
+    @Test
+    fun `suffix thresholds pick the next unit at exact powers of ten`() {
+        assertEquals("999.9x", formatZoom(999.9))
+        assertEquals("1.0k x", formatZoom(1_000.0))
+        assertEquals("999.9k x", formatZoom(999_900.0))
+        assertEquals("1.0M x", formatZoom(1_000_000.0))
+        assertEquals("999.9M x", formatZoom(999_900_000.0))
+        assertEquals("1.0G x", formatZoom(1_000_000_000.0))
+        assertEquals("999.9G x", formatZoom(999_900_000_000.0))
+        assertEquals("1.0T x", formatZoom(1_000_000_000_000.0))
+    }
+
+    @Test
+    fun `minimum zoom label keeps one decimal place`() {
+        assertEquals("0.5x", formatZoom(0.5))
+        assertEquals("0.1x", formatZoom(0.1))
+    }
 }

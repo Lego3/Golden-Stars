@@ -28,7 +28,6 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.log10
 
 class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
@@ -165,7 +164,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
      * square and the set is not stretched by the screen's aspect ratio.
      */
     private fun unitsPerPixel(zoomLevel: Double, viewWidth: Int, viewHeight: Int): Double =
-        (VIEWPORT_SPAN / zoomLevel) / minOf(viewWidth, viewHeight).coerceAtLeast(1)
+        MandelbrotMath.unitsPerPixel(zoomLevel, viewWidth, viewHeight)
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         scaleGestureDetector.onTouchEvent(event)
@@ -256,7 +255,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         val downscale = if (preview) PREVIEW_DOWNSCALE else 1
         val renderWidth = (viewWidth / downscale).coerceAtLeast(1)
         val renderHeight = (viewHeight / downscale).coerceAtLeast(1)
-        val maxIterations = iterationsFor(renderZoom)
+        val maxIterations = MandelbrotMath.iterationsFor(renderZoom)
 
         val unitsPerPixel = unitsPerPixel(renderZoom, viewWidth, viewHeight)
         val sampleStep = unitsPerPixel * downscale
@@ -347,15 +346,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                     var index = y * renderWidth
                     for (x in 0 until renderWidth) {
                         val cr = xMin + x * sampleStep
-                        var zr = 0.0
-                        var zi = 0.0
-                        var iteration = 0
-                        while (zr * zr + zi * zi <= ESCAPE_RADIUS_SQUARED && iteration < maxIterations) {
-                            val nextZr = zr * zr - zi * zi + cr
-                            zi = 2.0 * zr * zi + ci
-                            zr = nextZr
-                            iteration++
-                        }
+                        val iteration = MandelbrotMath.escapeIterations(cr, ci, maxIterations)
                         pixels[index++] = if (iteration == maxIterations) {
                             Color.BLACK
                         } else {
@@ -366,15 +357,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             }
         }.awaitAll()
     }
-
-    /**
-     * Deeper zoom needs more iterations to keep the boundary detailed, but the count is capped so
-     * a single frame cannot grow into an unbounded amount of work.
-     */
-    private fun iterationsFor(zoomLevel: Double): Int =
-        (BASE_ITERATIONS + log10(zoomLevel).coerceAtLeast(0.0) * ITERATIONS_PER_DECADE)
-            .toInt()
-            .coerceIn(BASE_ITERATIONS, MAX_ITERATIONS)
 
     private fun colorFor(iterations: Int, maxIterations: Int, palette: Palette): Int {
         val t = iterations.toFloat() / maxIterations
@@ -473,8 +455,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     }
 
     private companion object {
-        /** Width of the viewport in the complex plane at zoom 1, across the shorter view edge. */
-        const val VIEWPORT_SPAN = 4.0
         const val DEFAULT_ZOOM = 1.0
         const val DEFAULT_OFFSET_X = -0.5
         const val DEFAULT_OFFSET_Y = 0.0
@@ -483,11 +463,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         /** Double precision runs out around here, so zooming further only adds noise. */
         const val MAX_ZOOM = 1.0e13
         const val DOUBLE_TAP_ZOOM_FACTOR = 2.0
-
-        const val BASE_ITERATIONS = 100
-        const val ITERATIONS_PER_DECADE = 200
-        const val MAX_ITERATIONS = 1500
-        const val ESCAPE_RADIUS_SQUARED = 4.0
 
         /** Linear downscale factor for the preview rendered during gestures. */
         const val PREVIEW_DOWNSCALE = 4
