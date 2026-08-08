@@ -96,6 +96,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         }
 
         override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
+            if (scaleGestureDetector.isInProgress) return false
             val unitsPerPixel = unitsPerPixel(zoom, width, height)
             offsetX += distanceX * unitsPerPixel
             offsetY += distanceY * unitsPerPixel
@@ -399,6 +400,8 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             offsetX = state.offsetX
             offsetY = state.offsetY
             zoomCallback?.invoke(zoom)
+            renderGeneration++
+            requestFullRender()
         } else {
             super.onRestoreInstanceState(state)
         }

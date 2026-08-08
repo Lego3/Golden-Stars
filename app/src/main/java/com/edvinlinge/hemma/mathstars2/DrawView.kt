@@ -63,6 +63,7 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
     private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
         override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
+            if (scaleGestureDetector.isInProgress) return false
             offsetX -= distanceX
             offsetY -= distanceY
             invalidate()
@@ -357,6 +358,12 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         } else {
             super.onRestoreInstanceState(state)
         }
+    }
+
+    override fun onDetachedFromWindow() {
+        animator?.cancel()
+        animator = null
+        super.onDetachedFromWindow()
     }
 
     internal class SavedState : BaseSavedState {
