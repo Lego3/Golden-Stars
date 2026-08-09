@@ -33,27 +33,53 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      android: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.android }}
+      android: ${{ steps.detect.outputs.android }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Detect changed paths
-        id: filter
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
-        with:
-          filters: |
-            android:
-              - '.github/workflows/android-ci.yml'
-              - 'build.gradle.kts'
-              - 'settings.gradle.kts'
-              - 'gradle.properties'
-              - 'gradlew'
-              - 'gradlew.bat'
-              - 'gradle/**'
-              - 'app/**'
+        id: detect
+        shell: bash
+        run: |
+          is_android_path() {
+            case "$1" in
+              .github/workflows/android-ci.yml|build.gradle.kts|settings.gradle.kts|gradle.properties|gradlew|gradlew.bat|gradle/*|app/*)
+                return 0
+                ;;
+            esac
+            return 1
+          }
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "android=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.base_ref }}"
+            mapfile -t changed_files < <(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          else
+            before="${{ github.event.before }}"
+            if [ -z "${before}" ] || [ "${before}" = "0000000000000000000000000000000000000000" ]; then
+              mapfile -t changed_files < <(git diff-tree --no-commit-id --name-only -r HEAD)
+            else
+              mapfile -t changed_files < <(git diff --name-only "${before}" "${{ github.sha }}")
+            fi
+          fi
+
+          android=false
+          for file in "${changed_files[@]}"; do
+            if is_android_path "${file}"; then
+              android=true
+              break
+            fi
+          done
+
+          echo "android=${android}" >> "${GITHUB_OUTPUT}"
 
   build-and-test:
     name: Build, lint & unit test
