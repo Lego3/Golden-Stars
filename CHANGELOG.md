@@ -20,20 +20,12 @@ Git tags (`v1.1.0`, `v1.2.0`, …).
 
 ### Fixed
 
-- Mandelbrot rendering after the view is reattached.
 - Filled digons disappearing once the star reveal animation completes.
-- Mandelbrot viewport showing a stale image after rotation until the user pans or zooms again.
 - DrawView reveal animation continuing after the view detaches.
-- Unintended pan drift during pinch-to-zoom.
-- Plain-text info sheets collapsing paragraph breaks.
-- Settings color swatches not indicating the selected color.
-- Hub version label sitting under the navigation bar on edge-to-edge devices.
 
 ### Changed
 
 - Modernized Gradle/Kotlin build (JVM 17, compile/target SDK 37).
-- CI now validates release builds with R8 minification.
-- Hardened GitHub Actions workflows for untrusted pull requests; added Dependabot.
 
 ## [1.1.0] - 2026-07-27
 
