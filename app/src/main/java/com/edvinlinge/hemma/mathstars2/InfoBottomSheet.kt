@@ -26,7 +26,11 @@ class InfoBottomSheet : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val message = arguments?.getString(ARG_MESSAGE) ?: ""
-        binding.infoMessage.text = message.parseAsHtml()
+        binding.infoMessage.text = if (message.contains('<')) {
+            message.parseAsHtml()
+        } else {
+            message
+        }
         binding.closeButton.setOnClickListener { dismiss() }
     }
 
