@@ -125,6 +125,28 @@ GitHub Actions workflow `.github/workflows/android-ci.yml` runs on every pull re
 
 A separate workflow (`.github/workflows/static.yml`) deploys `index.html` and `privacy_policy.html` to GitHub Pages on `master`.
 
+Pushes to `master` also upload a **debug APK** as a CI artifact (zipped download
+from the Actions tab). Tagged releases are handled separately — see [Releasing](#releasing).
+
+## Releasing
+
+GitHub Releases provide versioned download links and release notes. Signed AAB
+uploads to Google Play stay a separate, manual step.
+
+1. Edit `CHANGELOG.md` (move items from `[Unreleased]` into a new `## [x.y.z]` section), bump `versionCode` / `versionName` in `app/build.gradle.kts`, and update the version row in this README.
+2. Commit and push to `master`:
+
+   ```bash
+   git commit -m "Release 1.2.0"
+   git tag -a v1.2.0 -m "Optional short summary if CHANGELOG is skipped"
+   git push origin master
+   git push origin v1.2.0
+   ```
+
+3. The `.github/workflows/release.yml` workflow runs on the tag push, builds a debug APK, and creates a GitHub Release with:
+   - release notes from the matching `CHANGELOG.md` section, or the annotated tag message as a fallback
+   - a direct `.apk` attachment (not zipped — easy to install from a phone)
+
 ## Project layout
 
 ```
