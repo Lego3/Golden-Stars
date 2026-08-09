@@ -130,4 +130,25 @@ class StarMathTest {
         assertTrue(StarMath.isPrime(29))
         assertFalse(StarMath.isPrime(-7))
     }
+
+    @Test
+    fun `max skips never drops below the slider minimum`() {
+        assertEquals(2, StarMath.maxSkipsFor(dots = 3))
+        assertEquals(2, StarMath.maxSkipsFor(dots = 4))
+        assertEquals(2, StarMath.maxSkipsFor(dots = 5))
+    }
+
+    @Test
+    fun `max skips tracks half the dot count for larger figures`() {
+        assertEquals(5, StarMath.maxSkipsFor(dots = 10))
+        assertEquals(15, StarMath.maxSkipsFor(dots = 30))
+        assertEquals(30, StarMath.maxSkipsFor(dots = 60))
+    }
+
+    @Test
+    fun `max skips stays at least two for degenerate dot counts`() {
+        assertEquals(2, StarMath.maxSkipsFor(dots = 0))
+        assertEquals(2, StarMath.maxSkipsFor(dots = 1))
+        assertEquals(2, StarMath.maxSkipsFor(dots = 2))
+    }
 }

@@ -87,7 +87,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         val skipsSlider = binding.skipsSlider
 
         // Bounds before values, so a value is never briefly outside the slider's range.
-        skipsSlider.valueTo = maxSkipsFor(dots)
+        skipsSlider.valueTo = StarMath.maxSkipsFor(dots).toFloat()
         skipsSlider.value = skips.toFloat().coerceIn(skipsSlider.valueFrom, skipsSlider.valueTo)
         dotsSlider.value = dots.toFloat().coerceIn(dotsSlider.valueFrom, dotsSlider.valueTo)
         skips = skipsSlider.value.toInt()
@@ -95,7 +95,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
         dotsSlider.addOnChangeListener { _, value, _ ->
             dots = value.toInt()
-            val maxSkips = maxSkipsFor(dots)
+            val maxSkips = StarMath.maxSkipsFor(dots).toFloat()
             if (skipsSlider.value > maxSkips) {
                 skipsSlider.value = maxSkips
             }
@@ -189,12 +189,6 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
         fun colorAt(context: Context, index: Int): Int =
             ContextCompat.getColor(context, SWATCH_COLORS[index.coerceIn(SWATCH_COLORS.indices)])
-
-        /**
-         * Highest usable skip count for [dots]. Kept at two or more so it can never collide with
-         * the skips slider's lower bound, which Material rejects with an exception.
-         */
-        private fun maxSkipsFor(dots: Int): Float = (dots / 2).toFloat().coerceAtLeast(2f)
 
         fun newInstance(
             dots: Int = DEFAULT_DOTS,
