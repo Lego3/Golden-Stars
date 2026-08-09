@@ -33,6 +33,12 @@ internal object StarMath {
      */
     fun starSkips(dots: Int): List<Int> = (2..dots / 2).filter { gcd(dots, it) == 1 }
 
+    /**
+     * Highest usable skip count for [dots]. Kept at two or more so it can never collide with
+     * the skips slider's lower bound, which Material rejects with an exception.
+     */
+    fun maxSkipsFor(dots: Int): Int = (dots / 2).coerceAtLeast(2)
+
     fun isPrime(number: Int): Boolean {
         if (number < 2) return false
         if (number < 4) return true
