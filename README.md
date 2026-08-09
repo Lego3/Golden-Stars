@@ -116,7 +116,7 @@ The script installs Android command-line tools, accepts licenses, and runs `./gr
 
 ## CI
 
-GitHub Actions workflow `.github/workflows/android-ci.yml` runs on every pull request to `master` (required checks always report; jobs skip quickly when no app or Gradle files changed) and on pushes that touch Android-related paths:
+GitHub Actions workflow `.github/workflows/android-ci.yml` runs on every pull request to `master` (required checks always report; jobs fast-pass when irrelevant). On pull requests, only `app/**` and Gradle files trigger instrumented tests; Android CI workflow edits run unit tests/lint only; unrelated changes (e.g. docs or `release.yml`) pass both jobs in seconds. Pushes to `master` still use path filters to avoid unnecessary builds:
 
 | Job | Steps |
 |-----|-------|
