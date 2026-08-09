@@ -116,7 +116,7 @@ The script installs Android command-line tools, accepts licenses, and runs `./gr
 
 ## CI
 
-GitHub Actions workflow `.github/workflows/android-ci.yml` runs on pushes and PRs to `master`:
+GitHub Actions workflow `.github/workflows/android-ci.yml` runs on every pull request to `master` (required checks always report; jobs skip quickly when no app or Gradle files changed) and on pushes that touch Android-related paths:
 
 | Job | Steps |
 |-----|-------|
