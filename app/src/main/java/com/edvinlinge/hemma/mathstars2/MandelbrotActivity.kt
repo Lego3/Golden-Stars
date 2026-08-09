@@ -13,6 +13,7 @@ import com.edvinlinge.hemma.mathstars2.databinding.ActivityMandelbrotBinding
 class MandelbrotActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMandelbrotBinding
+    private lateinit var preferences: AppPreferences
 
     // Owned here rather than by the view, because this activity owns the settings sheet that
     // changes it. The view keeps only its viewport across recreation.
@@ -29,8 +30,9 @@ class MandelbrotActivity : AppCompatActivity() {
         binding = ActivityMandelbrotBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        colorIndex = savedInstanceState?.getInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
-            ?: colorIndex
+        preferences = AppPreferences.get(this)
+        colorIndex = savedInstanceState?.getInt(SettingsBottomSheet.KEY_COLOR_INDEX)
+            ?: preferences.loadMandelbrotColorIndex()
 
         binding.mandelbrotView.setColorPalette(paletteFor(colorIndex))
 
@@ -68,6 +70,7 @@ class MandelbrotActivity : AppCompatActivity() {
             if (newColorIndex != colorIndex) {
                 colorIndex = newColorIndex
                 binding.mandelbrotView.setColorPalette(paletteFor(colorIndex))
+                preferences.saveMandelbrotColorIndex(colorIndex)
             }
         }
 
@@ -85,6 +88,11 @@ class MandelbrotActivity : AppCompatActivity() {
             val helpText = getString(R.string.mandelbrot_help)
             InfoBottomSheet.newInstance(helpText).show(supportFragmentManager, InfoBottomSheet.TAG)
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        preferences.saveMandelbrotColorIndex(colorIndex)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

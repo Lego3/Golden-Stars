@@ -168,7 +168,13 @@ Please follow our [Code of Conduct](CODE_OF_CONDUCT.md). Security issues must be
 
 ## Privacy
 
-The app collects no data. The published privacy policy lives at
+The app does not collect or transmit data to the developer or third parties. It stores
+visualization preferences locally on your device (star geometry, colors, thickness, fill,
+speed, and Mandelbrot palette). If Android backup is enabled on your device, those
+preferences may be included in your encrypted Google account backup or device transfer,
+managed by Android — not by this app.
+
+The published privacy policy lives at
 [privacy_policy.html](privacy_policy.html) (also deployed to GitHub Pages on
 `master`).
 

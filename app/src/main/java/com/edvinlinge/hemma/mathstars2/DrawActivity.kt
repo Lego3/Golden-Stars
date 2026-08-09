@@ -12,6 +12,7 @@ import com.edvinlinge.hemma.mathstars2.databinding.ActivityDrawBinding
 class DrawActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityDrawBinding
+    private lateinit var preferences: AppPreferences
 
     // This activity owns the star's geometry and styling because it owns the settings sheet.
     // DrawView only keeps its own viewport and animation progress across recreation.
@@ -20,7 +21,7 @@ class DrawActivity : AppCompatActivity() {
     private var thickness = SettingsBottomSheet.DEFAULT_THICKNESS
     private var colorIndex = SettingsBottomSheet.DEFAULT_COLOR_INDEX
     private var filled = true
-    private var speed = DEFAULT_SPEED
+    private var speed = 1.0f
 
     /** False while a geometry slider is being dragged. See [onSettingsChanged]. */
     private var geometrySettled = true
@@ -36,6 +37,7 @@ class DrawActivity : AppCompatActivity() {
         binding = ActivityDrawBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        preferences = AppPreferences.get(this)
         restoreSettings(savedInstanceState)
 
         binding.drawView.setOnZoomChangedListener { zoom ->
@@ -68,6 +70,7 @@ class DrawActivity : AppCompatActivity() {
         binding.speedSlider.addOnChangeListener { _, value, _ ->
             speed = value
             applySpeed()
+            persistStarSettings()
         }
 
         applySettings()
@@ -97,17 +100,47 @@ class DrawActivity : AppCompatActivity() {
     }
 
     private fun restoreSettings(savedInstanceState: Bundle?) {
-        if (savedInstanceState == null) {
+        if (savedInstanceState != null) {
+            dots = savedInstanceState.getInt(SettingsBottomSheet.KEY_DOTS, dots)
+            skips = savedInstanceState.getInt(SettingsBottomSheet.KEY_SKIPS, skips)
+            thickness = savedInstanceState.getFloat(SettingsBottomSheet.KEY_THICKNESS, thickness)
+            filled = savedInstanceState.getBoolean(SettingsBottomSheet.KEY_FILLED, filled)
+            colorIndex = savedInstanceState.getInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
+            speed = savedInstanceState.getFloat(STATE_SPEED, speed)
+            return
+        }
+
+        if (intent.hasExtra(EXTRA_DOTS) || intent.hasExtra(EXTRA_SKIPS)) {
             dots = intent.getIntExtra(EXTRA_DOTS, dots)
             skips = intent.getIntExtra(EXTRA_SKIPS, skips)
             return
         }
-        dots = savedInstanceState.getInt(SettingsBottomSheet.KEY_DOTS, dots)
-        skips = savedInstanceState.getInt(SettingsBottomSheet.KEY_SKIPS, skips)
-        thickness = savedInstanceState.getFloat(SettingsBottomSheet.KEY_THICKNESS, thickness)
-        filled = savedInstanceState.getBoolean(SettingsBottomSheet.KEY_FILLED, filled)
-        colorIndex = savedInstanceState.getInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
-        speed = savedInstanceState.getFloat(STATE_SPEED, speed)
+
+        val saved = preferences.loadStarSettings()
+        dots = saved.dots
+        skips = saved.skips
+        thickness = saved.thickness
+        filled = saved.filled
+        colorIndex = saved.colorIndex
+        speed = saved.speed
+    }
+
+    override fun onPause() {
+        super.onPause()
+        persistStarSettings()
+    }
+
+    private fun persistStarSettings() {
+        preferences.saveStarSettings(
+            AppPreferences.StarSettings(
+                dots = dots,
+                skips = skips,
+                thickness = thickness,
+                filled = filled,
+                colorIndex = colorIndex,
+                speed = speed,
+            ),
+        )
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -171,6 +204,8 @@ class DrawActivity : AppCompatActivity() {
             colorIndex = newColorIndex
             binding.drawView.setDrawColor(SettingsBottomSheet.colorAt(this, colorIndex))
         }
+
+        persistStarSettings()
     }
 
     companion object {
@@ -178,7 +213,6 @@ class DrawActivity : AppCompatActivity() {
         const val EXTRA_SKIPS = "skips"
 
         private const val STATE_SPEED = "speed"
-        private const val DEFAULT_SPEED = 1.0f
 
         /** At and above this slider value the star is drawn instantly instead of animated. */
         private const val INSTANT_SPEED_THRESHOLD = 4.0f

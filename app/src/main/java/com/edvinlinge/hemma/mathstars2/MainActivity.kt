@@ -29,11 +29,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.cardStars.setOnClickListener {
-            val intent = Intent(this, DrawActivity::class.java).apply {
-                putExtra(DrawActivity.EXTRA_DOTS, SettingsBottomSheet.DEFAULT_DOTS)
-                putExtra(DrawActivity.EXTRA_SKIPS, SettingsBottomSheet.DEFAULT_SKIPS)
-            }
-            startActivity(intent)
+            startActivity(Intent(this, DrawActivity::class.java))
         }
 
         binding.cardMandelbrot.setOnClickListener {
