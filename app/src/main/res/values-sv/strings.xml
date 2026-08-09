@@ -41,4 +41,6 @@
     <string name="color_silver">Silver</string>
     <string name="color_blue">Blå</string>
     <string name="color_green">Grön</string>
+    <string name="color_selected">vald</string>
+    <string name="color_selected_format">%1$s, vald</string>
 </resources>

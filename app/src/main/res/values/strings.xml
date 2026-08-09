@@ -40,4 +40,6 @@
     <string name="color_silver">Silver</string>
     <string name="color_blue">Blue</string>
     <string name="color_green">Green</string>
+    <string name="color_selected">selected</string>
+    <string name="color_selected_format">%1$s, selected</string>
 </resources>

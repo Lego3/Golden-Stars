@@ -64,12 +64,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             bindStarControls()
         }
 
-        swatches().forEachIndexed { index, swatch ->
-            swatch.setOnClickListener {
-                colorIndex = index
-                publish()
-            }
-        }
+        bindColorSwatches()
 
         binding.doneButton.setOnClickListener { dismiss() }
     }
@@ -81,6 +76,35 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
     private fun swatches(): List<View> =
         listOf(binding.colorGold, binding.colorSilver, binding.colorBlue, binding.colorGreen)
+
+    private fun bindColorSwatches() {
+        val selectedForeground = ContextCompat.getDrawable(requireContext(), R.drawable.fg_color_swatch_selected)
+        swatches().forEachIndexed { index, swatch ->
+            val selected = index == colorIndex
+            swatch.isSelected = selected
+            swatch.foreground = if (selected) selectedForeground else null
+            swatch.contentDescription = if (selected) {
+                getString(R.string.color_selected_format, colorNameAt(index))
+            } else {
+                colorNameAt(index)
+            }
+            swatch.setOnClickListener {
+                if (colorIndex == index) return@setOnClickListener
+                colorIndex = index
+                bindColorSwatches()
+                publish()
+            }
+        }
+    }
+
+    private fun colorNameAt(index: Int): String = getString(
+        when (index) {
+            0 -> R.string.color_gold
+            1 -> R.string.color_silver
+            2 -> R.string.color_blue
+            else -> R.string.color_green
+        },
+    )
 
     private fun bindStarControls() {
         val dotsSlider = binding.dotsSlider
