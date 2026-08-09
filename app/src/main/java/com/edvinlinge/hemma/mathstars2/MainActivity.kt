@@ -6,8 +6,10 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updateLayoutParams
 import com.edvinlinge.hemma.mathstars2.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -26,6 +28,14 @@ class MainActivity : AppCompatActivity() {
             )
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             WindowInsetsCompat.CONSUMED
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.versionText) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.updateLayoutParams<CoordinatorLayout.LayoutParams> {
+                bottomMargin = bars.bottom + resources.getDimensionPixelSize(R.dimen.overlay_edge_margin)
+            }
+            insets
         }
 
         binding.cardStars.setOnClickListener {
