@@ -67,4 +67,81 @@ class MandelbrotMathTest {
         // c = 0.25 is the cusp of the main cardioid; orbit stays bounded for many steps.
         assertEquals(100, MandelbrotMath.escapeIterations(0.25, 0.0, maxIterations = 100))
     }
+
+    @Test
+    fun `view center maps to the viewport offset`() {
+        assertEquals(-0.5, MandelbrotMath.complexXAtScreen(400f, -0.5, 1.0, 800, 600), 1e-12)
+        assertEquals(0.25, MandelbrotMath.complexYAtScreen(300f, 0.25, 1.0, 800, 600), 1e-12)
+    }
+
+    @Test
+    fun `screen coordinates scale linearly with distance from center`() {
+        val units = MandelbrotMath.unitsPerPixel(1.0, 800, 600)
+        val left = MandelbrotMath.complexXAtScreen(0f, 0.0, 1.0, 800, 600)
+        val right = MandelbrotMath.complexXAtScreen(800f, 0.0, 1.0, 800, 600)
+        assertEquals(-400.0 * units, left, 1e-9)
+        assertEquals(400.0 * units, right, 1e-9)
+    }
+
+    @Test
+    fun `zooming in keeps the focus point fixed in the complex plane`() {
+        val focusX = 320f
+        val focusY = 240f
+        val oldZoom = 1.0
+        val newZoom = 4.0
+        val offsetX = -0.5
+        val offsetY = 0.0
+        val viewWidth = 800
+        val viewHeight = 600
+
+        val beforeX = MandelbrotMath.complexXAtScreen(
+            focusX, offsetX, oldZoom, viewWidth, viewHeight,
+        )
+        val beforeY = MandelbrotMath.complexYAtScreen(
+            focusY, offsetY, oldZoom, viewWidth, viewHeight,
+        )
+        val (newOffsetX, newOffsetY) = MandelbrotMath.offsetAfterZoomChange(
+            focusX, focusY, oldZoom, newZoom, offsetX, offsetY, viewWidth, viewHeight,
+        )
+        val afterX = MandelbrotMath.complexXAtScreen(
+            focusX, newOffsetX, newZoom, viewWidth, viewHeight,
+        )
+        val afterY = MandelbrotMath.complexYAtScreen(
+            focusY, newOffsetY, newZoom, viewWidth, viewHeight,
+        )
+
+        assertEquals(beforeX, afterX, 1e-12)
+        assertEquals(beforeY, afterY, 1e-12)
+    }
+
+    @Test
+    fun `zooming out also keeps the focus point fixed`() {
+        val focusX = 100f
+        val focusY = 500f
+        val oldZoom = 8.0
+        val newZoom = 2.0
+        val offsetX = -0.75
+        val offsetY = 0.1
+        val viewWidth = 800
+        val viewHeight = 600
+
+        val beforeX = MandelbrotMath.complexXAtScreen(
+            focusX, offsetX, oldZoom, viewWidth, viewHeight,
+        )
+        val beforeY = MandelbrotMath.complexYAtScreen(
+            focusY, offsetY, oldZoom, viewWidth, viewHeight,
+        )
+        val (newOffsetX, newOffsetY) = MandelbrotMath.offsetAfterZoomChange(
+            focusX, focusY, oldZoom, newZoom, offsetX, offsetY, viewWidth, viewHeight,
+        )
+        val afterX = MandelbrotMath.complexXAtScreen(
+            focusX, newOffsetX, newZoom, viewWidth, viewHeight,
+        )
+        val afterY = MandelbrotMath.complexYAtScreen(
+            focusY, newOffsetY, newZoom, viewWidth, viewHeight,
+        )
+
+        assertEquals(beforeX, afterX, 1e-12)
+        assertEquals(beforeY, afterY, 1e-12)
+    }
 }

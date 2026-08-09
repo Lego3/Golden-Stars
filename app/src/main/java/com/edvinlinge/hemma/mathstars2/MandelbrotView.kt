@@ -142,11 +142,20 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         val target = (zoom * factor).coerceIn(MIN_ZOOM, MAX_ZOOM)
         if (target == zoom) return
 
-        val focusRealBefore = screenToComplexX(focusX)
-        val focusImaginaryBefore = screenToComplexY(focusY)
+        val oldZoom = zoom
+        val (newOffsetX, newOffsetY) = MandelbrotMath.offsetAfterZoomChange(
+            focusX = focusX,
+            focusY = focusY,
+            oldZoom = oldZoom,
+            newZoom = target,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            viewWidth = width,
+            viewHeight = height,
+        )
         zoom = target
-        offsetX += focusRealBefore - screenToComplexX(focusX)
-        offsetY += focusImaginaryBefore - screenToComplexY(focusY)
+        offsetX = newOffsetX
+        offsetY = newOffsetY
 
         zoomCallback?.invoke(zoom)
         invalidate()
@@ -154,10 +163,10 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     }
 
     private fun screenToComplexX(screenX: Float): Double =
-        offsetX + (screenX - width / 2.0) * unitsPerPixel(zoom, width, height)
+        MandelbrotMath.complexXAtScreen(screenX, offsetX, zoom, width, height)
 
     private fun screenToComplexY(screenY: Float): Double =
-        offsetY + (screenY - height / 2.0) * unitsPerPixel(zoom, width, height)
+        MandelbrotMath.complexYAtScreen(screenY, offsetY, zoom, width, height)
 
     /**
      * Size of one pixel in the complex plane. Derived from the shorter view edge so pixels stay

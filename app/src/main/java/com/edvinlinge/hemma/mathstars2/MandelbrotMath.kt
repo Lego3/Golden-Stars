@@ -34,6 +34,47 @@ internal object MandelbrotMath {
     /**
      * Iterations until the orbit escapes the escape radius, or [maxIterations] if it stays bounded.
      */
+    /** Complex-plane x coordinate under a screen point at the current viewport. */
+    fun complexXAtScreen(
+        screenX: Float,
+        offsetX: Double,
+        zoomLevel: Double,
+        viewWidth: Int,
+        viewHeight: Int,
+    ): Double = offsetX + (screenX - viewWidth / 2.0) * unitsPerPixel(zoomLevel, viewWidth, viewHeight)
+
+    /** Complex-plane y coordinate under a screen point at the current viewport. */
+    fun complexYAtScreen(
+        screenY: Float,
+        offsetY: Double,
+        zoomLevel: Double,
+        viewWidth: Int,
+        viewHeight: Int,
+    ): Double = offsetY + (screenY - viewHeight / 2.0) * unitsPerPixel(zoomLevel, viewWidth, viewHeight)
+
+    /**
+     * Adjusts the viewport center after a zoom change so the complex number under
+     * ([focusX], [focusY]) stays fixed on screen.
+     */
+    fun offsetAfterZoomChange(
+        focusX: Float,
+        focusY: Float,
+        oldZoom: Double,
+        newZoom: Double,
+        offsetX: Double,
+        offsetY: Double,
+        viewWidth: Int,
+        viewHeight: Int,
+    ): Pair<Double, Double> {
+        val focusRealBefore = complexXAtScreen(focusX, offsetX, oldZoom, viewWidth, viewHeight)
+        val focusImagBefore = complexYAtScreen(focusY, offsetY, oldZoom, viewWidth, viewHeight)
+        val newOffsetX = offsetX + focusRealBefore -
+            complexXAtScreen(focusX, offsetX, newZoom, viewWidth, viewHeight)
+        val newOffsetY = offsetY + focusImagBefore -
+            complexYAtScreen(focusY, offsetY, newZoom, viewWidth, viewHeight)
+        return newOffsetX to newOffsetY
+    }
+
     fun escapeIterations(
         cr: Double,
         ci: Double,
