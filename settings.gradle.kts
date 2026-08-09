@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Math Stars 2"
+rootProject.name = "Golden Stars"
 include(":app")
