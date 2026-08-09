@@ -33,7 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      android: ${{ steps.result.outputs.android }}
+      build: ${{ steps.result.outputs.build }}
+      instrumented: ${{ steps.result.outputs.instrumented }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -46,23 +47,32 @@ jobs:
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         with:
           filters: |
-            android:
-              - '.github/workflows/android-ci.yml'
+            app:
+              - 'app/**'
               - 'build.gradle.kts'
               - 'settings.gradle.kts'
               - 'gradle.properties'
               - 'gradlew'
               - 'gradlew.bat'
               - 'gradle/**'
-              - 'app/**'
+            ci:
+              - '.github/workflows/android-ci.yml'
 
-      - name: Set Android change output
+      - name: Set CI scope
         id: result
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ steps.filter.outputs.android }}" = "true" ]; then
-            echo "android=true" >> "${GITHUB_OUTPUT}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "build=true" >> "${GITHUB_OUTPUT}"
+            echo "instrumented=true" >> "${GITHUB_OUTPUT}"
+          elif [ "${{ steps.filter.outputs.app }}" = "true" ]; then
+            echo "build=true" >> "${GITHUB_OUTPUT}"
+            echo "instrumented=true" >> "${GITHUB_OUTPUT}"
+          elif [ "${{ steps.filter.outputs.ci }}" = "true" ]; then
+            echo "build=true" >> "${GITHUB_OUTPUT}"
+            echo "instrumented=false" >> "${GITHUB_OUTPUT}"
           else
-            echo "android=false" >> "${GITHUB_OUTPUT}"
+            echo "build=false" >> "${GITHUB_OUTPUT}"
+            echo "instrumented=false" >> "${GITHUB_OUTPUT}"
           fi
 
   build-and-test:
@@ -76,12 +86,16 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Skip - no Android-related changes
-        if: needs.changes.outputs.android != 'true'
-        run: echo "No Android-related files changed; skipping build, lint, and unit tests."
+      - name: Explain CI scope
+        run: |
+          if [ "${{ needs.changes.outputs.build }}" != "true" ]; then
+            echo "Fast pass — no Android build or unit tests needed for this change set."
+          else
+            echo "Running build, lint, and unit tests."
+          fi
 
       - name: Checkout
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.build == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Don't leave the job's credentials in .git/config, where the build
@@ -89,7 +103,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up JDK 21
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.build == 'true'
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
@@ -98,31 +112,31 @@ jobs:
       # Also validates gradle-wrapper.jar against Gradle's published checksums
       # (validate-wrappers defaults to true) before any Gradle code executes.
       - name: Setup Gradle
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.build == 'true'
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
       - name: Grant execute permission for gradlew
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.build == 'true'
         run: chmod +x gradlew
 
       - name: Run unit tests
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.build == 'true'
         run: ./gradlew testDebugUnitTest --stacktrace
 
       - name: Run lint
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.build == 'true'
         run: ./gradlew lintDebug --stacktrace
 
       - name: Assemble debug APK
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.build == 'true'
         run: ./gradlew assembleDebug --stacktrace
 
       - name: Assemble release APK
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.build == 'true'
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Upload unit test results
-        if: always() && needs.changes.outputs.android == 'true'
+        if: always() && needs.changes.outputs.build == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: unit-test-results
@@ -130,7 +144,7 @@ jobs:
           retention-days: 7
 
       - name: Upload lint report
-        if: always() && needs.changes.outputs.android == 'true'
+        if: always() && needs.changes.outputs.build == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: lint-report
@@ -141,7 +155,7 @@ jobs:
       # APK built from a reviewed commit on master, never one built from a
       # pull request, so the repo can't be used to host an attacker's build.
       - name: Upload debug APK
-        if: success() && github.event_name != 'pull_request' && needs.changes.outputs.android == 'true'
+        if: success() && github.event_name != 'pull_request' && needs.changes.outputs.build == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: app-debug
@@ -156,40 +170,44 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Skip - no Android-related changes
-        if: needs.changes.outputs.android != 'true'
-        run: echo "No Android-related files changed; skipping instrumented tests."
+      - name: Explain CI scope
+        run: |
+          if [ "${{ needs.changes.outputs.instrumented }}" != "true" ]; then
+            echo "Fast pass — no app/runtime changes, skipping instrumented tests."
+          else
+            echo "Running instrumented tests on the emulator."
+          fi
 
       - name: Checkout
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.instrumented == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Set up JDK 21
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.instrumented == 'true'
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Setup Gradle
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.instrumented == 'true'
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
       - name: Grant execute permission for gradlew
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.instrumented == 'true'
         run: chmod +x gradlew
 
       - name: Enable KVM group perms
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.instrumented == 'true'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
       - name: Run instrumented tests
-        if: needs.changes.outputs.android == 'true'
+        if: needs.changes.outputs.instrumented == 'true'
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 34
@@ -202,7 +220,7 @@ jobs:
           script: ./gradlew connectedDebugAndroidTest --stacktrace
 
       - name: Upload instrumented test results
-        if: always() && needs.changes.outputs.android == 'true'
+        if: always() && needs.changes.outputs.instrumented == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: instrumented-test-results
