@@ -201,7 +201,12 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         super.onSizeChanged(w, h, oldw, oldh)
         if (w <= 0 || h <= 0) return
 
-        // Deliberately not recycled: a render that has not unwound yet may still reference it.
+        renderGeneration++
+        renderJob?.cancel()
+        renderJob = null
+        bitmap?.recycle()
+        previewScratch?.recycle()
+        previewScratch = null
         bitmap = createBitmap(w, h, Bitmap.Config.ARGB_8888)
         hasRenderedOnce = false
         requestFullRender()
@@ -379,6 +384,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     private fun previewScratchOf(width: Int, height: Int): Bitmap {
         val cached = previewScratch
         if (cached != null && cached.width == width && cached.height == height) return cached
+        previewScratch?.recycle()
         return createBitmap(width, height, Bitmap.Config.ARGB_8888).also { previewScratch = it }
     }
 
