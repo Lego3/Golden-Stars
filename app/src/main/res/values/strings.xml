@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Math Stars</string>
+    <string name="app_name">Golden Stars</string>
     <string name="hub_description">Explore the beauty of mathematics through interactive visualizations.</string>
     <string name="stars_title">Golden Stars</string>
     <string name="stars_description">Visualize N-pointed regular stars drawn in one stroke.</string>
