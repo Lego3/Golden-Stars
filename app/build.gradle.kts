@@ -42,6 +42,19 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
     }
 }
 
+val releaseBuild = findProperty("releaseBuild")?.toString()?.toBooleanStrictOrNull() == true
+val versionName = extensions.getByType(com.android.build.api.dsl.ApplicationExtension::class.java)
+    .defaultConfig.versionName
+
+base {
+    archivesName = if (releaseBuild) {
+        "Golden-Stars-$versionName"
+    } else {
+        // Master CI and local builds: distinguish post-release test APKs from tagged releases.
+        "Golden-Stars-$versionName-test"
+    }
+}
+
 dependencies {
 
     implementation(libs.androidx.core.ktx)

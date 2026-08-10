@@ -154,11 +154,23 @@ jobs:
       # Artifacts of a public repo are downloadable by anyone. Only publish an
       # APK built from a reviewed commit on master, never one built from a
       # pull request, so the repo can't be used to host an attacker's build.
+      - name: Resolve debug APK artifact name
+        if: success() && github.event_name != 'pull_request' && needs.changes.outputs.build == 'true'
+        id: debug_apk
+        run: |
+          shopt -s nullglob
+          apks=(app/build/outputs/apk/debug/*.apk)
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo "No debug APK found under app/build/outputs/apk/debug/"
+            exit 1
+          fi
+          echo "name=$(basename "${apks[0]}" .apk)" >> "${GITHUB_OUTPUT}"
+
       - name: Upload debug APK
         if: success() && github.event_name != 'pull_request' && needs.changes.outputs.build == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: app-debug
+          name: ${{ steps.debug_apk.outputs.name }}
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 7
 
