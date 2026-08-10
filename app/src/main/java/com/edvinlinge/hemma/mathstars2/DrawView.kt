@@ -305,32 +305,39 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     }
 
     fun getDetailsHtml(context: Context): String {
+        val details = starDetailsParagraphs(dots, skips)
         val parts = mutableListOf<String>()
-        val possibleSkips = StarMath.starSkips(dots)
-        val visited = StarMath.visitedDotCount(dots, skips)
 
-        if (possibleSkips.isEmpty()) {
+        if (details.impossible) {
             parts.add(context.getString(R.string.details_fail, dots))
         }
 
-        when {
-            // A skip of one closes in a single stroke but traces the convex polygon, not a star.
-            skips <= 1 -> parts.add(context.getString(R.string.details_polygon, dots))
+        when (val primary = details.primary) {
+            is PrimaryDetail.Polygon ->
+                parts.add(context.getString(R.string.details_polygon, primary.dots))
 
-            visited == dots -> {
-                parts.add(context.getString(R.string.details_success, dots))
-                if (StarMath.isPrime(dots)) {
-                    parts.add(context.getString(R.string.details_is_prime, dots))
+            is PrimaryDetail.Success -> {
+                parts.add(context.getString(R.string.details_success, primary.dots))
+                if (primary.notePrime) {
+                    parts.add(context.getString(R.string.details_is_prime, primary.dots))
                 }
             }
 
-            else -> parts.add(context.getString(R.string.details_fair, dots, skips, visited))
+            is PrimaryDetail.Fair ->
+                parts.add(
+                    context.getString(
+                        R.string.details_fair,
+                        primary.dots,
+                        primary.skips,
+                        primary.visited,
+                    ),
+                )
         }
 
-        if (possibleSkips.isNotEmpty()) {
-            parts.add(context.getString(R.string.details_info, dots, possibleSkips.size))
+        if (details.possibleSkips.isNotEmpty()) {
+            parts.add(context.getString(R.string.details_info, dots, details.possibleSkips.size))
             parts.add(context.getString(R.string.details_help, dots))
-            parts.add(possibleSkips.joinToString(", "))
+            parts.add(details.possibleSkips.joinToString(", "))
         }
 
         return parts.joinToString("<br><br>")
