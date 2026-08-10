@@ -133,7 +133,10 @@ A separate workflow (`.github/workflows/static.yml`) deploys `index.html` and
 `privacy_policy.html` to GitHub Pages on `master`.
 
 Every push to `master` also uploads a **debug APK** as a CI artifact (zipped download
-from the Actions tab). Tagged releases are handled separately — see [Releasing](#releasing).
+from the Actions tab). The artifact and APK names include the current `versionName` with
+a `-test` suffix (for example `Golden-Stars-1.2.0-test-debug.zip`) so post-release master
+builds are clearly distinct from tagged GitHub Releases. Tagged releases are handled
+separately — see [Releasing](#releasing).
 
 ## Releasing
 
