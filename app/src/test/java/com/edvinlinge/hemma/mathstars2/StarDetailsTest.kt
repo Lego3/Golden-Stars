@@ -22,7 +22,7 @@ class StarDetailsTest {
 
         assertFalse(details.impossible)
         assertEquals(PrimaryDetail.Polygon(dots = 7), details.primary)
-        assertEquals(listOf(2, 3, 4), details.possibleSkips)
+        assertEquals(listOf(2, 3), details.possibleSkips)
     }
 
     @Test
