@@ -151,4 +151,43 @@ class StarMathTest {
         assertEquals(2, StarMath.maxSkipsFor(dots = 1))
         assertEquals(2, StarMath.maxSkipsFor(dots = 2))
     }
+
+    @Test
+    fun `classic five pointed star visits every dot once before closing`() {
+        assertEquals(listOf(0, 2, 4, 1, 3, 0), StarMath.starPathVertexIndices(dots = 5, skips = 2))
+    }
+
+    @Test
+    fun `digons only visit two opposite dots`() {
+        assertEquals(listOf(0, 3, 0), StarMath.starPathVertexIndices(dots = 6, skips = 3))
+        assertEquals(listOf(0, 4, 0), StarMath.starPathVertexIndices(dots = 8, skips = 4))
+    }
+
+    @Test
+    fun `partial figures stop when a dot would be revisited`() {
+        assertEquals(listOf(0, 2, 4, 0), StarMath.starPathVertexIndices(dots = 6, skips = 2))
+        assertEquals(listOf(0, 3, 6, 9, 0), StarMath.starPathVertexIndices(dots = 12, skips = 3))
+    }
+
+    @Test
+    fun `path indices are empty for invalid geometry`() {
+        assertTrue(StarMath.starPathVertexIndices(dots = 0, skips = 2).isEmpty())
+        assertTrue(StarMath.starPathVertexIndices(dots = 5, skips = 0).isEmpty())
+        assertTrue(StarMath.starPathVertexIndices(dots = -1, skips = 2).isEmpty())
+    }
+
+    @Test
+    fun `path length matches visited dot count plus the starting dot`() {
+        for (dots in 3..20) {
+            for (skips in 1..dots / 2) {
+                val path = StarMath.starPathVertexIndices(dots, skips)
+                val visitedDots = StarMath.visitedDotCount(dots, skips)
+                assertEquals(
+                    "dots=$dots skips=$skips",
+                    visitedDots + 1,
+                    path.size,
+                )
+            }
+        }
+    }
 }
