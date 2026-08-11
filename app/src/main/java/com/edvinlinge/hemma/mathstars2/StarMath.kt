@@ -61,4 +61,20 @@ internal object StarMath {
         }
         return first
     }
+
+    /**
+     * Dot indices visited when tracing the star, starting at zero. Matches [DrawView] path order;
+     * the figure closes when the walk returns to a previously visited dot.
+     */
+    fun starPathVertexIndices(dots: Int, skips: Int): List<Int> {
+        if (dots <= 0 || skips <= 0) return emptyList()
+        val vertices = mutableListOf(0)
+        var next = skips % dots
+        val visited = HashSet<Int>(dots)
+        while (visited.add(next)) {
+            vertices.add(next)
+            next = (next + skips) % dots
+        }
+        return vertices
+    }
 }

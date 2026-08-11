@@ -1,0 +1,31 @@
+package com.edvinlinge.hemma.mathstars2
+
+/**
+ * Screen-space pan/zoom math for [DrawView], free of Android types so it can be covered by fast
+ * JVM unit tests. Pinch and double-tap zoom keep the drawing under the focus point fixed.
+ */
+internal object DrawViewMath {
+
+    fun clampedZoom(currentZoom: Float, factor: Float, minZoom: Float, maxZoom: Float): Float =
+        (currentZoom * factor).coerceIn(minZoom, maxZoom)
+
+    /**
+     * Adjusts pan offsets after a zoom change so the content under ([focusX], [focusY]) stays
+     * fixed on screen.
+     */
+    fun offsetAfterZoomChange(
+        focusX: Float,
+        focusY: Float,
+        oldZoom: Float,
+        newZoom: Float,
+        offsetX: Float,
+        offsetY: Float,
+        viewWidth: Int,
+        viewHeight: Int,
+    ): Pair<Float, Float> {
+        val growth = newZoom / oldZoom
+        val newOffsetX = offsetX + (focusX - viewWidth / 2f - offsetX) * (1f - growth)
+        val newOffsetY = offsetY + (focusY - viewHeight / 2f - offsetY) * (1f - growth)
+        return newOffsetX to newOffsetY
+    }
+}

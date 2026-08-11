@@ -100,12 +100,21 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
      * pinch zooms towards the fingers instead of towards the middle of the view.
      */
     private fun zoomAround(focusX: Float, focusY: Float, factor: Float) {
-        val target = (zoom * factor).coerceIn(MIN_ZOOM, MAX_ZOOM)
+        val target = DrawViewMath.clampedZoom(zoom, factor, MIN_ZOOM, MAX_ZOOM)
         if (target == zoom) return
 
-        val growth = target / zoom
-        offsetX += (focusX - width / 2f - offsetX) * (1f - growth)
-        offsetY += (focusY - height / 2f - offsetY) * (1f - growth)
+        val (newOffsetX, newOffsetY) = DrawViewMath.offsetAfterZoomChange(
+            focusX = focusX,
+            focusY = focusY,
+            oldZoom = zoom,
+            newZoom = target,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            viewWidth = width,
+            viewHeight = height,
+        )
+        offsetX = newOffsetX
+        offsetY = newOffsetY
         zoom = target
 
         zoomCallback?.invoke(zoom)
@@ -192,14 +201,13 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     }
 
     private fun buildStarPath() {
-        if (dots <= 0 || skips <= 0) return
+        val vertices = StarMath.starPathVertexIndices(dots, skips)
+        if (vertices.isEmpty()) return
 
-        fullPath.moveTo(pointsX[0], pointsY[0])
-        var next = skips % dots
-        val visited = HashSet<Int>(dots)
-        while (visited.add(next)) {
-            fullPath.lineTo(pointsX[next], pointsY[next])
-            next = (next + skips) % dots
+        fullPath.moveTo(pointsX[vertices.first()], pointsY[vertices.first()])
+        for (index in 1 until vertices.size) {
+            val vertex = vertices[index]
+            fullPath.lineTo(pointsX[vertex], pointsY[vertex])
         }
     }
 
