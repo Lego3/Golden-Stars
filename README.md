@@ -4,6 +4,11 @@ Explore mathematics through calm, interactive visuals — draw star figures in a
 stroke, then zoom into the Mandelbrot set. Golden Stars runs entirely on your device:
 no accounts, no ads, no data collection.
 
+[![Android CI](https://github.com/Lego3/Golden-Stars/actions/workflows/android-ci.yml/badge.svg?branch=master)](https://github.com/Lego3/Golden-Stars/actions/workflows/android-ci.yml)
+[![Pages](https://github.com/Lego3/Golden-Stars/actions/workflows/static.yml/badge.svg?branch=master)](https://github.com/Lego3/Golden-Stars/actions/workflows/static.yml)
+[![Release](https://github.com/Lego3/Golden-Stars/actions/workflows/release.yml/badge.svg)](https://github.com/Lego3/Golden-Stars/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/github/license/Lego3/Golden-Stars)](LICENSE)
+
 <p align="center">
   <a href="https://play.google.com/store/apps/details?id=com.edvinlinge.hemma.mathstars2">
     <img alt="Get it on Google Play"
@@ -128,6 +133,11 @@ unnecessary builds.
 |-----|----------------|
 | Build, lint & unit test | `./gradlew testDebugUnitTest`, `lintDebug`, debug APK; uploads reports |
 | Instrumented tests (emulator) | Smoke tests on API 34 via `reactivecircus/android-emulator-runner` |
+
+JUnit XML from both test jobs is published to the GitHub Checks UI. On a pull request,
+open the **Checks** tab, expand a job, and use the **Tests** section to see pass/fail
+counts and individual test names (no artifact download needed). HTML reports remain
+available as workflow artifacts for deeper inspection.
 
 A separate workflow (`.github/workflows/static.yml`) deploys `index.html` and
 `privacy_policy.html` to GitHub Pages on `master`.

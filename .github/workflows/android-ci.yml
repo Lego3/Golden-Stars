@@ -85,6 +85,8 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+      checks: write
+      pull-requests: write
     steps:
       - name: Explain CI scope
         run: |
@@ -122,6 +124,14 @@ jobs:
       - name: Run unit tests
         if: needs.changes.outputs.build == 'true'
         run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Publish unit test results
+        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
+        if: always() && needs.changes.outputs.build == 'true'
+        with:
+          files: app/build/test-results/testDebugUnitTest/**/*.xml
+          check_name: Unit tests
+          comment_mode: off
 
       - name: Run lint
         if: needs.changes.outputs.build == 'true'
@@ -181,6 +191,8 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
+      checks: write
+      pull-requests: write
     steps:
       - name: Explain CI scope
         run: |
@@ -230,6 +242,14 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: ./gradlew connectedDebugAndroidTest --stacktrace
+
+      - name: Publish instrumented test results
+        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
+        if: always() && needs.changes.outputs.instrumented == 'true'
+        with:
+          files: app/build/outputs/androidTest-results/**/*.xml
+          check_name: Instrumented tests
+          comment_mode: off
 
       - name: Upload instrumented test results
         if: always() && needs.changes.outputs.instrumented == 'true'
