@@ -1,6 +1,8 @@
 package com.edvinlinge.hemma.mathstars2
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -124,8 +126,8 @@ class DrawViewMathTest {
 
     @Test
     fun `non positive speed multipliers leave duration unchanged`() {
-        assertEquals(null, DrawViewMath.animationDurationMs(speedMultiplier = 0f))
-        assertEquals(null, DrawViewMath.animationDurationMs(speedMultiplier = -1f))
+        assertNull(DrawViewMath.animationDurationMs(speedMultiplier = 0f))
+        assertNull(DrawViewMath.animationDurationMs(speedMultiplier = -1f))
     }
 
     @Test
