@@ -162,7 +162,7 @@ class DrawActivity : AppCompatActivity() {
     }
 
     private fun applySpeed() {
-        if (speed >= INSTANT_SPEED_THRESHOLD) {
+        if (DrawViewMath.shouldRenderInstantly(speed)) {
             binding.drawView.setInstant(true)
         } else {
             binding.drawView.setInstant(false)
@@ -213,8 +213,5 @@ class DrawActivity : AppCompatActivity() {
         const val EXTRA_SKIPS = "skips"
 
         private const val STATE_SPEED = "speed"
-
-        /** At and above this slider value the star is drawn instantly instead of animated. */
-        private const val INSTANT_SPEED_THRESHOLD = 4.0f
     }
 }

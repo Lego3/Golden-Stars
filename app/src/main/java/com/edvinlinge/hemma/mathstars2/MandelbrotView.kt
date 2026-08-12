@@ -140,7 +140,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
      * a pinch zooms towards the fingers rather than towards the middle of the view.
      */
     private fun zoomAround(focusX: Float, focusY: Float, factor: Double) {
-        val target = (zoom * factor).coerceIn(MIN_ZOOM, MAX_ZOOM)
+        val target = MandelbrotMath.clampedZoom(zoom, factor, MIN_ZOOM, MAX_ZOOM)
         if (target == zoom) return
 
         val oldZoom = zoom

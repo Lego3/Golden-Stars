@@ -177,6 +177,28 @@ class StarMathTest {
     }
 
     @Test
+    fun `should fill respects the filled toggle and digon geometry`() {
+        assertTrue(StarMath.shouldFill(filled = true, dots = 5, skips = 2))
+        assertFalse(StarMath.shouldFill(filled = false, dots = 5, skips = 2))
+        assertFalse(StarMath.shouldFill(filled = true, dots = 6, skips = 3))
+        assertFalse(StarMath.shouldFill(filled = true, dots = 8, skips = 4))
+    }
+
+    @Test
+    fun `coerced skips stay within slider bounds when dot count shrinks`() {
+        assertEquals(2, StarMath.coercedSkips(dots = 5, skips = 2))
+        assertEquals(3, StarMath.coercedSkips(dots = 7, skips = 5))
+        assertEquals(2, StarMath.coercedSkips(dots = 4, skips = 3))
+        assertEquals(2, StarMath.coercedSkips(dots = 3, skips = 10))
+    }
+
+    @Test
+    fun `coerced skips never drop below the slider minimum`() {
+        assertEquals(2, StarMath.coercedSkips(dots = 60, skips = 1))
+        assertEquals(2, StarMath.coercedSkips(dots = 0, skips = 5))
+    }
+
+    @Test
     fun `path length matches visited dot count plus the starting dot`() {
         for (dots in 3..20) {
             for (skips in 1..dots / 2) {

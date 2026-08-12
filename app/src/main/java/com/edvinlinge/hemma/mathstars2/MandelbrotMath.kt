@@ -19,6 +19,9 @@ internal object MandelbrotMath {
      * Size of one pixel in the complex plane. Derived from the shorter view edge so pixels stay
      * square and the set is not stretched by the screen's aspect ratio.
      */
+    fun clampedZoom(currentZoom: Double, factor: Double, minZoom: Double, maxZoom: Double): Double =
+        (currentZoom * factor).coerceIn(minZoom, maxZoom)
+
     fun unitsPerPixel(zoomLevel: Double, viewWidth: Int, viewHeight: Int): Double =
         (VIEWPORT_SPAN / zoomLevel) / minOf(viewWidth, viewHeight).coerceAtLeast(1)
 

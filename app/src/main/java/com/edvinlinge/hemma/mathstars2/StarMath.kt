@@ -25,6 +25,14 @@ internal object StarMath {
      */
     fun canFill(dots: Int, skips: Int): Boolean = visitedDotCount(dots, skips) >= 3
 
+    /** True when [filled] is on and the figure has enough distinct points to fill safely. */
+    fun shouldFill(filled: Boolean, dots: Int, skips: Int): Boolean =
+        filled && canFill(dots, skips)
+
+    /** Clamps [skips] to the usable range for [dots], matching the settings slider bounds. */
+    fun coercedSkips(dots: Int, skips: Int, minSkips: Int = 2): Int =
+        skips.coerceIn(minSkips, maxSkipsFor(dots))
+
     /**
      * Skip counts that trace a genuine star polygon in one stroke.
      *
