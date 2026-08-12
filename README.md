@@ -134,10 +134,11 @@ unnecessary builds.
 | Build, lint & unit test | `./gradlew testDebugUnitTest`, `lintDebug`, debug APK; uploads reports |
 | Instrumented tests (emulator) | Smoke tests on API 34 via `reactivecircus/android-emulator-runner` |
 
-JUnit XML from both test jobs is published to the GitHub Checks UI. On a pull request,
-open the **Checks** tab, expand a job, and use the **Tests** section to see pass/fail
-counts and individual test names (no artifact download needed). HTML reports remain
-available as workflow artifacts for deeper inspection.
+JUnit XML from both test jobs is summarized in each job's **Summary** tab on GitHub
+Actions (pass/fail counts, failure details, and a collapsible full test list). No
+third-party action is required — a small script in `.github/scripts/` parses the
+XML Gradle already emits. HTML reports remain available as workflow artifacts for
+deeper inspection.
 
 A separate workflow (`.github/workflows/static.yml`) deploys `index.html` and
 `privacy_policy.html` to GitHub Pages on `master`.
