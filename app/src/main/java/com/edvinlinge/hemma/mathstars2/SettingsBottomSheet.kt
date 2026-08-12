@@ -112,7 +112,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
         // Bounds before values, so a value is never briefly outside the slider's range.
         skipsSlider.valueTo = StarMath.maxSkipsFor(dots).toFloat()
-        skipsSlider.value = skips.toFloat().coerceIn(skipsSlider.valueFrom, skipsSlider.valueTo)
+        skipsSlider.value = StarMath.coercedSkips(dots, skips, skipsSlider.valueFrom.toInt()).toFloat()
         dotsSlider.value = dots.toFloat().coerceIn(dotsSlider.valueFrom, dotsSlider.valueTo)
         skips = skipsSlider.value.toInt()
         dots = dotsSlider.value.toInt()

@@ -6,8 +6,24 @@ package com.edvinlinge.hemma.mathstars2
  */
 internal object DrawViewMath {
 
+    /** At and above this speed the star is drawn instantly instead of animated. */
+    const val INSTANT_SPEED_THRESHOLD = 4.0f
+    const val BASE_ANIMATION_DURATION_MS = 5000f
+
     fun clampedZoom(currentZoom: Float, factor: Float, minZoom: Float, maxZoom: Float): Float =
         (currentZoom * factor).coerceIn(minZoom, maxZoom)
+
+    /** Returns null when [speedMultiplier] is not positive; otherwise duration in milliseconds. */
+    fun animationDurationMs(
+        speedMultiplier: Float,
+        baseDurationMs: Float = BASE_ANIMATION_DURATION_MS,
+    ): Long? {
+        if (speedMultiplier <= 0f) return null
+        return (baseDurationMs / speedMultiplier).toLong()
+    }
+
+    fun shouldRenderInstantly(speed: Float, threshold: Float = INSTANT_SPEED_THRESHOLD): Boolean =
+        speed >= threshold
 
     /**
      * Adjusts pan offsets after a zoom change so the content under ([focusX], [focusY]) stays

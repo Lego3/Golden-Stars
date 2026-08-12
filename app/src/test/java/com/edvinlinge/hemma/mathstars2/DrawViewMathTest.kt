@@ -114,4 +114,24 @@ class DrawViewMathTest {
         assertEquals(0f, offsetX, 1e-6f)
         assertEquals(0f, offsetY, 1e-6f)
     }
+
+    @Test
+    fun `animation duration scales inversely with speed multiplier`() {
+        assertEquals(5000L, DrawViewMath.animationDurationMs(speedMultiplier = 1.0f))
+        assertEquals(2500L, DrawViewMath.animationDurationMs(speedMultiplier = 2.0f))
+        assertEquals(10_000L, DrawViewMath.animationDurationMs(speedMultiplier = 0.5f))
+    }
+
+    @Test
+    fun `non positive speed multipliers leave duration unchanged`() {
+        assertEquals(null, DrawViewMath.animationDurationMs(speedMultiplier = 0f))
+        assertEquals(null, DrawViewMath.animationDurationMs(speedMultiplier = -1f))
+    }
+
+    @Test
+    fun `instant render kicks in at the speed slider maximum`() {
+        assertFalse(DrawViewMath.shouldRenderInstantly(speed = 3.9f))
+        assertTrue(DrawViewMath.shouldRenderInstantly(speed = 4.0f))
+        assertTrue(DrawViewMath.shouldRenderInstantly(speed = 5.0f))
+    }
 }

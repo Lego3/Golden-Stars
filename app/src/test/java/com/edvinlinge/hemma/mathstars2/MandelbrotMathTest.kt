@@ -144,4 +144,17 @@ class MandelbrotMathTest {
         assertEquals(beforeX, afterX, 1e-12)
         assertEquals(beforeY, afterY, 1e-12)
     }
+
+    @Test
+    fun `clamped zoom respects min and max bounds`() {
+        assertEquals(0.5, MandelbrotMath.clampedZoom(1.0, 0.1, 0.5, 1.0e13), 1e-12)
+        assertEquals(1.0e13, MandelbrotMath.clampedZoom(1.0e12, 20.0, 0.5, 1.0e13), 1e-9)
+        assertEquals(4.0, MandelbrotMath.clampedZoom(2.0, 2.0, 0.5, 10.0), 1e-12)
+    }
+
+    @Test
+    fun `clamped zoom leaves value unchanged when already at a bound`() {
+        assertEquals(0.5, MandelbrotMath.clampedZoom(0.5, 0.5, 0.5, 1.0e13), 1e-12)
+        assertEquals(1.0e13, MandelbrotMath.clampedZoom(1.0e13, 2.0, 0.5, 1.0e13), 1e-9)
+    }
 }

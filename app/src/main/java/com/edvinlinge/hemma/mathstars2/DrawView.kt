@@ -240,8 +240,7 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
     fun setAnimationSpeed(speedMultiplier: Float) {
         // A multiplier of 1 is the default duration, 2 is twice as fast, 0.5 half as fast.
-        if (speedMultiplier <= 0f) return
-        this.animationDuration = (BASE_ANIMATION_DURATION_MS / speedMultiplier).toLong()
+        animationDuration = DrawViewMath.animationDurationMs(speedMultiplier) ?: return
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -291,7 +290,7 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
     private fun applyCompletedStyle() {
         // Digons are line segments with no area; filling them erases the figure after the reveal.
-        paint.style = if (isFilled && StarMath.canFill(dots, skips)) {
+        paint.style = if (StarMath.shouldFill(isFilled, dots, skips)) {
             Paint.Style.FILL
         } else {
             Paint.Style.STROKE
@@ -419,7 +418,6 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         const val MIN_ZOOM = 0.5f
         const val MAX_ZOOM = 10.0f
         const val DOUBLE_TAP_ZOOM_FACTOR = 2.0f
-        const val BASE_ANIMATION_DURATION_MS = 5000f
 
         /** Radius of the dot circle as a fraction of the shorter view edge. */
         const val RADIUS_FRACTION = 0.4f
