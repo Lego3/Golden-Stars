@@ -12,7 +12,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.slider.Slider
 
 /**
- * Settings for the star and Mandelbrot screens.
+ * Settings for the star, Mandelbrot, and Spirograph screens.
  *
  * Every change publishes a full snapshot of the settings through the fragment result API instead
  * of invoking callbacks held by the host. Callbacks assigned when the sheet is shown are lost when
@@ -28,6 +28,10 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
     private var thickness = DEFAULT_THICKNESS
     private var filled = true
     private var colorIndex = DEFAULT_COLOR_INDEX
+    private var fixedRadius = SpirographMath.DEFAULT_FIXED
+    private var rollingRadius = SpirographMath.DEFAULT_ROLLING
+    private var penOffset = SpirographMath.DEFAULT_PEN
+    private var inside = SpirographMath.DEFAULT_INSIDE
 
     /** True while the user is dragging one of the geometry sliders. */
     private var draggingGeometry = false
@@ -53,15 +57,28 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         thickness = initial.getFloat(KEY_THICKNESS, DEFAULT_THICKNESS)
         filled = initial.getBoolean(KEY_FILLED, true)
         colorIndex = initial.getInt(KEY_COLOR_INDEX, DEFAULT_COLOR_INDEX)
+        fixedRadius = initial.getInt(KEY_FIXED_RADIUS, SpirographMath.DEFAULT_FIXED)
+        rollingRadius = initial.getInt(KEY_ROLLING_RADIUS, SpirographMath.DEFAULT_ROLLING)
+        penOffset = initial.getInt(KEY_PEN_OFFSET, SpirographMath.DEFAULT_PEN)
+        inside = initial.getBoolean(KEY_INSIDE, SpirographMath.DEFAULT_INSIDE)
 
         binding.settingsTitle.text =
             arguments.getString(ARG_TITLE) ?: getString(R.string.customize_star)
 
         val showStarControls = arguments.getBoolean(ARG_SHOW_STAR_CONTROLS, true)
+        val showSpirographControls = arguments.getBoolean(ARG_SHOW_SPIROGRAPH_CONTROLS, false)
         binding.geometryControls.isVisible = showStarControls
-        binding.starStyleControls.isVisible = showStarControls
+        binding.spirographControls.isVisible = showSpirographControls
+        binding.starStyleControls.isVisible = showStarControls || showSpirographControls
+        binding.switchFilled.isVisible = showStarControls
         if (showStarControls) {
             bindStarControls()
+        }
+        if (showSpirographControls) {
+            bindSpirographControls()
+            if (!showStarControls) {
+                bindThicknessSlider()
+            }
         }
 
         bindColorSwatches()
@@ -166,6 +183,86 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
+    private fun bindThicknessSlider() {
+        binding.thicknessSlider.apply {
+            value = thickness.coerceIn(valueFrom, valueTo)
+            thickness = value
+            addOnChangeListener { _, newValue, _ ->
+                thickness = newValue
+                publish()
+            }
+        }
+    }
+
+    private fun bindSpirographControls() {
+        val fixedSlider = binding.fixedRadiusSlider
+        val rollingSlider = binding.rollingRadiusSlider
+        val penSlider = binding.penOffsetSlider
+
+        val normalized = SpirographMath.normalized(fixedRadius, rollingRadius, penOffset, inside)
+        fixedRadius = normalized.fixedRadius
+        rollingRadius = normalized.rollingRadius
+        penOffset = normalized.penOffset
+        inside = normalized.inside
+
+        fixedSlider.valueFrom = SpirographMath.MIN_FIXED.toFloat()
+        fixedSlider.valueTo = SpirographMath.MAX_FIXED.toFloat()
+        penSlider.valueFrom = SpirographMath.MIN_PEN.toFloat()
+        penSlider.valueTo = SpirographMath.MAX_PEN.toFloat()
+        applyRollingBounds()
+
+        fixedSlider.value = fixedRadius.toFloat()
+        rollingSlider.value = rollingRadius.toFloat()
+        penSlider.value = penOffset.toFloat()
+        binding.switchInside.isChecked = inside
+
+        fixedSlider.addOnChangeListener { _, value, _ ->
+            fixedRadius = value.toInt()
+            applyRollingBounds()
+            rollingRadius = rollingSlider.value.toInt()
+            publish()
+        }
+        rollingSlider.addOnChangeListener { _, value, _ ->
+            rollingRadius = value.toInt()
+            publish()
+        }
+        penSlider.addOnChangeListener { _, value, _ ->
+            penOffset = value.toInt()
+            publish()
+        }
+
+        val dragListener = object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                draggingGeometry = true
+            }
+
+            override fun onStopTrackingTouch(slider: Slider) {
+                draggingGeometry = false
+                publish()
+            }
+        }
+        fixedSlider.addOnSliderTouchListener(dragListener)
+        rollingSlider.addOnSliderTouchListener(dragListener)
+        penSlider.addOnSliderTouchListener(dragListener)
+
+        binding.switchInside.setOnCheckedChangeListener { _, checked ->
+            inside = checked
+            applyRollingBounds()
+            rollingRadius = rollingSlider.value.toInt()
+            publish()
+        }
+    }
+
+    private fun applyRollingBounds() {
+        val rollingSlider = binding.rollingRadiusSlider
+        val maxRolling = SpirographMath.coercedRolling(fixedRadius, SpirographMath.MAX_ROLLING, inside)
+        rollingSlider.valueFrom = SpirographMath.MIN_ROLLING.toFloat()
+        if (rollingSlider.value > maxRolling) {
+            rollingSlider.value = maxRolling.toFloat()
+        }
+        rollingSlider.valueTo = maxRolling.toFloat()
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putAll(snapshot())
@@ -178,6 +275,10 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         putBoolean(KEY_FILLED, filled)
         putInt(KEY_COLOR_INDEX, colorIndex)
         putBoolean(KEY_GEOMETRY_SETTLED, !draggingGeometry)
+        putInt(KEY_FIXED_RADIUS, fixedRadius)
+        putInt(KEY_ROLLING_RADIUS, rollingRadius)
+        putInt(KEY_PEN_OFFSET, penOffset)
+        putBoolean(KEY_INSIDE, inside)
     }
 
     private fun publish() {
@@ -194,9 +295,14 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         const val KEY_FILLED = "filled"
         const val KEY_COLOR_INDEX = "color_index"
         const val KEY_GEOMETRY_SETTLED = "geometry_settled"
+        const val KEY_FIXED_RADIUS = "fixed_radius"
+        const val KEY_ROLLING_RADIUS = "rolling_radius"
+        const val KEY_PEN_OFFSET = "pen_offset"
+        const val KEY_INSIDE = "inside"
 
         private const val ARG_TITLE = "title"
         private const val ARG_SHOW_STAR_CONTROLS = "show_star_controls"
+        private const val ARG_SHOW_SPIROGRAPH_CONTROLS = "show_spirograph_controls"
 
         const val DEFAULT_DOTS = 5
         const val DEFAULT_SKIPS = 2
@@ -222,6 +328,11 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             colorIndex: Int = DEFAULT_COLOR_INDEX,
             title: String? = null,
             showStarControls: Boolean = true,
+            showSpirographControls: Boolean = false,
+            fixedRadius: Int = SpirographMath.DEFAULT_FIXED,
+            rollingRadius: Int = SpirographMath.DEFAULT_ROLLING,
+            penOffset: Int = SpirographMath.DEFAULT_PEN,
+            inside: Boolean = SpirographMath.DEFAULT_INSIDE,
         ): SettingsBottomSheet {
             val args = Bundle().apply {
                 putInt(KEY_DOTS, dots)
@@ -231,6 +342,11 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 putInt(KEY_COLOR_INDEX, colorIndex)
                 putString(ARG_TITLE, title)
                 putBoolean(ARG_SHOW_STAR_CONTROLS, showStarControls)
+                putBoolean(ARG_SHOW_SPIROGRAPH_CONTROLS, showSpirographControls)
+                putInt(KEY_FIXED_RADIUS, fixedRadius)
+                putInt(KEY_ROLLING_RADIUS, rollingRadius)
+                putInt(KEY_PEN_OFFSET, penOffset)
+                putBoolean(KEY_INSIDE, inside)
             }
             return SettingsBottomSheet().apply { arguments = args }
         }

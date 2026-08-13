@@ -26,7 +26,14 @@ class MainActivity : AppCompatActivity() {
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            val extra = resources.getDimensionPixelSize(R.dimen.hub_content_padding)
+            val bottomClearance = resources.getDimensionPixelSize(R.dimen.hub_version_clearance)
+            view.setPadding(
+                bars.left + extra,
+                bars.top + extra,
+                bars.right + extra,
+                bars.bottom + extra + bottomClearance,
+            )
             WindowInsetsCompat.CONSUMED
         }
 
@@ -44,6 +51,10 @@ class MainActivity : AppCompatActivity() {
 
         binding.cardMandelbrot.setOnClickListener {
             startActivity(Intent(this, MandelbrotActivity::class.java))
+        }
+
+        binding.cardSpirograph.setOnClickListener {
+            startActivity(Intent(this, SpirographActivity::class.java))
         }
 
         binding.versionText.text = try {

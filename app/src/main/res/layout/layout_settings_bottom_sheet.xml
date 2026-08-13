@@ -72,6 +72,82 @@
                 android:importantForAccessibility="no" />
         </LinearLayout>
 
+        <!-- Spirograph geometry -->
+        <LinearLayout
+            android:id="@+id/spirographControls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/spirograph_fixed_hint"
+                android:textAppearance="@style/TextAppearance.Material3.LabelLarge" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/fixedRadiusSlider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/spirograph_fixed_hint"
+                android:stepSize="1.0"
+                android:value="96.0"
+                android:valueFrom="20.0"
+                android:valueTo="180.0" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/spirograph_rolling_hint"
+                android:textAppearance="@style/TextAppearance.Material3.LabelLarge" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/rollingRadiusSlider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/spirograph_rolling_hint"
+                android:stepSize="1.0"
+                android:value="32.0"
+                android:valueFrom="8.0"
+                android:valueTo="90.0" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/spirograph_pen_hint"
+                android:textAppearance="@style/TextAppearance.Material3.LabelLarge" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/penOffsetSlider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/spirograph_pen_hint"
+                android:stepSize="1.0"
+                android:value="32.0"
+                android:valueFrom="0.0"
+                android:valueTo="100.0" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchInside"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:checked="true"
+                android:text="@string/spirograph_roll_inside"
+                android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="16dp"
+                android:background="?attr/colorOutlineVariant"
+                android:importantForAccessibility="no" />
+        </LinearLayout>
+
         <!-- Style Controls -->
         <LinearLayout
             android:id="@+id/starStyleControls"

@@ -6,6 +6,8 @@
     <string name="stars_description">Visualisera N-uddiga regelbundna stjärnor ritade i ett penseldrag.</string>
     <string name="mandelbrot_title">Mandelbrotmängden</string>
     <string name="mandelbrot_description">Utforska den mest kända fraktalen. Zooma in för att hitta oändlig komplexitet.</string>
+    <string name="spirograph_title">Spirograph</string>
+    <string name="spirograph_description">Se en hypotrokoid ritas i ett drag. Ändra ring, hjul och penna för att stänga nya kurvor.</string>
     <string name="skips_hint">Hopp</string>
     <string name="dots_hint">Punkter</string>
     <string name="more_info_button">Detaljer</string>
@@ -28,6 +30,20 @@
     <string name="reset_view">Återställ vy</string>
     <string name="mandelbrot_help">Mandelbrotmängden är mängden av komplexa tal c för vilka funktionen f(z) = z² + c inte divergerar mot oändligheten när den itereras från z = 0. Det är ett av de mest kända exemplen på fraktalgeometri. \n\nAnvänd nyp-för-att-zooma för att utforska mängdens oändliga gränser!</string>
     <string name="customize_mandelbrot">Anpassa Mandelbrot</string>
+    <string name="customize_spirograph">Anpassa Spirograph</string>
+    <string name="spirograph_fixed_hint">Fast ring</string>
+    <string name="spirograph_rolling_hint">Rullande hjul</string>
+    <string name="spirograph_pen_hint">Pennavstånd</string>
+    <string name="spirograph_roll_inside">Rulla inuti ringen</string>
+    <string name="spirograph_details_hypo">Den här hypotrokoiden ritas av ett hjul med radie %1$d som rullar inuti en ring med radie %2$d, med pennan %3$d från hjulets mitt.</string>
+    <string name="spirograph_details_epi">Den här epitrokoiden ritas av ett hjul med radie %1$d som rullar utanpå en ring med radie %2$d, med pennan %3$d från hjulets mitt.</string>
+    <string name="spirograph_details_close">Kurvan sluts efter %1$d varv av hjulet, eftersom sgd(%2$d, %3$d) = %4$d.</string>
+    <string name="spirograph_details_lobes">Den har %1$d lober, den fasta ringen delad med den sgd.</string>
+    <string name="spirograph_details_hypocycloid">Pennan sitter på hjulets kant, så det här är en hypocykloid, en särskild hypotrokoid med skarpa spetsar.</string>
+    <string name="spirograph_details_epicycloid">Pennan sitter på hjulets kant, så det här är en epicykloid, en särskild epitrokoid med skarpa spetsar.</string>
+    <string name="spirograph_details_circle">Pennan sitter i hjulets mitt, så spåret blir en cirkel.</string>
+    <string name="spirograph_help">En Spirograph ritar banan för en penna fäst vid en cirkel som rullar runt en fast cirkel, samma idé som de kuggade ringarna och hjulen i leksaken.\n\nNär de två radierna är heltal sluts kurvan till slut. Antalet slingor styrs av den största gemensamma delaren (SGD) av de två radierna, samma räkning som avgör vilka stjärnor som kan ritas i ett penseldrag.\n\nDra i skjutreglagen för att ändra ringen, hjulet och hur långt pennan sitter från hjulets mitt. Stäng av rulla-inuti för att rulla på utsidan i stället (en epitrokoid).</string>
+    <string name="spirograph_description_a11y">Spirograph med fast ring %1$d, rullande hjul %2$d, pennavstånd %3$d. Nyp för att zooma, dra för att panorera, dubbeltryck för att zooma in.</string>
 
     <!-- Etiketter för skärmläsare -->
     <string name="action_replay">Spela upp animationen igen</string>
