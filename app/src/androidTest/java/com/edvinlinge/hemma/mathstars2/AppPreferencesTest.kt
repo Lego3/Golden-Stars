@@ -43,4 +43,41 @@ class AppPreferencesTest {
         preferences.saveMandelbrotColorIndex(3)
         assertEquals(3, preferences.loadMandelbrotColorIndex())
     }
+
+    @Test
+    fun saveAndLoadSpirographSettings() {
+        val settings = AppPreferences.SpirographSettings(
+            fixedRadius = 80,
+            rollingRadius = 24,
+            penOffset = 18,
+            inside = false,
+            thickness = 10f,
+            colorIndex = 1,
+            speed = 2.0f,
+        )
+
+        preferences.saveSpirographSettings(settings)
+
+        assertEquals(settings, preferences.loadSpirographSettings())
+    }
+
+    @Test
+    fun spirographInsideRollingRadiusIsClampedBelowTheRing() {
+        preferences.saveSpirographSettings(
+            AppPreferences.SpirographSettings(
+                fixedRadius = 40,
+                rollingRadius = 90,
+                penOffset = 12,
+                inside = true,
+                thickness = 8f,
+                colorIndex = 0,
+                speed = 1.0f,
+            ),
+        )
+
+        val loaded = preferences.loadSpirographSettings()
+        assertEquals(40, loaded.fixedRadius)
+        assertEquals(39, loaded.rollingRadius)
+        assertEquals(true, loaded.inside)
+    }
 }

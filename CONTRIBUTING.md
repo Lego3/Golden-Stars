@@ -30,7 +30,7 @@ request. External contributions require maintainer approval before CI starts.
 Good first contributions include:
 
 - Bug fixes with a clear reproduction case
-- Unit tests for `StarMath` or `ZoomFormat`
+- Unit tests for `StarMath`, `SpirographMath`, or `ZoomFormat`
 - Documentation improvements
 - UI polish that matches the existing Material dark theme
 
@@ -41,7 +41,8 @@ Actions runners. Put those in separate, clearly described pull requests.
 
 - Match the existing Kotlin style in the file you are editing.
 - Prefer the patterns already used in activities and views (Fragment Result
-  API for bottom sheets, coroutines for Mandelbrot rendering).
+  API for bottom sheets, path animation for stars and Spirograph, coroutines
+  for Mandelbrot rendering).
 - Do not reformat unrelated code.
 
 ## Questions

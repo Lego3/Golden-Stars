@@ -5,6 +5,8 @@
     <string name="stars_description">Visualize N-pointed regular stars drawn in one stroke.</string>
     <string name="mandelbrot_title">Mandelbrot Set</string>
     <string name="mandelbrot_description">Explore the most famous fractal. Zoom in to find infinite complexity.</string>
+    <string name="spirograph_title">Spirograph</string>
+    <string name="spirograph_description">Watch a hypotrochoid draw itself. Change the ring, wheel, and pen to close new curves.</string>
     <string name="skips_hint">Skips</string>
     <string name="dots_hint">Dots</string>
     <string name="more_info_button">Details</string>
@@ -27,6 +29,20 @@
     <string name="reset_view">Reset View</string>
     <string name="mandelbrot_help">The Mandelbrot set is the set of complex numbers c for which the function f(z) = z² + c does not diverge to infinity when iterated from z = 0. It is one of the most famous examples of fractal geometry. \n\nUse pinch-to-zoom to explore the infinite boundaries of the set!</string>
     <string name="customize_mandelbrot">Customize Mandelbrot</string>
+    <string name="customize_spirograph">Customize Spirograph</string>
+    <string name="spirograph_fixed_hint">Fixed ring</string>
+    <string name="spirograph_rolling_hint">Rolling wheel</string>
+    <string name="spirograph_pen_hint">Pen distance</string>
+    <string name="spirograph_roll_inside">Roll inside the ring</string>
+    <string name="spirograph_details_hypo">This hypotrochoid is traced by a wheel of radius %1$d rolling inside a ring of radius %2$d, with the pen %3$d from the wheel centre.</string>
+    <string name="spirograph_details_epi">This epitrochoid is traced by a wheel of radius %1$d rolling around the outside of a ring of radius %2$d, with the pen %3$d from the wheel centre.</string>
+    <string name="spirograph_details_close">The curve closes after %1$d turns of the wheel, because gcd(%2$d, %3$d) = %4$d.</string>
+    <string name="spirograph_details_lobes">It has %1$d lobes, the fixed ring divided by that gcd.</string>
+    <string name="spirograph_details_hypocycloid">The pen sits on the wheel rim, so this is a hypocycloid, a special hypotrochoid with sharp cusps.</string>
+    <string name="spirograph_details_epicycloid">The pen sits on the wheel rim, so this is an epicycloid, a special epitrochoid with sharp cusps.</string>
+    <string name="spirograph_details_circle">The pen is at the wheel centre, so the trace is a circle.</string>
+    <string name="spirograph_help">A Spirograph traces the path of a pen attached to a circle rolling around a fixed circle, the same idea as the toothed rings and wheels in the toy.\n\nWhen the two radii are whole numbers, the curve eventually closes. The number of loops is governed by the greatest common divisor (GCD) of the two radii, the same arithmetic that decides which star figures can be drawn in one stroke.\n\nDrag the sliders to change the ring, the wheel, and how far the pen sits from the wheel centre. Switch off roll-inside to roll on the outside instead (an epitrochoid).</string>
+    <string name="spirograph_description_a11y">Spirograph with fixed ring %1$d, rolling wheel %2$d, pen distance %3$d. Pinch to zoom, drag to pan, double tap to zoom in.</string>
 
     <!-- Accessibility labels -->
     <string name="action_replay">Replay animation</string>

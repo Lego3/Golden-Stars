@@ -6,6 +6,15 @@ Git tags (`v1.1.0`, `v1.2.0`, …).
 
 ## [Unreleased]
 
+### Added
+
+- Spirograph explorer for hypotrochoids and epitrochoids, with animated drawing,
+  GCD-based details, and the same pan/zoom controls as Golden Stars.
+
+### Changed
+
+- Hub cards keep a content inset so they no longer run to the screen edge.
+
 ## [1.2.0] - 2026-08-09
 
 ### Added

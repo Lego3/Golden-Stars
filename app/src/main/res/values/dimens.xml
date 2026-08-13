@@ -2,4 +2,8 @@
 <resources>
     <!-- Gap between a floating overlay and the screen edge, added on top of window insets. -->
     <dimen name="overlay_edge_margin">16dp</dimen>
+    <!-- Extra inset for hub cards, added on top of system-bar insets so tiles do not hug the screen edge. -->
+    <dimen name="hub_content_padding">24dp</dimen>
+    <!-- Extra bottom space so the last hub card can scroll above the overlaid version label. -->
+    <dimen name="hub_version_clearance">48dp</dimen>
 </resources>
