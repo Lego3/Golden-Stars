@@ -370,8 +370,37 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
             this.offsetX = state.offsetX
             this.offsetY = state.offsetY
             zoomCallback?.invoke(zoom)
+            // onSizeChanged runs before state restore and starts a fresh reveal at phase 1.
+            resumeAnimationFromRestoredPhase()
         } else {
             super.onRestoreInstanceState(state)
+        }
+    }
+
+    /** Re-syncs the reveal animator after [onRestoreInstanceState] overrides an eager [startAnimation]. */
+    private fun resumeAnimationFromRestoredPhase() {
+        animator?.cancel()
+        if (currentPhase <= 0f || instantRender) {
+            showComplete()
+            return
+        }
+        if (pathLength <= 0f) return
+
+        isRevealing = true
+        paint.style = Paint.Style.STROKE
+        setPhase(currentPhase)
+
+        animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
+            duration = DrawViewMath.remainingAnimationDurationMs(currentPhase, animationDuration)
+            addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    isRevealing = false
+                    applyCompletedStyle()
+                    invalidate()
+                }
+            })
+            start()
         }
     }
 
