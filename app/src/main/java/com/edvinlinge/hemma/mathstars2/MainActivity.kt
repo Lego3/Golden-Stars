@@ -57,6 +57,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SpirographActivity::class.java))
         }
 
+        binding.cardJulia.setOnClickListener {
+            startActivity(Intent(this, JuliaActivity::class.java))
+        }
+
         binding.versionText.text = try {
             val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))

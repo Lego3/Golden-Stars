@@ -12,7 +12,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.slider.Slider
 
 /**
- * Settings for the star, Mandelbrot, and Spirograph screens.
+ * Settings for the star, Mandelbrot, Spirograph, and Julia screens.
  *
  * Every change publishes a full snapshot of the settings through the fragment result API instead
  * of invoking callbacks held by the host. Callbacks assigned when the sheet is shown are lost when
