@@ -136,4 +136,34 @@ class DrawViewMathTest {
         assertTrue(DrawViewMath.shouldRenderInstantly(speed = 4.0f))
         assertTrue(DrawViewMath.shouldRenderInstantly(speed = 5.0f))
     }
+
+    @Test
+    fun `coerced phase clamps out of range values`() {
+        assertEquals(0f, DrawViewMath.coercedPhase(-0.5f), 1e-6f)
+        assertEquals(0f, DrawViewMath.coercedPhase(0f), 1e-6f)
+        assertEquals(0.25f, DrawViewMath.coercedPhase(0.25f), 1e-6f)
+        assertEquals(1f, DrawViewMath.coercedPhase(1f), 1e-6f)
+        assertEquals(1f, DrawViewMath.coercedPhase(2f), 1e-6f)
+    }
+
+    @Test
+    fun `revealed segment length shrinks as the phase approaches complete`() {
+        val pathLength = 100f
+        assertEquals(100f, DrawViewMath.revealedSegmentLength(pathLength, phase = 0f), 1e-6f)
+        assertEquals(50f, DrawViewMath.revealedSegmentLength(pathLength, phase = 0.5f), 1e-6f)
+        assertEquals(0f, DrawViewMath.revealedSegmentLength(pathLength, phase = 1f), 1e-6f)
+    }
+
+    @Test
+    fun `revealed segment length is zero for empty paths`() {
+        assertEquals(0f, DrawViewMath.revealedSegmentLength(pathLength = 0f, phase = 0f), 1e-6f)
+        assertEquals(0f, DrawViewMath.revealedSegmentLength(pathLength = -1f, phase = 0f), 1e-6f)
+    }
+
+    @Test
+    fun `remaining animation duration scales with the current phase`() {
+        assertEquals(5000L, DrawViewMath.remainingAnimationDurationMs(currentPhase = 1f, animationDurationMs = 5000L))
+        assertEquals(2500L, DrawViewMath.remainingAnimationDurationMs(currentPhase = 0.5f, animationDurationMs = 5000L))
+        assertEquals(0L, DrawViewMath.remainingAnimationDurationMs(currentPhase = 0f, animationDurationMs = 5000L))
+    }
 }

@@ -1,6 +1,7 @@
 package com.edvinlinge.hemma.mathstars2
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -156,5 +157,129 @@ class MandelbrotMathTest {
     fun `clamped zoom leaves value unchanged when already at a bound`() {
         assertEquals(0.5, MandelbrotMath.clampedZoom(0.5, 0.5, 0.5, 1.0e13), 1e-12)
         assertEquals(1.0e13, MandelbrotMath.clampedZoom(1.0e13, 2.0, 0.5, 1.0e13), 1e-9)
+    }
+
+    @Test
+    fun `stale bitmap transform is identity when viewport matches the bitmap`() {
+        val (scale, dx, dy) = MandelbrotMath.staleBitmapDrawTransform(
+            zoom = 2.0,
+            bitmapZoom = 2.0,
+            offsetX = -0.5,
+            offsetY = 0.1,
+            bitmapOffsetX = -0.5,
+            bitmapOffsetY = 0.1,
+            viewWidth = 800,
+            viewHeight = 600,
+        )
+        assertEquals(1f, scale, 1e-6f)
+        assertEquals(0f, dx, 1e-6f)
+        assertEquals(0f, dy, 1e-6f)
+    }
+
+    @Test
+    fun `stale bitmap transform scales when zoom changes before rerender`() {
+        val (scale, _, _) = MandelbrotMath.staleBitmapDrawTransform(
+            zoom = 4.0,
+            bitmapZoom = 2.0,
+            offsetX = -0.5,
+            offsetY = 0.0,
+            bitmapOffsetX = -0.5,
+            bitmapOffsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+        )
+        assertEquals(2f, scale, 1e-6f)
+    }
+
+    @Test
+    fun `stale bitmap transform pans when the viewport center moves before rerender`() {
+        val units = MandelbrotMath.unitsPerPixel(1.0, 800, 600)
+        val panRight = 0.01
+        val (_, dx, _) = MandelbrotMath.staleBitmapDrawTransform(
+            zoom = 1.0,
+            bitmapZoom = 1.0,
+            offsetX = -0.5 + panRight,
+            offsetY = 0.0,
+            bitmapOffsetX = -0.5,
+            bitmapOffsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+        )
+        assertEquals((-panRight / units).toFloat(), dx, 1e-4f)
+    }
+
+    @Test
+    fun `needs full render when nothing has been drawn yet`() {
+        assertTrue(
+            MandelbrotMath.needsFullRender(
+                hasRenderedOnce = false,
+                bitmapIsPreview = false,
+                zoom = 1.0,
+                bitmapZoom = 1.0,
+                offsetX = -0.5,
+                bitmapOffsetX = -0.5,
+                offsetY = 0.0,
+                bitmapOffsetY = 0.0,
+            ),
+        )
+    }
+
+    @Test
+    fun `needs full render after a preview or viewport mismatch`() {
+        val settled = MandelbrotMath.needsFullRender(
+            hasRenderedOnce = true,
+            bitmapIsPreview = false,
+            zoom = 1.0,
+            bitmapZoom = 1.0,
+            offsetX = -0.5,
+            bitmapOffsetX = -0.5,
+            offsetY = 0.0,
+            bitmapOffsetY = 0.0,
+        )
+        assertFalse(settled)
+
+        assertTrue(
+            MandelbrotMath.needsFullRender(
+                hasRenderedOnce = true,
+                bitmapIsPreview = true,
+                zoom = 1.0,
+                bitmapZoom = 1.0,
+                offsetX = -0.5,
+                bitmapOffsetX = -0.5,
+                offsetY = 0.0,
+                bitmapOffsetY = 0.0,
+            ),
+        )
+        assertTrue(
+            MandelbrotMath.needsFullRender(
+                hasRenderedOnce = true,
+                bitmapIsPreview = false,
+                zoom = 2.0,
+                bitmapZoom = 1.0,
+                offsetX = -0.5,
+                bitmapOffsetX = -0.5,
+                offsetY = 0.0,
+                bitmapOffsetY = 0.0,
+            ),
+        )
+        assertTrue(
+            MandelbrotMath.needsFullRender(
+                hasRenderedOnce = true,
+                bitmapIsPreview = false,
+                zoom = 1.0,
+                bitmapZoom = 1.0,
+                offsetX = -0.4,
+                bitmapOffsetX = -0.5,
+                offsetY = 0.0,
+                bitmapOffsetY = 0.0,
+            ),
+        )
+    }
+
+    @Test
+    fun `render dimensions never collapse to zero`() {
+        assertEquals(200 to 150, MandelbrotMath.renderDimensions(800, 600, downscale = 4))
+        assertEquals(1 to 1, MandelbrotMath.renderDimensions(2, 2, downscale = 4))
+        assertEquals(1 to 1, MandelbrotMath.renderDimensions(0, 0, downscale = 4))
     }
 }

@@ -78,6 +78,48 @@ internal object MandelbrotMath {
         return newOffsetX to newOffsetY
     }
 
+    /**
+     * Screen-space scale and pan that approximate the current viewport using a bitmap rendered for
+     * a different zoom or center. Used while a new render is in flight so gestures stay responsive.
+     */
+    fun staleBitmapDrawTransform(
+        zoom: Double,
+        bitmapZoom: Double,
+        offsetX: Double,
+        offsetY: Double,
+        bitmapOffsetX: Double,
+        bitmapOffsetY: Double,
+        viewWidth: Int,
+        viewHeight: Int,
+    ): Triple<Float, Float, Float> {
+        val scale = (zoom / bitmapZoom).toFloat()
+        val units = unitsPerPixel(zoom, viewWidth, viewHeight)
+        val dx = ((bitmapOffsetX - offsetX) / units).toFloat()
+        val dy = ((bitmapOffsetY - offsetY) / units).toFloat()
+        return Triple(scale, dx, dy)
+    }
+
+    /** True when the on-screen bitmap no longer matches the current viewport and needs a rerender. */
+    fun needsFullRender(
+        hasRenderedOnce: Boolean,
+        bitmapIsPreview: Boolean,
+        zoom: Double,
+        bitmapZoom: Double,
+        offsetX: Double,
+        bitmapOffsetX: Double,
+        offsetY: Double,
+        bitmapOffsetY: Double,
+    ): Boolean =
+        !hasRenderedOnce ||
+            bitmapIsPreview ||
+            zoom != bitmapZoom ||
+            offsetX != bitmapOffsetX ||
+            offsetY != bitmapOffsetY
+
+    /** Preview downscale never yields a zero-sized render target. */
+    fun renderDimensions(viewWidth: Int, viewHeight: Int, downscale: Int): Pair<Int, Int> =
+        (viewWidth / downscale).coerceAtLeast(1) to (viewHeight / downscale).coerceAtLeast(1)
+
     fun escapeIterations(
         cr: Double,
         ci: Double,

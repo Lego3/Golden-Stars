@@ -25,6 +25,19 @@ internal object DrawViewMath {
     fun shouldRenderInstantly(speed: Float, threshold: Float = INSTANT_SPEED_THRESHOLD): Boolean =
         speed >= threshold
 
+    /** Clamps reveal progress to the closed interval from fully hidden to complete. */
+    fun coercedPhase(phase: Float): Float = phase.coerceIn(0f, 1f)
+
+    /** Length of the path segment revealed at [phase], given the full [pathLength]. */
+    fun revealedSegmentLength(pathLength: Float, phase: Float): Float {
+        if (pathLength <= 0f) return 0f
+        return (1f - coercedPhase(phase)) * pathLength
+    }
+
+    /** Remaining reveal animation time when resuming from [currentPhase]. */
+    fun remainingAnimationDurationMs(currentPhase: Float, animationDurationMs: Long): Long =
+        (coercedPhase(currentPhase) * animationDurationMs).toLong()
+
     /**
      * Adjusts pan offsets after a zoom change so the content under ([focusX], [focusY]) stays
      * fixed on screen.
