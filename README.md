@@ -1,13 +1,15 @@
+[![Android CI](https://github.com/Lego3/Golden-Stars/actions/workflows/android-ci.yml/badge.svg?branch=master)](https://github.com/Lego3/Golden-Stars/actions/workflows/android-ci.yml)
+[![Pages](https://github.com/Lego3/Golden-Stars/actions/workflows/static.yml/badge.svg?branch=master)](https://github.com/Lego3/Golden-Stars/actions/workflows/static.yml)
+[![Release](https://github.com/Lego3/Golden-Stars/actions/workflows/release.yml/badge.svg)](https://github.com/Lego3/Golden-Stars/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/github/license/Lego3/Golden-Stars)](LICENSE)
+
 # Golden Stars
 
 Explore mathematics through calm, interactive visuals, draw star figures in a single
 stroke, then zoom into the Mandelbrot set. Golden Stars runs entirely on your device:
 no accounts, no ads, no data collection.
 
-[![Android CI](https://github.com/Lego3/Golden-Stars/actions/workflows/android-ci.yml/badge.svg?branch=master)](https://github.com/Lego3/Golden-Stars/actions/workflows/android-ci.yml)
-[![Pages](https://github.com/Lego3/Golden-Stars/actions/workflows/static.yml/badge.svg?branch=master)](https://github.com/Lego3/Golden-Stars/actions/workflows/static.yml)
-[![Release](https://github.com/Lego3/Golden-Stars/actions/workflows/release.yml/badge.svg)](https://github.com/Lego3/Golden-Stars/actions/workflows/release.yml)
-[![License: MIT](https://img.shields.io/github/license/Lego3/Golden-Stars)](LICENSE)
+
 
 <p align="center">
   <a href="https://play.google.com/store/apps/details?id=com.edvinlinge.hemma.mathstars2">
