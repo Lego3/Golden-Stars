@@ -80,4 +80,19 @@ class AppPreferencesTest {
         assertEquals(39, loaded.rollingRadius)
         assertEquals(true, loaded.inside)
     }
+
+    @Test
+    fun saveAndLoadJuliaSettings() {
+        preferences.saveJuliaColorIndex(2)
+        preferences.saveJuliaPresetIndex(5)
+
+        assertEquals(2, preferences.loadJuliaColorIndex())
+        assertEquals(5, preferences.loadJuliaPresetIndex())
+    }
+
+    @Test
+    fun juliaPresetIndexOutsideTheListIsClamped() {
+        preferences.saveJuliaPresetIndex(99)
+        assertEquals(JuliaMath.PRESETS.lastIndex, preferences.loadJuliaPresetIndex())
+    }
 }

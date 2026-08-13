@@ -10,6 +10,8 @@ Git tags (`v1.1.0`, `v1.2.0`, …).
 
 - Spirograph explorer for hypotrochoids and epitrochoids, with animated drawing,
   GCD-based details, and the same pan/zoom controls as Golden Stars.
+- Julia set explorer with pinch-to-zoom, colour palettes, well-known *c* presets, and
+  progressive rendering previews.
 
 ### Changed
 

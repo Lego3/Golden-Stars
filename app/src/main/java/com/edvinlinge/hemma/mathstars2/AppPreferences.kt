@@ -91,6 +91,22 @@ class AppPreferences private constructor(
         }
     }
 
+    fun loadJuliaColorIndex(): Int =
+        prefs.getInt(KEY_JULIA_COLOR_INDEX, SettingsBottomSheet.DEFAULT_COLOR_INDEX)
+
+    fun saveJuliaColorIndex(colorIndex: Int) {
+        prefs.edit { putInt(KEY_JULIA_COLOR_INDEX, colorIndex) }
+    }
+
+    fun loadJuliaPresetIndex(): Int =
+        JuliaMath.coercedPresetIndex(
+            prefs.getInt(KEY_JULIA_PRESET_INDEX, JuliaMath.DEFAULT_PRESET_INDEX),
+        )
+
+    fun saveJuliaPresetIndex(presetIndex: Int) {
+        prefs.edit { putInt(KEY_JULIA_PRESET_INDEX, JuliaMath.coercedPresetIndex(presetIndex)) }
+    }
+
     companion object {
         /** SharedPreferences file included in Android backup rules. */
         const val PREFS_NAME = "app_settings"
@@ -109,6 +125,8 @@ class AppPreferences private constructor(
         private const val KEY_SPIRO_THICKNESS = "spiro_thickness"
         private const val KEY_SPIRO_COLOR_INDEX = "spiro_color_index"
         private const val KEY_SPIRO_SPEED = "spiro_speed"
+        private const val KEY_JULIA_COLOR_INDEX = "julia_color_index"
+        private const val KEY_JULIA_PRESET_INDEX = "julia_preset_index"
 
         private const val DEFAULT_STAR_SPEED = 1.0f
 

@@ -6,7 +6,8 @@
 # Golden Stars
 
 Explore mathematics through calm, interactive visuals: draw star figures in a single
-stroke, zoom into the Mandelbrot set, and watch a Spirograph curve close itself.
+stroke, zoom into the Mandelbrot set, watch a Spirograph curve close itself, and
+explore Julia sets for famous values of *c*.
 Golden Stars runs entirely on your device: no accounts, no ads, no data collection.
 
 
@@ -31,6 +32,10 @@ preview keeps gestures smooth while the full-resolution render catches up.
 **Spirograph:** Watch a hypotrochoid (or epitrochoid) draw itself in one stroke. Sliders
 set the fixed ring, rolling wheel, and pen distance. *Details* explains when the curve
 closes, using the same GCD arithmetic as the star figures.
+
+**Julia Sets:** Hold *c* fixed and iterate *z → z² + c* from every point in the plane.
+A slider steps through well-known constants (the Douady rabbit, San Marco, a Cantor
+dust, and more). Info explains whether that *c* sits inside the Mandelbrot set.
 
 All screens share a dark, edge-to-edge layout with floating controls, settings sheets,
 and a short in-app help panel.
@@ -148,8 +153,8 @@ reported privately, see [SECURITY.md](SECURITY.md).
 
 Golden Stars does not collect or transmit data to the developer or third parties. It
 stores visualization preferences locally on your device (star geometry, colours,
-thickness, fill, speed, Mandelbrot palette, and Spirograph ring, wheel, pen, and
-style). If Android backup is enabled, those
+thickness, fill, speed, Mandelbrot palette, Spirograph ring, wheel, pen, and
+style, and Julia palette and shape). If Android backup is enabled, those
 preferences may be included in your encrypted Google account backup or device transfer,
 managed by Android.
 

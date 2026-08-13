@@ -8,6 +8,8 @@
     <string name="mandelbrot_description">Utforska den mest kända fraktalen. Zooma in för att hitta oändlig komplexitet.</string>
     <string name="spirograph_title">Spirograph</string>
     <string name="spirograph_description">Se en hypotrokoid ritas i ett drag. Ändra ring, hjul och penna för att stänga nya kurvor.</string>
+    <string name="julia_title">Juliamängder</string>
+    <string name="julia_description">Håll c fast och iterera z → z² + c från varje punkt. Byt c för att få nya former.</string>
     <string name="skips_hint">Hopp</string>
     <string name="dots_hint">Punkter</string>
     <string name="more_info_button">Detaljer</string>
@@ -44,6 +46,21 @@
     <string name="spirograph_details_circle">Pennan sitter i hjulets mitt, så spåret blir en cirkel.</string>
     <string name="spirograph_help">En Spirograph ritar banan för en penna fäst vid en cirkel som rullar runt en fast cirkel, samma idé som de kuggade ringarna och hjulen i leksaken.\n\nNär de två radierna är heltal sluts kurvan till slut. Antalet slingor styrs av den största gemensamma delaren (SGD) av de två radierna, samma räkning som avgör vilka stjärnor som kan ritas i ett penseldrag.\n\nDra i skjutreglagen för att ändra ringen, hjulet och hur långt pennan sitter från hjulets mitt. Stäng av rulla-inuti för att rulla på utsidan i stället (en epitrokoid).</string>
     <string name="spirograph_description_a11y">Spirograph med fast ring %1$d, rullande hjul %2$d, pennavstånd %3$d. Nyp för att zooma, dra för att panorera, dubbeltryck för att zooma in.</string>
+    <string name="customize_julia">Anpassa Julia</string>
+    <string name="julia_preset">Juliaform</string>
+    <string name="julia_c_label">c = %1$s</string>
+    <string name="julia_preset_a11y">Juliaform %1$s</string>
+    <string name="julia_preset_rabbit">Douadys kanin</string>
+    <string name="julia_preset_san_marco">San Marco</string>
+    <string name="julia_preset_dendrite">Dendrit</string>
+    <string name="julia_preset_siegel">Siegel-skiva</string>
+    <string name="julia_preset_basilica">Basilika</string>
+    <string name="julia_preset_airplane">Flygplan</string>
+    <string name="julia_preset_spiral">Spiral</string>
+    <string name="julia_preset_dust">Cantor-damm</string>
+    <string name="julia_details_connected">Den kritiska punkten z = 0 förblir begränsad, så den här Juliamängden är sammanhängande. Dess c ligger inne i Mandelbrotmängden.</string>
+    <string name="julia_details_dust">Den kritiska punkten z = 0 divergerar, så den här Juliamängden är ett moln av damm. Dess c ligger utanför Mandelbrotmängden.</string>
+    <string name="julia_help">Den här Juliamängden skapas genom att iterera z → z² + c från varje punkt i det komplexa planet, med c hållen fast vid %1$s (%2$s).\n\n%3$s\n\nMandelbrotmängden svarar på vilka värden på c som ger en sammanhängande Juliamängd. Den här skärmen visar hur ett enda c ser ut.\n\nAnvänd skjutreglaget för att prova kända värden på c. Nyp för att zooma och dra för att panorera genom fraktalen.</string>
 
     <!-- Etiketter för skärmläsare -->
     <string name="action_replay">Spela upp animationen igen</string>
@@ -53,6 +70,7 @@
     <string name="zoom_level_format">Zoomnivå %1$s</string>
     <string name="star_description_a11y">Stjärnritning med %1$d punkter och hopp om %2$d. Nyp för att zooma, dra för att panorera, dubbeltryck för att zooma in.</string>
     <string name="mandelbrot_description_a11y">Mandelbrotmängden. Nyp för att zooma, dra för att panorera, dubbeltryck för att zooma in.</string>
+    <string name="julia_description_a11y">Juliamängd. Nyp för att zooma, dra för att panorera, dubbeltryck för att zooma in. Använd skjutreglaget för att ändra c.</string>
     <string name="color_gold">Guld</string>
     <string name="color_silver">Silver</string>
     <string name="color_blue">Blå</string>

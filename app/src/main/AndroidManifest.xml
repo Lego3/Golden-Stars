@@ -25,6 +25,10 @@
             android:exported="false"
             android:theme="@style/Theme.MathStars2.Dark" />
         <activity
+            android:name=".JuliaActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MathStars2.Dark" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
