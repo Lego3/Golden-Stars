@@ -166,4 +166,10 @@ class DrawViewMathTest {
         assertEquals(2500L, DrawViewMath.remainingAnimationDurationMs(currentPhase = 0.5f, animationDurationMs = 5000L))
         assertEquals(0L, DrawViewMath.remainingAnimationDurationMs(currentPhase = 0f, animationDurationMs = 5000L))
     }
+
+    @Test
+    fun `remaining animation duration clamps out of range phases`() {
+        assertEquals(5000L, DrawViewMath.remainingAnimationDurationMs(currentPhase = 2f, animationDurationMs = 5000L))
+        assertEquals(0L, DrawViewMath.remainingAnimationDurationMs(currentPhase = -0.5f, animationDurationMs = 5000L))
+    }
 }

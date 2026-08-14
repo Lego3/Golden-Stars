@@ -121,6 +121,13 @@ class SpirographMathTest {
     }
 
     @Test
+    fun `fit to view returns empty list for no points`() {
+        assertTrue(
+            SpirographMath.fitToView(emptyList(), centerX = 100f, centerY = 80f, radius = 40f).isEmpty(),
+        )
+    }
+
+    @Test
     fun `fit to view centres the curve and respects the target radius`() {
         val points = listOf(2.0 to 0.0, 0.0 to 2.0, -2.0 to 0.0, 0.0 to -2.0)
         val fitted = SpirographMath.fitToView(points, centerX = 100f, centerY = 80f, radius = 40f)

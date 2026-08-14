@@ -88,5 +88,7 @@ class JuliaMathTest {
         assertEquals("0 + 1i", JuliaMath.formatConstant(0.0, 1.0))
         assertEquals("-0.75 + 0i", JuliaMath.formatConstant(-0.75, 0.0))
         assertEquals("0 + 0i", JuliaMath.formatConstant(0.0, 0.0))
+        assertEquals("-0.391 - 0.587i", JuliaMath.formatConstant(-0.391, -0.587))
+        assertEquals("0.355 + 0.355i", JuliaMath.formatConstant(0.355, 0.355))
     }
 }
