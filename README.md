@@ -43,6 +43,7 @@ and a short in-app help panel.
 ## Contents
 
 - [Development setup](#development-setup)
+- [Architecture](CONTRIBUTING.md#architecture) (contributor guide)
 - [Continuous integration](#continuous-integration)
 - [Releasing](#releasing)
 - [Contributing](#contributing)
