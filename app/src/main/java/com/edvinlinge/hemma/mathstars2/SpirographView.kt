@@ -259,7 +259,7 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
         setPhase(currentPhase)
 
         animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
-            duration = (currentPhase * animationDuration).toLong()
+            duration = DrawViewMath.remainingAnimationDurationMs(currentPhase, animationDuration)
             addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
@@ -292,32 +292,34 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
     }
 
     fun getDetailsHtml(context: Context): String {
-        val details = SpirographMath.details(params)
+        val details = spirographDetailsParagraphs(params)
         val parts = mutableListOf<String>()
 
         parts.add(
             context.getString(
-                if (details.params.inside) R.string.spirograph_details_hypo else R.string.spirograph_details_epi,
-                details.params.rollingRadius,
-                details.params.fixedRadius,
-                details.params.penOffset,
+                if (details.inside) R.string.spirograph_details_hypo else R.string.spirograph_details_epi,
+                details.rollingRadius,
+                details.fixedRadius,
+                details.penOffset,
             ),
         )
 
-        if (details.circle) {
-            parts.add(context.getString(R.string.spirograph_details_circle))
-        } else if (details.hypocycloid) {
-            parts.add(context.getString(R.string.spirograph_details_hypocycloid))
-        } else if (details.epicycloid) {
-            parts.add(context.getString(R.string.spirograph_details_epicycloid))
+        when (details.curveKind) {
+            SpirographCurveKind.Circle ->
+                parts.add(context.getString(R.string.spirograph_details_circle))
+            SpirographCurveKind.Hypocycloid ->
+                parts.add(context.getString(R.string.spirograph_details_hypocycloid))
+            SpirographCurveKind.Epicycloid ->
+                parts.add(context.getString(R.string.spirograph_details_epicycloid))
+            SpirographCurveKind.General -> Unit
         }
 
         parts.add(
             context.getString(
                 R.string.spirograph_details_close,
                 details.periodTurns,
-                details.params.fixedRadius,
-                details.params.rollingRadius,
+                details.fixedRadius,
+                details.rollingRadius,
                 details.gcd,
             ),
         )
@@ -345,8 +347,35 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
             this.offsetX = state.offsetX
             this.offsetY = state.offsetY
             zoomCallback?.invoke(zoom)
+            // onSizeChanged runs before state restore and starts a fresh reveal at phase 1.
+            resumeAnimationFromRestoredPhase()
         } else {
             super.onRestoreInstanceState(state)
+        }
+    }
+
+    /** Re-syncs the reveal animator after [onRestoreInstanceState] overrides an eager [startAnimation]. */
+    private fun resumeAnimationFromRestoredPhase() {
+        animator?.cancel()
+        if (currentPhase <= 0f || instantRender) {
+            showComplete()
+            return
+        }
+        if (pathLength <= 0f) return
+
+        isRevealing = true
+        setPhase(currentPhase)
+
+        animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
+            duration = DrawViewMath.remainingAnimationDurationMs(currentPhase, animationDuration)
+            addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    isRevealing = false
+                    invalidate()
+                }
+            })
+            start()
         }
     }
 
