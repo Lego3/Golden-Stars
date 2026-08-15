@@ -259,7 +259,7 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
         setPhase(currentPhase)
 
         animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
-            duration = (currentPhase * animationDuration).toLong()
+            duration = DrawViewMath.remainingAnimationDurationMs(currentPhase, animationDuration)
             addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
@@ -283,10 +283,11 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
      * per-frame path-effect allocation and keeps the draw on the hardware canvas.
      */
     fun setPhase(phase: Float) {
-        currentPhase = phase.coerceIn(0f, 1f)
+        currentPhase = DrawViewMath.coercedPhase(phase)
         revealedPath.reset()
-        if (pathLength > 0f) {
-            pathMeasure.getSegment(0f, (1f - currentPhase) * pathLength, revealedPath, true)
+        val segmentLength = DrawViewMath.revealedSegmentLength(pathLength, currentPhase)
+        if (segmentLength > 0f) {
+            pathMeasure.getSegment(0f, segmentLength, revealedPath, true)
         }
         invalidate()
     }
@@ -345,8 +346,35 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
             this.offsetX = state.offsetX
             this.offsetY = state.offsetY
             zoomCallback?.invoke(zoom)
+            // onSizeChanged runs before state restore and starts a fresh reveal at phase 1.
+            resumeAnimationFromRestoredPhase()
         } else {
             super.onRestoreInstanceState(state)
+        }
+    }
+
+    /** Re-syncs the reveal animator after [onRestoreInstanceState] overrides an eager [startAnimation]. */
+    private fun resumeAnimationFromRestoredPhase() {
+        animator?.cancel()
+        if (currentPhase <= 0f || instantRender) {
+            showComplete()
+            return
+        }
+        if (pathLength <= 0f) return
+
+        isRevealing = true
+        setPhase(currentPhase)
+
+        animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
+            duration = DrawViewMath.remainingAnimationDurationMs(currentPhase, animationDuration)
+            addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    isRevealing = false
+                    invalidate()
+                }
+            })
+            start()
         }
     }
 
