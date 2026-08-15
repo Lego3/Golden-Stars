@@ -293,32 +293,34 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
     }
 
     fun getDetailsHtml(context: Context): String {
-        val details = SpirographMath.details(params)
+        val details = spirographDetailsParagraphs(params)
         val parts = mutableListOf<String>()
 
         parts.add(
             context.getString(
-                if (details.params.inside) R.string.spirograph_details_hypo else R.string.spirograph_details_epi,
-                details.params.rollingRadius,
-                details.params.fixedRadius,
-                details.params.penOffset,
+                if (details.inside) R.string.spirograph_details_hypo else R.string.spirograph_details_epi,
+                details.rollingRadius,
+                details.fixedRadius,
+                details.penOffset,
             ),
         )
 
-        if (details.circle) {
-            parts.add(context.getString(R.string.spirograph_details_circle))
-        } else if (details.hypocycloid) {
-            parts.add(context.getString(R.string.spirograph_details_hypocycloid))
-        } else if (details.epicycloid) {
-            parts.add(context.getString(R.string.spirograph_details_epicycloid))
+        when (details.curveKind) {
+            SpirographCurveKind.Circle ->
+                parts.add(context.getString(R.string.spirograph_details_circle))
+            SpirographCurveKind.Hypocycloid ->
+                parts.add(context.getString(R.string.spirograph_details_hypocycloid))
+            SpirographCurveKind.Epicycloid ->
+                parts.add(context.getString(R.string.spirograph_details_epicycloid))
+            SpirographCurveKind.General -> Unit
         }
 
         parts.add(
             context.getString(
                 R.string.spirograph_details_close,
                 details.periodTurns,
-                details.params.fixedRadius,
-                details.params.rollingRadius,
+                details.fixedRadius,
+                details.rollingRadius,
                 details.gcd,
             ),
         )
