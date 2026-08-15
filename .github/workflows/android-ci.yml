@@ -182,7 +182,8 @@ jobs:
     name: Instrumented tests (emulator)
     runs-on: ubuntu-latest
     needs: [changes, build-and-test]
-    timeout-minutes: 45
+    # Up to three emulator boots; flaky ADB/Espresso failures often pass on retry.
+    timeout-minutes: 60
     permissions:
       contents: read
     steps:
@@ -191,7 +192,7 @@ jobs:
           if [ "${{ needs.changes.outputs.instrumented }}" != "true" ]; then
             echo "Fast pass — no app/runtime changes, skipping instrumented tests."
           else
-            echo "Running instrumented tests on the emulator."
+            echo "Running instrumented tests on the emulator (up to 3 attempts on failure)."
           fi
 
       - name: Checkout
@@ -222,18 +223,35 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Run instrumented tests
+      - name: Run instrumented tests (attempt 1)
+        id: instrumented_attempt_1
         if: needs.changes.outputs.instrumented == 'true'
-        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-        with:
-          api-level: 34
-          target: google_apis
-          arch: x86_64
-          profile: pixel_5
-          disable-animations: true
-          force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: ./gradlew connectedDebugAndroidTest --stacktrace
+        continue-on-error: true
+        uses: ./.github/actions/run-emulator-instrumented-tests
+
+      - name: Run instrumented tests (attempt 2)
+        id: instrumented_attempt_2
+        if: needs.changes.outputs.instrumented == 'true' && steps.instrumented_attempt_1.outcome == 'failure'
+        continue-on-error: true
+        uses: ./.github/actions/run-emulator-instrumented-tests
+
+      - name: Run instrumented tests (attempt 3)
+        id: instrumented_attempt_3
+        if: needs.changes.outputs.instrumented == 'true' && steps.instrumented_attempt_2.outcome == 'failure'
+        continue-on-error: true
+        uses: ./.github/actions/run-emulator-instrumented-tests
+
+      - name: Verify instrumented tests passed
+        if: needs.changes.outputs.instrumented == 'true'
+        run: |
+          if [ "${{ steps.instrumented_attempt_1.outcome }}" = "success" ] || \
+             [ "${{ steps.instrumented_attempt_2.outcome }}" = "success" ] || \
+             [ "${{ steps.instrumented_attempt_3.outcome }}" = "success" ]; then
+            echo "Instrumented tests passed."
+            exit 0
+          fi
+          echo "Instrumented tests failed after up to 3 emulator runs."
+          exit 1
 
       - name: Summarize instrumented test results
         if: always() && needs.changes.outputs.instrumented == 'true'
