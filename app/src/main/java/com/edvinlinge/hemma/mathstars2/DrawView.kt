@@ -380,27 +380,33 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     /** Re-syncs the reveal animator after [onRestoreInstanceState] overrides an eager [startAnimation]. */
     private fun resumeAnimationFromRestoredPhase() {
         animator?.cancel()
-        if (currentPhase <= 0f || instantRender) {
-            showComplete()
-            return
-        }
-        if (pathLength <= 0f) return
+        when (
+            DrawViewMath.revealRestoreAction(
+                currentPhase = currentPhase,
+                instantRender = instantRender,
+                pathLength = pathLength,
+            )
+        ) {
+            RevealRestoreAction.SHOW_COMPLETE -> showComplete()
+            RevealRestoreAction.SKIP -> Unit
+            RevealRestoreAction.RESUME -> {
+                isRevealing = true
+                paint.style = Paint.Style.STROKE
+                setPhase(currentPhase)
 
-        isRevealing = true
-        paint.style = Paint.Style.STROKE
-        setPhase(currentPhase)
-
-        animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
-            duration = DrawViewMath.remainingAnimationDurationMs(currentPhase, animationDuration)
-            addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    isRevealing = false
-                    applyCompletedStyle()
-                    invalidate()
+                animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
+                    duration = DrawViewMath.remainingAnimationDurationMs(currentPhase, animationDuration)
+                    addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
+                    addListener(object : AnimatorListenerAdapter() {
+                        override fun onAnimationEnd(animation: Animator) {
+                            isRevealing = false
+                            applyCompletedStyle()
+                            invalidate()
+                        }
+                    })
+                    start()
                 }
-            })
-            start()
+            }
         }
     }
 

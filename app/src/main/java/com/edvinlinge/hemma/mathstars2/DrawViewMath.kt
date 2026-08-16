@@ -4,6 +4,13 @@ package com.edvinlinge.hemma.mathstars2
  * Screen-space pan/zoom math for [DrawView], free of Android types so it can be covered by fast
  * JVM unit tests. Pinch and double-tap zoom keep the drawing under the focus point fixed.
  */
+/** What to do with a reveal animation after saved view state is restored. */
+internal enum class RevealRestoreAction {
+    SHOW_COMPLETE,
+    SKIP,
+    RESUME,
+}
+
 internal object DrawViewMath {
 
     /** At and above this speed the star is drawn instantly instead of animated. */
@@ -37,6 +44,20 @@ internal object DrawViewMath {
     /** Remaining reveal animation time when resuming from [currentPhase]. */
     fun remainingAnimationDurationMs(currentPhase: Float, animationDurationMs: Long): Long =
         (coercedPhase(currentPhase) * animationDurationMs).toLong()
+
+    /**
+     * Chooses how to resume the reveal animation after [onRestoreInstanceState], when
+     * [onSizeChanged] may already have started a fresh animation at phase 1.
+     */
+    fun revealRestoreAction(
+        currentPhase: Float,
+        instantRender: Boolean,
+        pathLength: Float,
+    ): RevealRestoreAction = when {
+        coercedPhase(currentPhase) <= 0f || instantRender -> RevealRestoreAction.SHOW_COMPLETE
+        pathLength <= 0f -> RevealRestoreAction.SKIP
+        else -> RevealRestoreAction.RESUME
+    }
 
     /**
      * Adjusts pan offsets after a zoom change so the content under ([focusX], [focusY]) stays
