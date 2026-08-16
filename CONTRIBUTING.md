@@ -107,19 +107,6 @@ When adding behaviour, extend the matching `*Math` unit tests first. Reserve
 instrumented tests for Android integration (preferences, fragments, configuration
 changes).
 
-### Common pitfalls
-
-- **Bottom sheets after rotation** — never wire settings through fragment → activity
-  callbacks; use fragment results.
-- **Filled digons** — check `StarMath.shouldFill` before switching to
-  `Paint.Style.FILL`; a two-point figure disappears once the reveal finishes.
-- **Spirograph inside mode** — `SpirographMath.coercedRolling` caps the rolling radius
-  below the fixed ring; epitrochoid mode allows the full range.
-- **Fractal buffer lifetime** — await or chain on `bufferJob` before recycling bitmap
-  pixel arrays; both fractal views keep the last buffer job across detach.
-- **Preview vs full** — changing only the colour palette should call `requestFullRender`,
-  not preview; pan/zoom during interaction should prefer preview.
-
 ## Development workflow
 
 1. Fork the repository and create a branch from `master`.
