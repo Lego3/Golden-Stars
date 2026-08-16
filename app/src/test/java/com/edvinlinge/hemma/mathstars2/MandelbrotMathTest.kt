@@ -160,6 +160,13 @@ class MandelbrotMathTest {
     }
 
     @Test
+    fun `coerced zoom clamps restored viewport values to the allowed range`() {
+        assertEquals(0.5, MandelbrotMath.coercedZoom(0.1, minZoom = 0.5, maxZoom = 1.0e13), 1e-12)
+        assertEquals(1.0e13, MandelbrotMath.coercedZoom(2.0e13, minZoom = 0.5, maxZoom = 1.0e13), 1e-9)
+        assertEquals(4.0, MandelbrotMath.coercedZoom(4.0, minZoom = 0.5, maxZoom = 1.0e13), 1e-12)
+    }
+
+    @Test
     fun `stale bitmap transform is identity when viewport matches the bitmap`() {
         val (scale, dx, dy) = MandelbrotMath.staleBitmapDrawTransform(
             zoom = 2.0,
