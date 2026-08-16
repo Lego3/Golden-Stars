@@ -414,7 +414,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     override fun onRestoreInstanceState(state: Parcelable?) {
         if (state is SavedState) {
             super.onRestoreInstanceState(state.superState)
-            zoom = state.zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
+            zoom = MandelbrotMath.coercedZoom(state.zoom, MIN_ZOOM, MAX_ZOOM)
             offsetX = state.offsetX
             offsetY = state.offsetY
             zoomCallback?.invoke(zoom)

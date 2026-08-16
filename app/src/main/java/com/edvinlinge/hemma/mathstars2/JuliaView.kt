@@ -199,12 +199,16 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     }
 
     /** False when the bitmap already holds a full resolution render of the current viewport. */
-    private fun needsFullRender(): Boolean =
-        !hasRenderedOnce ||
-            bitmapIsPreview ||
-            zoom != bitmapZoom ||
-            offsetX != bitmapOffsetX ||
-            offsetY != bitmapOffsetY
+    private fun needsFullRender(): Boolean = MandelbrotMath.needsFullRender(
+        hasRenderedOnce = hasRenderedOnce,
+        bitmapIsPreview = bitmapIsPreview,
+        zoom = zoom,
+        bitmapZoom = bitmapZoom,
+        offsetX = offsetX,
+        bitmapOffsetX = bitmapOffsetX,
+        offsetY = offsetY,
+        bitmapOffsetY = bitmapOffsetY,
+    )
 
     override fun performClick(): Boolean {
         super.performClick()
@@ -226,10 +230,16 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         val bmp = bitmap ?: return
         if (!hasRenderedOnce) return
 
-        val imageScale = (zoom / bitmapZoom).toFloat()
-        val unitsPerPixel = unitsPerPixel(zoom, width, height)
-        val dx = ((bitmapOffsetX - offsetX) / unitsPerPixel).toFloat()
-        val dy = ((bitmapOffsetY - offsetY) / unitsPerPixel).toFloat()
+        val (imageScale, dx, dy) = MandelbrotMath.staleBitmapDrawTransform(
+            zoom = zoom,
+            bitmapZoom = bitmapZoom,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            bitmapOffsetX = bitmapOffsetX,
+            bitmapOffsetY = bitmapOffsetY,
+            viewWidth = width,
+            viewHeight = height,
+        )
 
         canvas.withSave {
             translate(width / 2f + dx, height / 2f + dy)
@@ -269,8 +279,7 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         val renderCImag = cImag
         val palette = colorPalette
         val downscale = if (preview) PREVIEW_DOWNSCALE else 1
-        val renderWidth = (viewWidth / downscale).coerceAtLeast(1)
-        val renderHeight = (viewHeight / downscale).coerceAtLeast(1)
+        val (renderWidth, renderHeight) = MandelbrotMath.renderDimensions(viewWidth, viewHeight, downscale)
         val maxIterations = MandelbrotMath.iterationsFor(renderZoom)
 
         val unitsPerPixel = unitsPerPixel(renderZoom, viewWidth, viewHeight)
@@ -417,7 +426,7 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     override fun onRestoreInstanceState(state: Parcelable?) {
         if (state is SavedState) {
             super.onRestoreInstanceState(state.superState)
-            zoom = state.zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
+            zoom = MandelbrotMath.coercedZoom(state.zoom, MIN_ZOOM, MAX_ZOOM)
             offsetX = state.offsetX
             offsetY = state.offsetY
             zoomCallback?.invoke(zoom)

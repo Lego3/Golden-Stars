@@ -22,6 +22,10 @@ internal object MandelbrotMath {
     fun clampedZoom(currentZoom: Double, factor: Double, minZoom: Double, maxZoom: Double): Double =
         (currentZoom * factor).coerceIn(minZoom, maxZoom)
 
+    /** Clamps a restored viewport zoom to the allowed range after configuration changes. */
+    fun coercedZoom(zoom: Double, minZoom: Double, maxZoom: Double): Double =
+        zoom.coerceIn(minZoom, maxZoom)
+
     fun unitsPerPixel(zoomLevel: Double, viewWidth: Int, viewHeight: Int): Double =
         (VIEWPORT_SPAN / zoomLevel) / minOf(viewWidth, viewHeight).coerceAtLeast(1)
 
