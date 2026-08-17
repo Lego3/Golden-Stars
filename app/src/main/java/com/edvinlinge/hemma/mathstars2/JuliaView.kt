@@ -199,12 +199,16 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     }
 
     /** False when the bitmap already holds a full resolution render of the current viewport. */
-    private fun needsFullRender(): Boolean =
-        !hasRenderedOnce ||
-            bitmapIsPreview ||
-            zoom != bitmapZoom ||
-            offsetX != bitmapOffsetX ||
-            offsetY != bitmapOffsetY
+    private fun needsFullRender(): Boolean = MandelbrotMath.needsFullRender(
+        hasRenderedOnce = hasRenderedOnce,
+        bitmapIsPreview = bitmapIsPreview,
+        zoom = zoom,
+        bitmapZoom = bitmapZoom,
+        offsetX = offsetX,
+        bitmapOffsetX = bitmapOffsetX,
+        offsetY = offsetY,
+        bitmapOffsetY = bitmapOffsetY,
+    )
 
     override fun performClick(): Boolean {
         super.performClick()
@@ -226,10 +230,16 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         val bmp = bitmap ?: return
         if (!hasRenderedOnce) return
 
-        val imageScale = (zoom / bitmapZoom).toFloat()
-        val unitsPerPixel = unitsPerPixel(zoom, width, height)
-        val dx = ((bitmapOffsetX - offsetX) / unitsPerPixel).toFloat()
-        val dy = ((bitmapOffsetY - offsetY) / unitsPerPixel).toFloat()
+        val (imageScale, dx, dy) = MandelbrotMath.staleBitmapDrawTransform(
+            zoom = zoom,
+            bitmapZoom = bitmapZoom,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            bitmapOffsetX = bitmapOffsetX,
+            bitmapOffsetY = bitmapOffsetY,
+            viewWidth = width,
+            viewHeight = height,
+        )
 
         canvas.withSave {
             translate(width / 2f + dx, height / 2f + dy)

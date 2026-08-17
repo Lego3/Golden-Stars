@@ -38,6 +38,26 @@ internal object DrawViewMath {
     fun remainingAnimationDurationMs(currentPhase: Float, animationDurationMs: Long): Long =
         (coercedPhase(currentPhase) * animationDurationMs).toLong()
 
+    /** What to do after restoring reveal progress from a saved instance state. */
+    enum class RevealRestoreAction {
+        /** Animation already finished or instant render was requested. */
+        ShowComplete,
+        /** Path not built yet; wait for the next layout pass. */
+        NoOp,
+        /** Resume the reveal animator from [remainingAnimationDurationMs]. */
+        ResumeAnimation,
+    }
+
+    fun revealRestoreAction(
+        currentPhase: Float,
+        instantRender: Boolean,
+        pathLength: Float,
+    ): RevealRestoreAction = when {
+        currentPhase <= 0f || instantRender -> RevealRestoreAction.ShowComplete
+        pathLength <= 0f -> RevealRestoreAction.NoOp
+        else -> RevealRestoreAction.ResumeAnimation
+    }
+
     /**
      * Adjusts pan offsets after a zoom change so the content under ([focusX], [focusY]) stays
      * fixed on screen.

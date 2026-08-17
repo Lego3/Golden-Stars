@@ -18,6 +18,22 @@ internal class ScreenInsets(
     val edgeMargin: Int,
 )
 
+/** Maps raw system bar insets to layout-direction aware [ScreenInsets]. */
+internal fun screenInsetsFromSystemBars(
+    left: Int,
+    top: Int,
+    right: Int,
+    bottom: Int,
+    rtl: Boolean,
+    edgeMargin: Int,
+): ScreenInsets = ScreenInsets(
+    start = if (rtl) right else left,
+    top = top,
+    end = if (rtl) left else right,
+    bottom = bottom,
+    edgeMargin = edgeMargin,
+)
+
 /**
  * Invokes [onInsets] whenever the window insets change, for screens that draw content edge to
  * edge behind the system bars and position floating overlays on top of it.
@@ -30,13 +46,14 @@ internal fun Activity.doOnScreenInsets(onInsets: (ScreenInsets) -> Unit) {
         )
         val rtl = view.layoutDirection == View.LAYOUT_DIRECTION_RTL
         onInsets(
-            ScreenInsets(
-                start = if (rtl) bars.right else bars.left,
+            screenInsetsFromSystemBars(
+                left = bars.left,
                 top = bars.top,
-                end = if (rtl) bars.left else bars.right,
+                right = bars.right,
                 bottom = bars.bottom,
+                rtl = rtl,
                 edgeMargin = edgeMargin,
-            )
+            ),
         )
         insets
     }

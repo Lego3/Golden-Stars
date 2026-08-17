@@ -358,11 +358,16 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
     /** Re-syncs the reveal animator after [onRestoreInstanceState] overrides an eager [startAnimation]. */
     private fun resumeAnimationFromRestoredPhase() {
         animator?.cancel()
-        if (currentPhase <= 0f || instantRender) {
-            showComplete()
-            return
+        when (
+            DrawViewMath.revealRestoreAction(currentPhase, instantRender, pathLength)
+        ) {
+            DrawViewMath.RevealRestoreAction.ShowComplete -> {
+                showComplete()
+                return
+            }
+            DrawViewMath.RevealRestoreAction.NoOp -> return
+            DrawViewMath.RevealRestoreAction.ResumeAnimation -> Unit
         }
-        if (pathLength <= 0f) return
 
         isRevealing = true
         setPhase(currentPhase)
