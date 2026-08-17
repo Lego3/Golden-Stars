@@ -172,4 +172,44 @@ class DrawViewMathTest {
         assertEquals(5000L, DrawViewMath.remainingAnimationDurationMs(currentPhase = 2f, animationDurationMs = 5000L))
         assertEquals(0L, DrawViewMath.remainingAnimationDurationMs(currentPhase = -0.5f, animationDurationMs = 5000L))
     }
+
+    @Test
+    fun `reveal restore shows complete when animation finished or instant render`() {
+        assertEquals(
+            DrawViewMath.RevealRestoreAction.ShowComplete,
+            DrawViewMath.revealRestoreAction(currentPhase = 0f, instantRender = false, pathLength = 100f),
+        )
+        assertEquals(
+            DrawViewMath.RevealRestoreAction.ShowComplete,
+            DrawViewMath.revealRestoreAction(currentPhase = -0.5f, instantRender = false, pathLength = 100f),
+        )
+        assertEquals(
+            DrawViewMath.RevealRestoreAction.ShowComplete,
+            DrawViewMath.revealRestoreAction(currentPhase = 0.5f, instantRender = true, pathLength = 100f),
+        )
+    }
+
+    @Test
+    fun `reveal restore waits when path is not ready yet`() {
+        assertEquals(
+            DrawViewMath.RevealRestoreAction.NoOp,
+            DrawViewMath.revealRestoreAction(currentPhase = 0.5f, instantRender = false, pathLength = 0f),
+        )
+        assertEquals(
+            DrawViewMath.RevealRestoreAction.NoOp,
+            DrawViewMath.revealRestoreAction(currentPhase = 0.5f, instantRender = false, pathLength = -1f),
+        )
+    }
+
+    @Test
+    fun `reveal restore resumes mid animation after configuration change`() {
+        assertEquals(
+            DrawViewMath.RevealRestoreAction.ResumeAnimation,
+            DrawViewMath.revealRestoreAction(currentPhase = 0.25f, instantRender = false, pathLength = 200f),
+        )
+        assertEquals(
+            DrawViewMath.RevealRestoreAction.ResumeAnimation,
+            DrawViewMath.revealRestoreAction(currentPhase = 1f, instantRender = false, pathLength = 200f),
+        )
+    }
 }
