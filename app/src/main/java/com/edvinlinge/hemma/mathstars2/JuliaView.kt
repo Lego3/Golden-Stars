@@ -199,12 +199,16 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     }
 
     /** False when the bitmap already holds a full resolution render of the current viewport. */
-    private fun needsFullRender(): Boolean =
-        !hasRenderedOnce ||
-            bitmapIsPreview ||
-            zoom != bitmapZoom ||
-            offsetX != bitmapOffsetX ||
-            offsetY != bitmapOffsetY
+    private fun needsFullRender(): Boolean = MandelbrotMath.needsFullRender(
+        hasRenderedOnce = hasRenderedOnce,
+        bitmapIsPreview = bitmapIsPreview,
+        zoom = zoom,
+        bitmapZoom = bitmapZoom,
+        offsetX = offsetX,
+        bitmapOffsetX = bitmapOffsetX,
+        offsetY = offsetY,
+        bitmapOffsetY = bitmapOffsetY,
+    )
 
     override fun performClick(): Boolean {
         super.performClick()
