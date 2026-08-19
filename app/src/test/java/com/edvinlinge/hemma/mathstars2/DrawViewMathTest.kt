@@ -172,4 +172,62 @@ class DrawViewMathTest {
         assertEquals(5000L, DrawViewMath.remainingAnimationDurationMs(currentPhase = 2f, animationDurationMs = 5000L))
         assertEquals(0L, DrawViewMath.remainingAnimationDurationMs(currentPhase = -0.5f, animationDurationMs = 5000L))
     }
+
+    @Test
+    fun `reveal restore resumes with remaining duration after configuration change`() {
+        val decision = DrawViewMath.revealRestoreDecision(
+            currentPhase = 0.4f,
+            instantRender = false,
+            pathLength = 100f,
+            animationDurationMs = 5000L,
+        )
+        assertEquals(DrawViewMath.RevealRestoreAction.Resume, decision.action)
+        assertEquals(0.4f, decision.phase, 1e-6f)
+        assertEquals(2000L, decision.remainingDurationMs)
+    }
+
+    @Test
+    fun `reveal restore shows complete when animation already finished`() {
+        val decision = DrawViewMath.revealRestoreDecision(
+            currentPhase = 0f,
+            instantRender = false,
+            pathLength = 100f,
+            animationDurationMs = 5000L,
+        )
+        assertEquals(DrawViewMath.RevealRestoreAction.ShowComplete, decision.action)
+    }
+
+    @Test
+    fun `reveal restore shows complete when instant render is enabled`() {
+        val decision = DrawViewMath.revealRestoreDecision(
+            currentPhase = 0.6f,
+            instantRender = true,
+            pathLength = 100f,
+            animationDurationMs = 5000L,
+        )
+        assertEquals(DrawViewMath.RevealRestoreAction.ShowComplete, decision.action)
+    }
+
+    @Test
+    fun `reveal restore skips when geometry is not ready yet`() {
+        val decision = DrawViewMath.revealRestoreDecision(
+            currentPhase = 0.5f,
+            instantRender = false,
+            pathLength = 0f,
+            animationDurationMs = 5000L,
+        )
+        assertEquals(DrawViewMath.RevealRestoreAction.Skip, decision.action)
+    }
+
+    @Test
+    fun `reveal restore at phase one keeps the full duration`() {
+        val decision = DrawViewMath.revealRestoreDecision(
+            currentPhase = 1f,
+            instantRender = false,
+            pathLength = 250f,
+            animationDurationMs = 3000L,
+        )
+        assertEquals(DrawViewMath.RevealRestoreAction.Resume, decision.action)
+        assertEquals(3000L, decision.remainingDurationMs)
+    }
 }
