@@ -38,6 +38,45 @@ internal object DrawViewMath {
     fun remainingAnimationDurationMs(currentPhase: Float, animationDurationMs: Long): Long =
         (coercedPhase(currentPhase) * animationDurationMs).toLong()
 
+    enum class RevealRestoreAction {
+        /** Animation already finished or should render instantly after a configuration change. */
+        ShowComplete,
+        /** Geometry is not ready yet; wait for the next layout pass. */
+        Skip,
+        /** Resume the reveal from the saved phase with the remaining duration. */
+        Resume,
+    }
+
+    data class RevealRestoreDecision(
+        val action: RevealRestoreAction,
+        val phase: Float = 0f,
+        val remainingDurationMs: Long = 0L,
+    )
+
+    /**
+     * Chooses how [DrawView] and [SpirographView] resume their reveal animation after
+     * [android.view.View.onRestoreInstanceState], when [onSizeChanged] may have started a fresh
+     * animation at phase 1.
+     */
+    fun revealRestoreDecision(
+        currentPhase: Float,
+        instantRender: Boolean,
+        pathLength: Float,
+        animationDurationMs: Long,
+    ): RevealRestoreDecision {
+        if (currentPhase <= 0f || instantRender) {
+            return RevealRestoreDecision(RevealRestoreAction.ShowComplete)
+        }
+        if (pathLength <= 0f) {
+            return RevealRestoreDecision(RevealRestoreAction.Skip)
+        }
+        return RevealRestoreDecision(
+            action = RevealRestoreAction.Resume,
+            phase = currentPhase,
+            remainingDurationMs = remainingAnimationDurationMs(currentPhase, animationDurationMs),
+        )
+    }
+
     /**
      * Adjusts pan offsets after a zoom change so the content under ([focusX], [focusY]) stays
      * fixed on screen.
