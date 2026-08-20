@@ -344,7 +344,7 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
         if (state is SavedState) {
             super.onRestoreInstanceState(state.superState)
             this.currentPhase = state.phase
-            this.zoom = state.zoom
+            this.zoom = DrawViewMath.coercedZoom(state.zoom, MIN_ZOOM, MAX_ZOOM)
             this.offsetX = state.offsetX
             this.offsetY = state.offsetY
             zoomCallback?.invoke(zoom)
