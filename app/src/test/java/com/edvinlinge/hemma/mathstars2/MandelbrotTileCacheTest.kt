@@ -122,6 +122,47 @@ class MandelbrotTileCacheTest {
         }
     }
 
+    @Test
+    fun `disk prune deletes the least recently used file not the one written first`() {
+        val dir = Files.createTempDirectory("mandelbrot-tiles-lru").toFile()
+        try {
+            val pixels = IntArray(256) { it * 1_000_003 + 7 }
+            var now = 1_000L
+            MandelbrotTileCache(
+                maxMemoryBytes = 1024 * 1024,
+                diskDir = dir,
+                maxDiskBytes = Long.MAX_VALUE,
+                currentTimeMs = { now },
+            ).saveToDisk(tileKey(0), pixels)
+            val size = dir.listFiles { file -> file.extension == "tile" }!!.single().length()
+            dir.listFiles()!!.forEach { it.delete() }
+
+            val cache = MandelbrotTileCache(
+                maxMemoryBytes = 1024 * 1024,
+                diskDir = dir,
+                maxDiskBytes = size * 2 + size / 2,
+                currentTimeMs = { now },
+            )
+            val firstWritten = tileKey(1)
+            val unusedLater = tileKey(2)
+            val newest = tileKey(3)
+            cache.saveToDisk(firstWritten, pixels)
+            now = 2_000L
+            cache.saveToDisk(unusedLater, pixels)
+            now = 3_000L
+            cache.put(firstWritten, pixels)
+            cache.get(firstWritten)
+            now = 4_000L
+            cache.saveToDisk(newest, pixels)
+
+            assertNotNull(cache.loadFromDisk(firstWritten))
+            assertNull(cache.loadFromDisk(unusedLater))
+            assertNotNull(cache.loadFromDisk(newest))
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
     private fun tileKey(id: Int, preview: Boolean = false) = MandelbrotTiles.TileKey(
         zoomStep = 0,
         tileX = id.toLong(),

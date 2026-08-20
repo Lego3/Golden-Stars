@@ -15,6 +15,11 @@ import java.util.zip.InflaterInputStream
  * LRU pixel cache for Mandelbrot tiles. The memory map is the live working set; the optional disk
  * directory keeps recently used tiles across view recreation and process death.
  *
+ * Disk eviction follows last *use*, not first write. A tile that stays in RAM (the default 1× view
+ * is the usual case) still counts as used, so a long zooming session does not delete it just because
+ * its file is old. Access times are flushed onto file lastModified so the same policy survives
+ * process death.
+ *
  * Access is not synchronized. The view uses this from the main thread except for the disk helpers,
  * which only read/write byte streams and then hop back to main to [put].
  */
@@ -22,6 +27,7 @@ internal class MandelbrotTileCache(
     val maxMemoryBytes: Long,
     private val diskDir: File?,
     private val maxDiskBytes: Long,
+    private val currentTimeMs: () -> Long = { System.currentTimeMillis() },
 ) {
     data class Entry(
         val pixels: IntArray,
@@ -34,12 +40,18 @@ internal class MandelbrotTileCache(
 
     private val memory = LinkedHashMap<MandelbrotTiles.TileKey, Entry>(16, 0.75f, true)
     private var usedBytes = 0L
+    private val lastAccessMs = HashMap<String, Long>()
+    private val lastTouchMs = HashMap<String, Long>()
 
     val memorySize: Int get() = memory.size
     val memoryBytes: Long get() = usedBytes
     val keys: Set<MandelbrotTiles.TileKey> get() = memory.keys.toSet()
 
-    fun get(key: MandelbrotTiles.TileKey): Entry? = memory[key]
+    fun get(key: MandelbrotTiles.TileKey): Entry? {
+        val entry = memory[key] ?: return null
+        recordAccess(key)
+        return entry
+    }
 
     fun contains(key: MandelbrotTiles.TileKey): Boolean = memory.containsKey(key)
 
@@ -53,6 +65,7 @@ internal class MandelbrotTileCache(
         memory.remove(key)?.let { usedBytes -= it.byteCount }
         memory[key] = entry
         usedBytes += entry.byteCount
+        recordAccess(key)
         evictIfNeeded(protectedKeys + key)
     }
 
@@ -71,7 +84,8 @@ internal class MandelbrotTileCache(
                         for (i in 0 until count) {
                             pixels[i] = input.readInt()
                         }
-                        file.setLastModified(System.currentTimeMillis())
+                        recordAccess(key)
+                        touchFile(file)
                         Entry(pixels, key.preview)
                     }
                 }
@@ -104,6 +118,8 @@ internal class MandelbrotTileCache(
                 file.delete()
                 tmp.renameTo(file)
             }
+            recordAccess(key)
+            flushAccessTimesToFiles()
             pruneDisk()
         } catch (_: Exception) {
             tmp.delete()
@@ -130,6 +146,32 @@ internal class MandelbrotTileCache(
         if (usedBytes < 0L) usedBytes = 0L
     }
 
+    private fun recordAccess(key: MandelbrotTiles.TileKey) {
+        val file = diskFile(key) ?: return
+        lastAccessMs[file.name] = currentTimeMs()
+    }
+
+    /**
+     * Copy in-memory last-use times onto the files so a later process still evicts by last use.
+     * Skips files touched recently to avoid extra filesystem work during a gesture.
+     */
+    private fun flushAccessTimesToFiles() {
+        val dir = diskDir ?: return
+        val now = currentTimeMs()
+        for ((name, accessed) in lastAccessMs) {
+            val touched = lastTouchMs[name] ?: 0L
+            if (accessed - touched < TOUCH_MIN_INTERVAL_MS) continue
+            val file = File(dir, name)
+            if (file.isFile) touchFile(file, accessed.coerceAtMost(now))
+        }
+    }
+
+    private fun touchFile(file: File, atMs: Long = currentTimeMs()) {
+        if (file.setLastModified(atMs)) {
+            lastTouchMs[file.name] = atMs
+        }
+    }
+
     private fun diskFile(key: MandelbrotTiles.TileKey): File? {
         val dir = diskDir ?: return null
         val name = buildString {
@@ -150,16 +192,23 @@ internal class MandelbrotTileCache(
         val files = dir.listFiles { file -> file.isFile && file.name.endsWith(".tile") } ?: return
         var total = files.sumOf { it.length() }
         if (total <= maxDiskBytes) return
-        val oldestFirst = files.sortedBy { it.lastModified() }
-        for (file in oldestFirst) {
+        val leastRecentlyUsedFirst = files.sortedBy { file ->
+            lastAccessMs[file.name] ?: file.lastModified()
+        }
+        for (file in leastRecentlyUsedFirst) {
             if (total <= maxDiskBytes) break
             val size = file.length()
-            if (file.delete()) total -= size
+            if (file.delete()) {
+                total -= size
+                lastAccessMs.remove(file.name)
+                lastTouchMs.remove(file.name)
+            }
         }
     }
 
     companion object {
         private const val MAGIC = 0x4D425431 // "MBT1"
         private const val MAX_PIXELS = 512 * 512 * 16
+        private const val TOUCH_MIN_INTERVAL_MS = 30_000L
     }
 }
