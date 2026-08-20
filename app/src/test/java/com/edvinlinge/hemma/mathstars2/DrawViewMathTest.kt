@@ -16,6 +16,13 @@ class DrawViewMathTest {
     }
 
     @Test
+    fun `coerced zoom clamps restored viewport values to the allowed range`() {
+        assertEquals(0.5f, DrawViewMath.coercedZoom(0.1f, minZoom = 0.5f, maxZoom = 10.0f), 1e-6f)
+        assertEquals(10.0f, DrawViewMath.coercedZoom(25.0f, minZoom = 0.5f, maxZoom = 10.0f), 1e-6f)
+        assertEquals(4.0f, DrawViewMath.coercedZoom(4.0f, minZoom = 0.5f, maxZoom = 10.0f), 1e-6f)
+    }
+
+    @Test
     fun `zooming in keeps the focus point fixed on screen`() {
         val focusX = 240f
         val focusY = 180f

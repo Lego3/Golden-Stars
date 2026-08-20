@@ -20,6 +20,10 @@ internal object DrawViewMath {
     fun clampedZoom(currentZoom: Float, factor: Float, minZoom: Float, maxZoom: Float): Float =
         (currentZoom * factor).coerceIn(minZoom, maxZoom)
 
+    /** Clamps a restored viewport zoom to the allowed range after configuration changes. */
+    fun coercedZoom(zoom: Float, minZoom: Float, maxZoom: Float): Float =
+        zoom.coerceIn(minZoom, maxZoom)
+
     /** Returns null when [speedMultiplier] is not positive; otherwise duration in milliseconds. */
     fun animationDurationMs(
         speedMultiplier: Float,

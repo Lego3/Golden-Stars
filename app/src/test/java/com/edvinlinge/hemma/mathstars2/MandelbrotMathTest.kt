@@ -216,6 +216,23 @@ class MandelbrotMathTest {
     }
 
     @Test
+    fun `stale bitmap transform pans vertically when the viewport center moves before rerender`() {
+        val units = MandelbrotMath.unitsPerPixel(1.0, 800, 600)
+        val panDown = 0.01
+        val (_, _, dy) = MandelbrotMath.staleBitmapDrawTransform(
+            zoom = 1.0,
+            bitmapZoom = 1.0,
+            offsetX = -0.5,
+            offsetY = 0.0 + panDown,
+            bitmapOffsetX = -0.5,
+            bitmapOffsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+        )
+        assertEquals((-panDown / units).toFloat(), dy, 1e-4f)
+    }
+
+    @Test
     fun `needs full render when nothing has been drawn yet`() {
         assertTrue(
             MandelbrotMath.needsFullRender(
@@ -278,6 +295,18 @@ class MandelbrotMathTest {
                 offsetX = -0.4,
                 bitmapOffsetX = -0.5,
                 offsetY = 0.0,
+                bitmapOffsetY = 0.0,
+            ),
+        )
+        assertTrue(
+            MandelbrotMath.needsFullRender(
+                hasRenderedOnce = true,
+                bitmapIsPreview = false,
+                zoom = 1.0,
+                bitmapZoom = 1.0,
+                offsetX = -0.5,
+                bitmapOffsetX = -0.5,
+                offsetY = 0.2,
                 bitmapOffsetY = 0.0,
             ),
         )
