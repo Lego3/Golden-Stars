@@ -698,7 +698,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         const val MAX_PREVIEW_BATCH = 8
         const val MIN_MEMORY_BYTES = 16L * 1024L * 1024L
         const val MAX_MEMORY_BYTES = 64L * 1024L * 1024L
-        const val DISK_CACHE_BYTES = 48L * 1024L * 1024L
+        const val DISK_CACHE_BYTES = 128L * 1024L * 1024L
 
         private val cacheLock = Any()
         private var processCache: MandelbrotTileCache? = null
