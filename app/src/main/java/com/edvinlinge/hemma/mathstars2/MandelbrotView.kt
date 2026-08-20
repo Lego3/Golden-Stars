@@ -309,6 +309,19 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                 }
 
                 if (generation != renderGeneration) return@launch
+                if (
+                    !MandelbrotMath.renderTargetMatchesViewport(
+                        zoom = zoom,
+                        offsetX = offsetX,
+                        offsetY = offsetY,
+                        renderZoom = renderZoom,
+                        renderOffsetX = renderOffsetX,
+                        renderOffsetY = renderOffsetY,
+                    ) ||
+                    palette != colorPalette
+                ) {
+                    return@launch
+                }
                 val target = bitmap ?: return@launch
                 if (target.width != viewWidth || target.height != viewHeight) return@launch
 

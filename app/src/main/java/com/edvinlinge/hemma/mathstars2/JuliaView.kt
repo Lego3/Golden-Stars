@@ -317,6 +317,21 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
                 }
 
                 if (generation != renderGeneration) return@launch
+                if (
+                    !MandelbrotMath.renderTargetMatchesViewport(
+                        zoom = zoom,
+                        offsetX = offsetX,
+                        offsetY = offsetY,
+                        renderZoom = renderZoom,
+                        renderOffsetX = renderOffsetX,
+                        renderOffsetY = renderOffsetY,
+                    ) ||
+                    renderCReal != cReal ||
+                    renderCImag != cImag ||
+                    palette != colorPalette
+                ) {
+                    return@launch
+                }
                 val target = bitmap ?: return@launch
                 if (target.width != viewWidth || target.height != viewHeight) return@launch
 

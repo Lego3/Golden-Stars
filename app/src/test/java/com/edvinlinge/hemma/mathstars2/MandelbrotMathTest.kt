@@ -233,6 +233,40 @@ class MandelbrotMathTest {
     }
 
     @Test
+    fun `render target matches the live viewport only when all coordinates agree`() {
+        assertTrue(
+            MandelbrotMath.renderTargetMatchesViewport(
+                zoom = 2.0,
+                offsetX = -0.5,
+                offsetY = 0.1,
+                renderZoom = 2.0,
+                renderOffsetX = -0.5,
+                renderOffsetY = 0.1,
+            ),
+        )
+        assertFalse(
+            MandelbrotMath.renderTargetMatchesViewport(
+                zoom = 4.0,
+                offsetX = -0.5,
+                offsetY = 0.1,
+                renderZoom = 2.0,
+                renderOffsetX = -0.5,
+                renderOffsetY = 0.1,
+            ),
+        )
+        assertFalse(
+            MandelbrotMath.renderTargetMatchesViewport(
+                zoom = 2.0,
+                offsetX = -0.4,
+                offsetY = 0.1,
+                renderZoom = 2.0,
+                renderOffsetX = -0.5,
+                renderOffsetY = 0.1,
+            ),
+        )
+    }
+
+    @Test
     fun `needs full render when nothing has been drawn yet`() {
         assertTrue(
             MandelbrotMath.needsFullRender(
