@@ -103,6 +103,21 @@ internal object MandelbrotMath {
         return Triple(scale, dx, dy)
     }
 
+    /**
+     * True when the viewport still matches what an in-flight render was started for. Stale
+     * preview results must not overwrite a full-resolution bitmap when the user pans back before
+     * the preview finishes.
+     */
+    fun renderTargetMatchesViewport(
+        zoom: Double,
+        offsetX: Double,
+        offsetY: Double,
+        renderZoom: Double,
+        renderOffsetX: Double,
+        renderOffsetY: Double,
+    ): Boolean =
+        zoom == renderZoom && offsetX == renderOffsetX && offsetY == renderOffsetY
+
     /** True when the on-screen bitmap no longer matches the current viewport and needs a rerender. */
     fun needsFullRender(
         hasRenderedOnce: Boolean,
