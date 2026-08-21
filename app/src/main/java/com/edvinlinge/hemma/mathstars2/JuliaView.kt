@@ -318,17 +318,20 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
                 if (generation != renderGeneration) return@launch
                 if (
-                    !MandelbrotMath.renderTargetMatchesViewport(
+                    !JuliaMath.shouldApplyRenderResult(
                         zoom = zoom,
                         offsetX = offsetX,
                         offsetY = offsetY,
                         renderZoom = renderZoom,
                         renderOffsetX = renderOffsetX,
                         renderOffsetY = renderOffsetY,
-                    ) ||
-                    renderCReal != cReal ||
-                    renderCImag != cImag ||
-                    palette != colorPalette
+                        renderCReal = renderCReal,
+                        renderCImag = renderCImag,
+                        cReal = cReal,
+                        cImag = cImag,
+                        renderPalette = palette,
+                        currentPalette = colorPalette,
+                    )
                 ) {
                     return@launch
                 }

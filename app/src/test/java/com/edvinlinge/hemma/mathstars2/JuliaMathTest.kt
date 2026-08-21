@@ -83,6 +83,79 @@ class JuliaMathTest {
     }
 
     @Test
+    fun `render result applies only when viewport constant and palette still match`() {
+        val viewport = arrayOf(
+            2.0, -0.5, 0.1,
+            2.0, -0.5, 0.1,
+        )
+        val rabbit = JuliaMath.presetAt(0)
+        assertTrue(
+            JuliaMath.shouldApplyRenderResult(
+                zoom = viewport[0],
+                offsetX = viewport[1],
+                offsetY = viewport[2],
+                renderZoom = viewport[3],
+                renderOffsetX = viewport[4],
+                renderOffsetY = viewport[5],
+                renderCReal = rabbit.real,
+                renderCImag = rabbit.imag,
+                cReal = rabbit.real,
+                cImag = rabbit.imag,
+                renderPalette = "golden",
+                currentPalette = "golden",
+            ),
+        )
+        assertFalse(
+            JuliaMath.shouldApplyRenderResult(
+                zoom = viewport[0],
+                offsetX = viewport[1],
+                offsetY = viewport[2],
+                renderZoom = viewport[3],
+                renderOffsetX = viewport[4],
+                renderOffsetY = viewport[5],
+                renderCReal = rabbit.real,
+                renderCImag = rabbit.imag,
+                cReal = -0.75,
+                cImag = 0.0,
+                renderPalette = "golden",
+                currentPalette = "golden",
+            ),
+        )
+        assertFalse(
+            JuliaMath.shouldApplyRenderResult(
+                zoom = viewport[0],
+                offsetX = viewport[1],
+                offsetY = viewport[2],
+                renderZoom = viewport[3],
+                renderOffsetX = viewport[4],
+                renderOffsetY = viewport[5],
+                renderCReal = rabbit.real,
+                renderCImag = rabbit.imag,
+                cReal = rabbit.real,
+                cImag = rabbit.imag,
+                renderPalette = "golden",
+                currentPalette = "silver",
+            ),
+        )
+        assertFalse(
+            JuliaMath.shouldApplyRenderResult(
+                zoom = 4.0,
+                offsetX = viewport[1],
+                offsetY = viewport[2],
+                renderZoom = viewport[3],
+                renderOffsetX = viewport[4],
+                renderOffsetY = viewport[5],
+                renderCReal = rabbit.real,
+                renderCImag = rabbit.imag,
+                cReal = rabbit.real,
+                cImag = rabbit.imag,
+                renderPalette = "golden",
+                currentPalette = "golden",
+            ),
+        )
+    }
+
+    @Test
     fun `format constant uses a plus or minus before the imaginary part`() {
         assertEquals("-0.123 + 0.745i", JuliaMath.formatConstant(-0.123, 0.745))
         assertEquals("0 + 1i", JuliaMath.formatConstant(0.0, 1.0))

@@ -65,6 +65,36 @@ internal object JuliaMath {
         maxIterations: Int = MandelbrotMath.MAX_ITERATIONS,
     ): Boolean = escapeIterations(0.0, 0.0, cr, ci, maxIterations) == maxIterations
 
+    /**
+     * True when an in-flight Julia render result should be written to the bitmap. Besides the
+     * viewport, the constant *c* and palette must still match what the job was started with.
+     */
+    fun <T> shouldApplyRenderResult(
+        zoom: Double,
+        offsetX: Double,
+        offsetY: Double,
+        renderZoom: Double,
+        renderOffsetX: Double,
+        renderOffsetY: Double,
+        renderCReal: Double,
+        renderCImag: Double,
+        cReal: Double,
+        cImag: Double,
+        renderPalette: T,
+        currentPalette: T,
+    ): Boolean =
+        MandelbrotMath.renderTargetMatchesViewport(
+            zoom = zoom,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            renderZoom = renderZoom,
+            renderOffsetX = renderOffsetX,
+            renderOffsetY = renderOffsetY,
+        ) &&
+            renderCReal == cReal &&
+            renderCImag == cImag &&
+            renderPalette == currentPalette
+
     /** Formats *c* as `a + bi` / `a - bi` with trailing zeros stripped. */
     fun formatConstant(real: Double, imag: Double): String {
         val realPart = formatNumber(real)

@@ -310,15 +310,16 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
 
                 if (generation != renderGeneration) return@launch
                 if (
-                    !MandelbrotMath.renderTargetMatchesViewport(
+                    !MandelbrotMath.shouldApplyRenderResult(
                         zoom = zoom,
                         offsetX = offsetX,
                         offsetY = offsetY,
                         renderZoom = renderZoom,
                         renderOffsetX = renderOffsetX,
                         renderOffsetY = renderOffsetY,
-                    ) ||
-                    palette != colorPalette
+                        renderPalette = palette,
+                        currentPalette = colorPalette,
+                    )
                 ) {
                     return@launch
                 }
