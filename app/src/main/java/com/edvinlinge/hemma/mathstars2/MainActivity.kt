@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.doOnLayout
 import androidx.core.view.updateLayoutParams
 import com.edvinlinge.hemma.mathstars2.databinding.ActivityMainBinding
 
@@ -22,26 +23,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        ViewCompat.setOnApplyWindowInsetsListener(binding.drawLayout) { view, insets ->
-            val bars = insets.getInsets(
-                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
-            )
-            val extra = resources.getDimensionPixelSize(R.dimen.hub_content_padding)
-            val bottomClearance = resources.getDimensionPixelSize(R.dimen.hub_version_clearance)
-            view.setPadding(
-                bars.left + extra,
-                bars.top + extra,
-                bars.right + extra,
-                bars.bottom + extra + bottomClearance,
-            )
-            WindowInsetsCompat.CONSUMED
-        }
-
-        ViewCompat.setOnApplyWindowInsetsListener(binding.versionText) { view, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.updateLayoutParams<CoordinatorLayout.LayoutParams> {
-                bottomMargin = bars.bottom + resources.getDimensionPixelSize(R.dimen.overlay_edge_margin)
-            }
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            applyHubInsets(insets)
             insets
         }
 
@@ -72,5 +55,36 @@ class MainActivity : AppCompatActivity() {
         } catch (_: PackageManager.NameNotFoundException) {
             ""
         }
+        binding.versionText.doOnLayout { updateHubScrollBottomPadding() }
+    }
+
+    private fun applyHubInsets(insets: WindowInsetsCompat) {
+        val bars = insets.getInsets(
+            WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+        )
+        val contentPadding = resources.getDimensionPixelSize(R.dimen.hub_content_padding)
+        val edgeMargin = resources.getDimensionPixelSize(R.dimen.overlay_edge_margin)
+
+        binding.drawLayout.setPadding(
+            bars.left + contentPadding,
+            bars.top + contentPadding,
+            bars.right + contentPadding,
+            bars.bottom + contentPadding,
+        )
+
+        binding.versionText.updateLayoutParams<CoordinatorLayout.LayoutParams> {
+            bottomMargin = bars.bottom + edgeMargin
+        }
+
+        updateHubScrollBottomPadding()
+    }
+
+    private fun updateHubScrollBottomPadding() {
+        val version = binding.versionText
+        if (version.height == 0) return
+
+        val versionMargin = (version.layoutParams as CoordinatorLayout.LayoutParams).bottomMargin
+        val extraGap = resources.getDimensionPixelSize(R.dimen.hub_version_clearance)
+        binding.hubScrollView.setPadding(0, 0, 0, version.height + versionMargin + extraGap)
     }
 }
