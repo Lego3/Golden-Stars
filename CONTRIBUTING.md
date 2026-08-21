@@ -26,14 +26,28 @@ MainActivity (hub)
 └── JuliaActivity     → JuliaView       + JuliaMath
 ```
 
-Shared across explorers:
+### Hub screen
+
+`MainActivity` is a scrollable card list with a floating version label pinned to the
+bottom of the window. Cards launch each explorer; the label reads `versionName` from the
+package manager.
+
+Edge-to-edge insets differ from the explorers: the scroll content gets system-bar and
+cutout padding (`hub_content_padding` plus bar insets), while the version label sits in a
+`CoordinatorLayout` overlay with its own bottom margin. `updateHubScrollBottomPadding`
+adds bottom padding to the `NestedScrollView` equal to the label height, margin, and
+`hub_version_clearance` so the last card can scroll fully above the label.
+`MainActivityTest` asserts both the padding math and that the Julia card does not overlap
+the label when scrolled to the end.
+
+### Shared UI and persistence
 
 | Component | Role |
 |-----------|------|
 | `SettingsBottomSheet` | Sliders and toggles for geometry, colour, speed, and style |
 | `InfoBottomSheet` | Short help text or HTML details (star / Spirograph GCD facts, Julia *c* membership) |
 | `AppPreferences` | `SharedPreferences` wrapper; one settings blob per explorer |
-| `ScreenInsets` | Edge-to-edge layout helper for floating overlays and system bars |
+| `ScreenInsets` / `doOnScreenInsets` | Maps system bars and cutouts to layout-direction-aware start/end insets for floating overlays |
 | `ZoomFormat` | Human-readable zoom labels on Mandelbrot and Julia screens |
 
 Package: `com.edvinlinge.hemma.mathstars2`. View binding is enabled; layouts live under
@@ -47,7 +61,9 @@ views so it stays fast to test.
 
 - **`StarMath`** — GCD-based star polygons: visited dot count, single-stroke detection,
   fill safety (`canFill` rejects digons that would vanish when filled), and vertex order.
-- **`DrawViewMath`** — Pan/zoom focus math and reveal-animation timing for `DrawView`.
+- **`DrawViewMath`** — Pan/zoom focus math, zoom clamping after configuration changes
+  (`coercedZoom`), reveal-animation timing, and `revealRestoreAction` for resuming or
+  skipping the path reveal after rotation.
 - **`SpirographMath`** — Hypotrochoid / epitrochoid sampling, period and lobe counts
   (reuses `StarMath.gcd`), and view fitting.
 - **`MandelbrotMath`** — Viewport sizing, zoom-clamped iteration counts, escape-time
@@ -62,8 +78,11 @@ views so it stays fast to test.
 **Path reveal (Golden Stars, Spirograph).** `DrawView` and `SpirographView` build a
 closed `Path`, then animate reveal with `PathMeasure` and `ValueAnimator`. Phase `1` is
 fully hidden, `0` is complete. Speed maps to duration via `DrawViewMath`; at high speed
-the figure draws instantly. Both views save `currentPhase` across configuration changes
-and resume the remaining reveal time (`DrawViewMath.remainingAnimationDurationMs`).
+the figure draws instantly. Both views save `currentPhase` and viewport across
+configuration changes. Because `onSizeChanged` can start a fresh reveal before
+`onRestoreInstanceState` runs, `DrawViewMath.revealRestoreAction` decides whether to
+show the completed figure, skip (empty path), or resume with
+`remainingAnimationDurationMs`.
 
 **Bitmap coroutines (Mandelbrot, Julia).** Gestures update a logical viewport
 (`zoom`, `offsetX`, `offsetY`; Julia also holds `cReal` / `cImag`). Iteration depth
@@ -106,6 +125,11 @@ Each host activity:
 2. Shows the sheet with arguments describing which control groups are visible.
 3. Listens for result keys and applies the snapshot to its view.
 
+Fractal and pan/zoom views also save viewport fields in `onSaveInstanceState` and clamp
+restored zoom through `MandelbrotMath.coercedZoom` (Mandelbrot, Julia) or
+`DrawViewMath.coercedZoom` (Golden Stars, Spirograph) so an out-of-range value from an
+older build cannot break gestures after rotation.
+
 `AppPreferences` normalizes Spirograph radii through `SpirographMath.normalized` on load
 and save so stored values always match slider bounds.
 
@@ -113,8 +137,8 @@ and save so stored values always match slider bounds.
 
 | Layer | Location | Examples |
 |-------|----------|----------|
-| Unit | `app/src/test/` | `StarMathTest`, `SpirographMathTest`, `JuliaMathTest`, `MandelbrotMathTest`, `MandelbrotTilesTest`, `MandelbrotTileCacheTest`, `DrawViewMathTest` |
-| Instrumented | `app/src/androidTest/` | Settings round-trip, rotation survival, smoke launch per activity |
+| Unit | `app/src/test/` | `StarMathTest`, `SpirographMathTest`, `JuliaMathTest`, `MandelbrotMathTest`, `MandelbrotTilesTest`, `MandelbrotTileCacheTest`, `DrawViewMathTest`, `ScreenInsetsTest` |
+| Instrumented | `app/src/androidTest/` | Settings round-trip, rotation survival, smoke launch per activity, hub scroll/version layout (`MainActivityTest`) |
 
 When adding behaviour, extend the matching `*Math` unit tests first. Reserve
 instrumented tests for Android integration (preferences, fragments, configuration
