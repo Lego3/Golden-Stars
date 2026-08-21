@@ -65,21 +65,29 @@ fully hidden, `0` is complete. Speed maps to duration via `DrawViewMath`; at hig
 the figure draws instantly. Both views save `currentPhase` across configuration changes
 and resume the remaining reveal time (`DrawViewMath.remainingAnimationDurationMs`).
 
-**Bitmap coroutines (Mandelbrot, Julia).** `MandelbrotView` and `JuliaView` share the
-same pipeline:
+**Bitmap coroutines (Mandelbrot, Julia).** Gestures update a logical viewport
+(`zoom`, `offsetX`, `offsetY`; Julia also holds `cReal` / `cImag`). Iteration depth
+scales with zoom (`MandelbrotMath.iterationsFor`) and is capped to keep frames bounded.
 
-1. Gestures update a logical viewport (`zoom`, `offsetX`, `offsetY`; Julia also holds
-   `cReal` / `cImag`).
-2. While interacting, a **preview** pass renders at reduced resolution
+`JuliaView` still uses a single view-sized bitmap:
+
+1. While interacting, a **preview** pass renders at reduced resolution
    (`requestPreviewRender`).
-3. When idle, a **full** pass renders at view size (`requestFullRender`).
-4. Until the new bitmap arrives, the previous one is scaled and shifted using
+2. When idle, a **full** pass renders at view size (`requestFullRender`).
+3. Until the new bitmap arrives, the previous one is scaled and shifted using
    `MandelbrotMath.staleBitmapDrawTransform` so pan and pinch stay responsive.
+4. In-flight results are dropped when the viewport, palette, or Julia constant no
+   longer match (`shouldApplyRenderResult`), so a late preview cannot overwrite a
+   correct full-resolution frame.
 5. Pixel buffers are written on a background dispatcher; `bufferJob` serializes access
    so a detached view never races with a new attach.
 
-Iteration depth scales with zoom (`MandelbrotMath.iterationsFor`) and is capped to keep
-frames bounded.
+`MandelbrotView` composites **tiles** instead of one full-view bitmap. Cached tiles live
+on power-of-two zoom steps (`MandelbrotTiles`), in an in-memory LRU plus an on-disk
+store (`MandelbrotTileCache`). Nearby zoom steps and parent tiles stand in, scaled,
+while missing tiles render in the background. Prefetch fills neighbours and the next 2×
+zoom after a gesture settles. Disk eviction follows last *use*, including memory hits,
+so the default 1× view is not deleted just because it was written first.
 
 ### Settings and configuration changes
 
@@ -100,7 +108,7 @@ and save so stored values always match slider bounds.
 
 | Layer | Location | Examples |
 |-------|----------|----------|
-| Unit | `app/src/test/` | `StarMathTest`, `SpirographMathTest`, `JuliaMathTest`, `MandelbrotMathTest`, `DrawViewMathTest` |
+| Unit | `app/src/test/` | `StarMathTest`, `SpirographMathTest`, `JuliaMathTest`, `MandelbrotMathTest`, `MandelbrotTilesTest`, `MandelbrotTileCacheTest`, `DrawViewMathTest` |
 | Instrumented | `app/src/androidTest/` | Settings round-trip, rotation survival, smoke launch per activity |
 
 When adding behaviour, extend the matching `*Math` unit tests first. Reserve
@@ -139,7 +147,7 @@ Actions runners. Put those in separate, clearly described pull requests.
 - Match the existing Kotlin style in the file you are editing.
 - Prefer the patterns already used in activities and views (Fragment Result
   API for bottom sheets, path animation for stars and Spirograph, coroutines
-  for Mandelbrot and Julia rendering).
+  for Mandelbrot tile rendering and Julia bitmap rendering).
 - Do not reformat unrelated code.
 
 ## Questions
