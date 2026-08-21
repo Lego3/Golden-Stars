@@ -26,8 +26,9 @@ Golden Stars runs entirely on your device: no accounts, no ads, no data collecti
 step. Watch the shape draw itself, tweak colours and speed, and open *Details* to learn
 which star figures are possible for a given number of dots.
 
-**Mandelbrot Set:** Pinch to zoom and drag to pan through the classic fractal. A live
-preview keeps gestures smooth while the full-resolution render catches up.
+**Mandelbrot Set:** Pinch to zoom and drag to pan through the classic fractal. Cached
+tiles, nearby zoom levels, and predictive pre-rendering keep motion smooth while a
+sharper image catches up.
 
 **Spirograph:** Watch a hypotrochoid (or epitrochoid) draw itself in one stroke. Sliders
 set the fixed ring, rolling wheel, and pen distance. *Details* explains when the curve

@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.RectF
 import android.os.Parcel
 import android.os.Parcelable
 import android.util.AttributeSet
@@ -14,44 +15,39 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import androidx.core.graphics.createBitmap
-import androidx.core.graphics.withSave
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    /** Bilinear filter so scaled "near correct" tiles stay smooth while a sharper tile loads. */
+    private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val srcRect = Rect()
+    private val destRect = RectF()
 
-    /** The image on screen. Always matches the view size. */
-    private var bitmap: Bitmap? = null
-
-    /** Scratch bitmap used to upscale a low resolution preview into [bitmap]. */
-    private var previewScratch: Bitmap? = null
-    private var fullPixels: IntArray? = null
-    private var previewPixels: IntArray? = null
+    private val tileCache = sharedCache(context.applicationContext)
+    private val bitmaps = HashMap<MandelbrotTiles.TileKey, Bitmap>()
 
     private var zoom = DEFAULT_ZOOM
     private var offsetX = DEFAULT_OFFSET_X
     private var offsetY = DEFAULT_OFFSET_Y
-
-    // The viewport [bitmap] was rendered for. While a new render is in flight the existing image
-    // is scaled and shifted to approximate the current viewport, so gestures stay responsive.
-    private var bitmapZoom = DEFAULT_ZOOM
-    private var bitmapOffsetX = DEFAULT_OFFSET_X
-    private var bitmapOffsetY = DEFAULT_OFFSET_Y
-    private var hasRenderedOnce = false
-    private var bitmapIsPreview = false
+    private var focusComplexX = DEFAULT_OFFSET_X
+    private var focusComplexY = DEFAULT_OFFSET_Y
+    private var panSignX = 0
+    private var panSignY = 0
+    private var zoomSign = 0
 
     private var colorPalette = Palette.GOLDEN
 
@@ -60,14 +56,14 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
      * and later reattached, so this must be recreated rather than permanently cancelled once.
      */
     private var renderScope: CoroutineScope? = null
-    private var renderJob: Job? = null
-    /** Last job that touched the shared pixel buffers; kept across detach so a reattach can join it. */
-    private var bufferJob: Job? = null
-    private var renderGeneration = 0L
+    private var workJob: Job? = null
+    private var currentWorkIsPrefetch = false
+    private var workEpoch = 0L
 
     private var isInteracting = false
     private var zoomCallback: ((Double) -> Unit)? = null
     private var renderingStateCallback: ((Boolean) -> Unit)? = null
+    private var spinnerVisible = false
 
     enum class Palette {
         GOLDEN, SILVER, BLUE, GREEN
@@ -75,6 +71,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
 
     init {
         contentDescription = context.getString(R.string.mandelbrot_description_a11y)
+        tileCache.onEvicted = ::onTileEvicted
     }
 
     private val scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -100,6 +97,8 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             val unitsPerPixel = unitsPerPixel(zoom, width, height)
             offsetX += distanceX * unitsPerPixel
             offsetY += distanceY * unitsPerPixel
+            panSignX = signOf(distanceX)
+            panSignY = signOf(distanceY)
             invalidate()
             requestPreviewRender()
             return true
@@ -114,6 +113,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     fun setColorPalette(palette: Palette) {
         if (palette == colorPalette) return
         colorPalette = palette
+        invalidate()
         requestFullRender()
     }
 
@@ -130,6 +130,11 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         zoom = DEFAULT_ZOOM
         offsetX = DEFAULT_OFFSET_X
         offsetY = DEFAULT_OFFSET_Y
+        focusComplexX = DEFAULT_OFFSET_X
+        focusComplexY = DEFAULT_OFFSET_Y
+        panSignX = 0
+        panSignY = 0
+        zoomSign = 0
         zoomCallback?.invoke(zoom)
         invalidate()
         requestFullRender()
@@ -142,6 +147,10 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     private fun zoomAround(focusX: Float, focusY: Float, factor: Double) {
         val target = MandelbrotMath.clampedZoom(zoom, factor, MIN_ZOOM, MAX_ZOOM)
         if (target == zoom) return
+
+        focusComplexX = MandelbrotMath.complexXAtScreen(focusX, offsetX, zoom, width, height)
+        focusComplexY = MandelbrotMath.complexYAtScreen(focusY, offsetY, zoom, width, height)
+        zoomSign = if (target > zoom) 1 else -1
 
         val oldZoom = zoom
         val (newOffsetX, newOffsetY) = MandelbrotMath.offsetAfterZoomChange(
@@ -163,12 +172,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         requestPreviewRender()
     }
 
-    private fun screenToComplexX(screenX: Float): Double =
-        MandelbrotMath.complexXAtScreen(screenX, offsetX, zoom, width, height)
-
-    private fun screenToComplexY(screenY: Float): Double =
-        MandelbrotMath.complexYAtScreen(screenY, offsetY, zoom, width, height)
-
     /**
      * Size of one pixel in the complex plane. Derived from the shorter view edge so pixels stay
      * square and the set is not stretched by the screen's aspect ratio.
@@ -183,8 +186,10 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
             if (isInteracting) {
                 isInteracting = false
-                if (needsFullRender()) {
+                if (!visibleTilesComplete()) {
                     requestFullRender()
+                } else {
+                    ensureWorkScheduled()
                 }
             }
             if (event.actionMasked == MotionEvent.ACTION_UP) {
@@ -194,18 +199,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         return true
     }
 
-    /** False when the bitmap already holds a full resolution render of the current viewport. */
-    private fun needsFullRender(): Boolean = MandelbrotMath.needsFullRender(
-        hasRenderedOnce = hasRenderedOnce,
-        bitmapIsPreview = bitmapIsPreview,
-        zoom = zoom,
-        bitmapZoom = bitmapZoom,
-        offsetX = offsetX,
-        bitmapOffsetX = bitmapOffsetX,
-        offsetY = offsetY,
-        bitmapOffsetY = bitmapOffsetY,
-    )
-
     override fun performClick(): Boolean {
         super.performClick()
         return true
@@ -214,147 +207,260 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w <= 0 || h <= 0) return
-
-        // Deliberately not recycled: a render that has not unwound yet may still reference it.
-        bitmap = createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        hasRenderedOnce = false
+        recycleBitmaps()
         requestFullRender()
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val bmp = bitmap ?: return
-        if (!hasRenderedOnce) return
+        canvas.drawColor(Color.BLACK)
+        if (width <= 0 || height <= 0) return
 
-        val (imageScale, dx, dy) = MandelbrotMath.staleBitmapDrawTransform(
+        val draws = MandelbrotTiles.composeDrawList(
             zoom = zoom,
-            bitmapZoom = bitmapZoom,
             offsetX = offsetX,
             offsetY = offsetY,
-            bitmapOffsetX = bitmapOffsetX,
-            bitmapOffsetY = bitmapOffsetY,
             viewWidth = width,
             viewHeight = height,
+            tilePixelSize = MandelbrotTiles.tilePixelSize(width, height),
+            paletteOrdinal = colorPalette.ordinal,
+            available = tileCache.keys,
         )
-
-        canvas.withSave {
-            translate(width / 2f + dx, height / 2f + dy)
-            scale(imageScale, imageScale)
-            translate(-width / 2f, -height / 2f)
-            drawBitmap(bmp, 0f, 0f, paint)
+        for (draw in draws) {
+            val bmp = bitmapFor(draw.key) ?: continue
+            srcRect.set(draw.src.left, draw.src.top, draw.src.right, draw.src.bottom)
+            destRect.set(draw.dest.left, draw.dest.top, draw.dest.right, draw.dest.bottom)
+            canvas.drawBitmap(bmp, srcRect, destRect, bitmapPaint)
         }
     }
 
     /**
-     * Renders a low resolution preview, unless one is already running. Skipping rather than
+     * Renders a low resolution preview, unless work is already running. Skipping rather than
      * restarting stops a continuous gesture from cancelling the render it just started.
      */
     private fun requestPreviewRender() {
-        if (renderJob?.isActive == true) return
-        startRender(preview = true)
+        ensureWorkScheduled(cancelPrefetch = true)
     }
 
     private fun requestFullRender() {
-        startRender(preview = false)
+        ensureWorkScheduled(cancelPrefetch = true)
     }
 
-    private fun startRender(preview: Boolean) {
-        val viewWidth = width
-        val viewHeight = height
-        if (viewWidth <= 0 || viewHeight <= 0) return
+    private fun ensureWorkScheduled(cancelPrefetch: Boolean = false) {
         val scope = renderScope ?: return
-
-        val previousBufferJob = bufferJob
-        previousBufferJob?.cancel()
-
-        val generation = ++renderGeneration
-        val renderZoom = zoom
-        val renderOffsetX = offsetX
-        val renderOffsetY = offsetY
-        val palette = colorPalette
-        val downscale = if (preview) PREVIEW_DOWNSCALE else 1
-        val (renderWidth, renderHeight) = MandelbrotMath.renderDimensions(viewWidth, viewHeight, downscale)
-        val maxIterations = MandelbrotMath.iterationsFor(renderZoom)
-
-        val unitsPerPixel = unitsPerPixel(renderZoom, viewWidth, viewHeight)
-        val sampleStep = unitsPerPixel * downscale
-        val xMin = renderOffsetX - unitsPerPixel * viewWidth / 2.0
-        val yMin = renderOffsetY - unitsPerPixel * viewHeight / 2.0
-
-        renderingStateCallback?.invoke(true)
-
-        val job = scope.launch {
+        if (width <= 0 || height <= 0) return
+        if (workJob?.isActive == true) {
+            if (cancelPrefetch && currentWorkIsPrefetch) {
+                workEpoch++
+                workJob?.cancel()
+            } else {
+                return
+            }
+        }
+        val epoch = workEpoch
+        workJob = scope.launch {
             try {
-                // Wait for the cancelled render to release the shared pixel buffers. Join under
-                // NonCancellable so a newer render cancelling *this* job cannot break the chain:
-                // otherwise job C would join cancelled job B while B's predecessor A is still
-                // writing, and both would corrupt the same IntArray.
-                withContext(NonCancellable) {
-                    previousBufferJob?.join()
-                }
-                ensureActive()
-
-                val pixels = pixelBuffer(preview, renderWidth * renderHeight)
-                withContext(Dispatchers.Default) {
-                    computeMandelbrot(
-                        pixels = pixels,
-                        renderWidth = renderWidth,
-                        renderHeight = renderHeight,
-                        xMin = xMin,
-                        yMin = yMin,
-                        sampleStep = sampleStep,
-                        maxIterations = maxIterations,
-                        palette = palette,
-                    )
-                }
-
-                if (generation != renderGeneration) return@launch
-                if (
-                    !MandelbrotMath.shouldApplyRenderResult(
-                        zoom = zoom,
-                        offsetX = offsetX,
-                        offsetY = offsetY,
-                        renderZoom = renderZoom,
-                        renderOffsetX = renderOffsetX,
-                        renderOffsetY = renderOffsetY,
-                        renderPalette = palette,
-                        currentPalette = colorPalette,
-                    )
-                ) {
-                    return@launch
-                }
-                val target = bitmap ?: return@launch
-                if (target.width != viewWidth || target.height != viewHeight) return@launch
-
-                if (preview) {
-                    val scratch = previewScratchOf(renderWidth, renderHeight)
-                    scratch.setPixels(pixels, 0, renderWidth, 0, 0, renderWidth, renderHeight)
-                    Canvas(target).drawBitmap(
-                        scratch,
-                        Rect(0, 0, renderWidth, renderHeight),
-                        Rect(0, 0, viewWidth, viewHeight),
-                        paint,
-                    )
-                } else {
-                    target.setPixels(pixels, 0, renderWidth, 0, 0, renderWidth, renderHeight)
-                }
-
-                // Record what the image now shows, including previews, otherwise onDraw would
-                // transform an already up to date image a second time.
-                bitmapZoom = renderZoom
-                bitmapOffsetX = renderOffsetX
-                bitmapOffsetY = renderOffsetY
-                bitmapIsPreview = preview
-                hasRenderedOnce = true
-                invalidate()
+                processQueue(epoch)
             } finally {
-                if (generation == renderGeneration) {
-                    renderingStateCallback?.invoke(false)
+                if (epoch == workEpoch) {
+                    currentWorkIsPrefetch = false
+                    // A gesture can land in the window between nextWorkItem() returning null
+                    // and this job completing; without a reschedule that frame would stick.
+                    if (nextWorkItem() != null) {
+                        ensureWorkScheduled()
+                    } else {
+                        updateRenderingState(forceIdle = true)
+                    }
                 }
             }
         }
-        bufferJob = job
-        renderJob = job
+    }
+
+    private suspend fun processQueue(epoch: Long) {
+        while (currentCoroutineContext().isActive && epoch == workEpoch) {
+            val item = nextWorkItem() ?: break
+            currentWorkIsPrefetch = item.prefetch
+            updateRenderingState()
+            renderWork(item)
+        }
+    }
+
+    private fun nextWorkItem(): WorkItem? {
+        val viewWidth = width
+        val viewHeight = height
+        if (viewWidth <= 0 || viewHeight <= 0) return null
+        val plan = MandelbrotTiles.renderPlan(
+            zoom = zoom,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            viewWidth = viewWidth,
+            viewHeight = viewHeight,
+            tilePixelSize = MandelbrotTiles.tilePixelSize(viewWidth, viewHeight),
+            paletteOrdinal = colorPalette.ordinal,
+            panSignX = panSignX,
+            panSignY = panSignY,
+            zoomSign = zoomSign,
+            focusX = focusComplexX,
+            focusY = focusComplexY,
+            minZoom = MIN_ZOOM,
+            maxZoom = MAX_ZOOM,
+            isCached = { tileCache.contains(it) },
+        )
+        if (isInteracting) {
+            if (plan.visiblePreview.isNotEmpty()) {
+                return WorkItem(plan.visiblePreview.take(MAX_PREVIEW_BATCH), preview = true, prefetch = false)
+            }
+            return null
+        }
+        if (plan.visibleFull.isNotEmpty()) {
+            return WorkItem(
+                plan.visibleFull.take(MandelbrotTiles.MAX_VISIBLE_BATCH),
+                preview = false,
+                prefetch = false,
+            )
+        }
+        if (plan.prefetch.isNotEmpty() && tileCache.memoryBytes < tileCache.maxMemoryBytes) {
+            return WorkItem(listOf(plan.prefetch.first()), preview = false, prefetch = true)
+        }
+        return null
+    }
+
+    private suspend fun renderWork(item: WorkItem) {
+        val missing = ArrayList<MandelbrotTiles.TileKey>(item.keys.size)
+        for (key in item.keys) {
+            if (tileCache.contains(key) || tileCache.contains(key.copy(preview = false))) {
+                continue
+            }
+            val fromDisk = withContext(Dispatchers.IO) { tileCache.loadFromDisk(key) }
+            if (fromDisk != null && fromDisk.pixels.size == MandelbrotTiles.pixelSize(key) *
+                MandelbrotTiles.pixelSize(key)
+            ) {
+                tileCache.put(key, fromDisk.pixels, fromDisk.preview, visibleCacheKeys())
+                invalidate()
+                continue
+            }
+            missing += key
+        }
+        if (missing.isEmpty()) {
+            invalidate()
+            return
+        }
+        computeTiles(missing, item.preview)
+    }
+
+    private suspend fun computeTiles(keys: List<MandelbrotTiles.TileKey>, preview: Boolean) {
+        if (keys.isEmpty()) return
+        val bbox = MandelbrotTiles.bboxOf(keys) ?: return
+        val dense = bbox.tileCount <= keys.size * 2L
+        if (!dense || keys.size == 1) {
+            for (key in keys) {
+                currentCoroutineContext().ensureActive()
+                computeBBox(
+                    range = MandelbrotTiles.TileRange(key.tileX, key.tileX, key.tileY, key.tileY),
+                    zoomStep = key.zoomStep,
+                    tilePixelSize = key.tilePixelSize,
+                    preview = preview,
+                    palette = colorPalette,
+                )
+            }
+            return
+        }
+        computeBBox(
+            range = bbox,
+            zoomStep = keys.first().zoomStep,
+            tilePixelSize = keys.first().tilePixelSize,
+            preview = preview,
+            palette = colorPalette,
+        )
+    }
+
+    private suspend fun computeBBox(
+        range: MandelbrotTiles.TileRange,
+        zoomStep: Int,
+        tilePixelSize: Int,
+        preview: Boolean,
+        palette: Palette,
+    ) {
+        val viewWidth = width
+        val viewHeight = height
+        if (viewWidth <= 0 || viewHeight <= 0) return
+
+        val downscale = if (preview) MandelbrotTiles.PREVIEW_DOWNSCALE else 1
+        val tilesX = (range.x1 - range.x0 + 1L).toInt().coerceAtLeast(1)
+        val tilesY = (range.y1 - range.y0 + 1L).toInt().coerceAtLeast(1)
+        val outSize = if (preview) {
+            (tilePixelSize / downscale).coerceAtLeast(1)
+        } else {
+            tilePixelSize
+        }
+        val renderWidth = tilesX * outSize
+        val renderHeight = tilesY * outSize
+        val world = MandelbrotTiles.tileWorldSize(zoomStep, tilePixelSize, viewWidth, viewHeight)
+        val sampleStep = (world / tilePixelSize) * downscale
+        val xMin = range.x0 * world
+        val yMin = range.y0 * world
+        val maxIterations = MandelbrotMath.iterationsFor(MandelbrotTiles.discreteZoom(zoomStep))
+        val pixels = IntArray(renderWidth * renderHeight)
+
+        withContext(Dispatchers.Default) {
+            computeMandelbrot(
+                pixels = pixels,
+                renderWidth = renderWidth,
+                renderHeight = renderHeight,
+                xMin = xMin,
+                yMin = yMin,
+                sampleStep = sampleStep,
+                maxIterations = maxIterations,
+                palette = palette,
+            )
+        }
+        currentCoroutineContext().ensureActive()
+
+        val minEdge = MandelbrotTiles.viewMinEdge(viewWidth, viewHeight)
+        var ty = range.y0
+        var row = 0
+        while (ty <= range.y1) {
+            var tx = range.x0
+            var col = 0
+            while (tx <= range.x1) {
+                val key = MandelbrotTiles.TileKey(
+                    zoomStep = zoomStep,
+                    tileX = tx,
+                    tileY = ty,
+                    paletteOrdinal = palette.ordinal,
+                    tilePixelSize = tilePixelSize,
+                    viewMinEdge = minEdge,
+                    preview = preview,
+                )
+                val fullKey = key.copy(preview = false)
+                if (preview && tileCache.contains(fullKey)) {
+                    col++
+                    tx++
+                    continue
+                }
+                val tilePixels = IntArray(outSize * outSize)
+                copySubgrid(
+                    source = pixels,
+                    sourceWidth = renderWidth,
+                    srcX = col * outSize,
+                    srcY = row * outSize,
+                    size = outSize,
+                    dest = tilePixels,
+                )
+                tileCache.put(key, tilePixels, preview, visibleCacheKeys())
+                if (!preview) {
+                    val toSave = tilePixels
+                    renderScope?.launch(Dispatchers.IO) {
+                        tileCache.saveToDisk(key, toSave)
+                    }
+                }
+                col++
+                tx++
+            }
+            row++
+            ty++
+        }
+        invalidate()
     }
 
     private suspend fun computeMandelbrot(
@@ -401,18 +507,96 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         }
     }
 
-    private fun pixelBuffer(preview: Boolean, size: Int): IntArray {
-        val cached = if (preview) previewPixels else fullPixels
-        if (cached != null && cached.size == size) return cached
-        return IntArray(size).also {
-            if (preview) previewPixels = it else fullPixels = it
+    private fun copySubgrid(
+        source: IntArray,
+        sourceWidth: Int,
+        srcX: Int,
+        srcY: Int,
+        size: Int,
+        dest: IntArray,
+    ) {
+        var dst = 0
+        for (y in 0 until size) {
+            val srcRow = (srcY + y) * sourceWidth + srcX
+            source.copyInto(dest, dst, srcRow, srcRow + size)
+            dst += size
         }
     }
 
-    private fun previewScratchOf(width: Int, height: Int): Bitmap {
-        val cached = previewScratch
-        if (cached != null && cached.width == width && cached.height == height) return cached
-        return createBitmap(width, height, Bitmap.Config.ARGB_8888).also { previewScratch = it }
+    private fun bitmapFor(key: MandelbrotTiles.TileKey): Bitmap? {
+        bitmaps[key]?.let { bmp -> if (!bmp.isRecycled) return bmp }
+        val entry = tileCache.get(key) ?: return null
+        installBitmap(key, entry.pixels)
+        return bitmaps[key]
+    }
+
+    private fun installBitmap(key: MandelbrotTiles.TileKey, pixels: IntArray) {
+        val size = MandelbrotTiles.pixelSize(key)
+        if (pixels.size != size * size) return
+        val existing = bitmaps[key]
+        val bmp = if (existing != null && !existing.isRecycled && existing.width == size && existing.height == size) {
+            existing
+        } else {
+            existing?.recycle()
+            createBitmap(size, size, Bitmap.Config.ARGB_8888).also { bitmaps[key] = it }
+        }
+        bmp.setPixels(pixels, 0, size, 0, 0, size, size)
+    }
+
+    private fun onTileEvicted(key: MandelbrotTiles.TileKey) {
+        bitmaps.remove(key)?.let { bmp ->
+            if (!bmp.isRecycled) bmp.recycle()
+        }
+    }
+
+    private fun recycleBitmaps() {
+        for (bmp in bitmaps.values) {
+            if (!bmp.isRecycled) bmp.recycle()
+        }
+        bitmaps.clear()
+    }
+
+    private fun visibleCacheKeys(): Set<MandelbrotTiles.TileKey> {
+        if (width <= 0 || height <= 0) return emptySet()
+        val tilePx = MandelbrotTiles.tilePixelSize(width, height)
+        val minEdge = MandelbrotTiles.viewMinEdge(width, height)
+        val step = MandelbrotTiles.zoomStep(zoom)
+        val range = MandelbrotTiles.visibleTileRange(
+            offsetX, offsetY, zoom, width, height, step, tilePx,
+        )
+        val keys = HashSet<MandelbrotTiles.TileKey>(range.tileCount.toInt().coerceAtLeast(0) * 2)
+        range.forEach { x, y ->
+            keys += MandelbrotTiles.TileKey(step, x, y, colorPalette.ordinal, tilePx, minEdge, false)
+            keys += MandelbrotTiles.TileKey(step, x, y, colorPalette.ordinal, tilePx, minEdge, true)
+        }
+        return keys
+    }
+
+    private fun visibleTilesComplete(): Boolean {
+        if (width <= 0 || height <= 0) return false
+        return MandelbrotTiles.visibleTilesComplete(
+            zoom = zoom,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            viewWidth = width,
+            viewHeight = height,
+            tilePixelSize = MandelbrotTiles.tilePixelSize(width, height),
+            paletteOrdinal = colorPalette.ordinal,
+            isCached = { tileCache.contains(it) },
+        )
+    }
+
+    private fun updateRenderingState(forceIdle: Boolean = false) {
+        val busy = !forceIdle && workJob?.isActive == true && !currentWorkIsPrefetch
+        if (busy == spinnerVisible) return
+        spinnerVisible = busy
+        renderingStateCallback?.invoke(busy)
+    }
+
+    private fun signOf(value: Float): Int = when {
+        value > 0f -> 1
+        value < 0f -> -1
+        else -> 0
     }
 
     // The palette is owned by MandelbrotActivity, which reapplies it before this state is
@@ -431,8 +615,10 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             zoom = MandelbrotMath.coercedZoom(state.zoom, MIN_ZOOM, MAX_ZOOM)
             offsetX = state.offsetX
             offsetY = state.offsetY
+            focusComplexX = offsetX
+            focusComplexY = offsetY
             zoomCallback?.invoke(zoom)
-            renderGeneration++
+            workEpoch++
             requestFullRender()
         } else {
             super.onRestoreInstanceState(state)
@@ -471,23 +657,34 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        tileCache.onEvicted = ::onTileEvicted
         renderScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-        // A palette or viewport change may have happened while detached, and a cancelled render
-        // may never have populated the bitmap. Always refresh when an existing view is reattached.
+        // A palette or viewport change may have happened while detached, and cached tiles from a
+        // previous visit can paint immediately. Always refresh when an existing view is reattached.
         requestFullRender()
     }
 
     override fun onDetachedFromWindow() {
-        // Invalidate the generation before cancellation so the old job cannot update callbacks or
-        // a bitmap after a rapid detach/reattach cycle.
-        renderGeneration++
-        renderJob?.cancel()
-        renderJob = null
+        workEpoch++
+        workJob?.cancel()
+        workJob = null
         renderScope?.cancel()
         renderScope = null
-        renderingStateCallback?.invoke(false)
+        currentWorkIsPrefetch = false
+        tileCache.onEvicted = null
+        recycleBitmaps()
+        if (spinnerVisible) {
+            spinnerVisible = false
+            renderingStateCallback?.invoke(false)
+        }
         super.onDetachedFromWindow()
     }
+
+    private data class WorkItem(
+        val keys: List<MandelbrotTiles.TileKey>,
+        val preview: Boolean,
+        val prefetch: Boolean,
+    )
 
     private companion object {
         const val DEFAULT_ZOOM = 1.0
@@ -498,8 +695,25 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         /** Double precision runs out around here, so zooming further only adds noise. */
         const val MAX_ZOOM = 1.0e13
         const val DOUBLE_TAP_ZOOM_FACTOR = 2.0
+        const val MAX_PREVIEW_BATCH = 8
+        const val MIN_MEMORY_BYTES = 16L * 1024L * 1024L
+        const val MAX_MEMORY_BYTES = 64L * 1024L * 1024L
+        const val DISK_CACHE_BYTES = 128L * 1024L * 1024L
 
-        /** Linear downscale factor for the preview rendered during gestures. */
-        const val PREVIEW_DOWNSCALE = 4
+        private val cacheLock = Any()
+        private var processCache: MandelbrotTileCache? = null
+
+        fun sharedCache(context: Context): MandelbrotTileCache {
+            synchronized(cacheLock) {
+                processCache?.let { return it }
+                val maxMemory = (Runtime.getRuntime().maxMemory() / 6L)
+                    .coerceIn(MIN_MEMORY_BYTES, MAX_MEMORY_BYTES)
+                return MandelbrotTileCache(
+                    maxMemoryBytes = maxMemory,
+                    diskDir = File(context.cacheDir, "mandelbrot_tiles"),
+                    maxDiskBytes = DISK_CACHE_BYTES,
+                ).also { processCache = it }
+            }
+        }
     }
 }
