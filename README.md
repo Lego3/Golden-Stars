@@ -84,14 +84,39 @@ Unit-test and lint HTML reports live under `app/build/reports/`. Debug APK outpu
 
 ### Cursor Cloud Agents
 
-For headless environments without Android Studio:
+Cloud Agents use `.cursor/environment.json` plus scripts under `.cursor/scripts/`.
 
-- Config: `.cursor/environment.json`
-- Bootstrap script: `.cursor/scripts/setup-android-sdk.sh`
+**Install** (`.cursor/scripts/setup-android-sdk.sh`) downloads command-line SDK
+tools, accepts licenses, installs the emulator and an API 34 `google_apis`
+x86_64 system image, creates the `golden_stars_api34` AVD, and warms Gradle
+with `./gradlew testDebugUnitTest assembleDebug`. When `/dev/kvm` is usable it
+also cold-boots the AVD once so later agent starts load a snapshot. Platform
+packages (for example `platforms;android-37`) are fetched automatically on first
+build.
 
-The script installs command-line SDK tools, accepts licenses, and runs
-`./gradlew testDebugUnitTest` to warm Gradle caches. Platform packages (for example
-`platforms;android-37`) are fetched automatically on first build.
+**Start** (`.cursor/scripts/start-android-emulator.sh`) boots the AVD with
+TCG (software) CPU emulation and leaves it running. Nested KVM on current
+Cloud Agent kernels panics during vCPU create, so hardware acceleration is
+intentionally off. First boot can take several minutes; later boots reuse an
+AVD snapshot when one was saved. On a Cloud Agent desktop the emulator
+window is scaled to fit 1920×1200 so computer-use and screen recording can
+see it. Headless boots (no `DISPLAY`) use `-no-window`; `adb` screenshots and
+recordings still work.
+
+After the emulator is up:
+
+```bash
+# Install the current debug APK and open the hub
+bash .cursor/scripts/run-android-app.sh
+
+# Full-resolution device PNG (preferred over desktop screenshots)
+bash .cursor/scripts/android-screenshot.sh
+
+# Device MP4 (default 10 seconds)
+bash .cursor/scripts/android-screenrecord.sh 15
+```
+
+See [AGENTS.md](AGENTS.md) for the Cloud-only demo workflow.
 
 ## Continuous integration
 

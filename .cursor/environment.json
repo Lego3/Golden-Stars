@@ -1,4 +1,5 @@
 {
   "name": "Golden Stars (Android)",
-  "install": "bash .cursor/scripts/setup-android-sdk.sh"
+  "install": "bash .cursor/scripts/setup-android-sdk.sh",
+  "start": "bash .cursor/scripts/start-android-emulator.sh"
 }
