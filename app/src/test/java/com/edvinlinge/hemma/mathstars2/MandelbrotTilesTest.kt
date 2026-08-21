@@ -269,6 +269,154 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `viewport is covered by a parent even when exact tiles are missing`() {
+        val zoom = 2.0
+        val step = MandelbrotTiles.zoomStep(zoom)
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, zoom, 800, 600, step, 256)
+        val parents = HashSet<MandelbrotTiles.TileKey>()
+        range.forEach { x, y ->
+            parents += MandelbrotTiles.TileKey(
+                zoomStep = step - 1,
+                tileX = MandelbrotTiles.parentTileX(x),
+                tileY = MandelbrotTiles.parentTileY(y),
+                paletteOrdinal = 0,
+                tilePixelSize = 256,
+                viewMinEdge = 600,
+                preview = false,
+            )
+        }
+        assertTrue(
+            MandelbrotTiles.visibleViewportCovered(
+                zoom, -0.5, 0.0, 800, 600, 256, 0,
+            ) { it in parents },
+        )
+        assertFalse(
+            MandelbrotTiles.visibleTilesComplete(
+                zoom, -0.5, 0.0, 800, 600, 256, 0,
+            ) { it in parents },
+        )
+    }
+
+    @Test
+    fun `viewport is covered by same-step previews`() {
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
+        val previews = MandelbrotTiles.keysForRange(range, 0, 0, 256, 600, preview = true).toSet()
+        assertTrue(
+            MandelbrotTiles.visibleViewportCovered(
+                1.0, -0.5, 0.0, 800, 600, 256, 0,
+            ) { it in previews },
+        )
+        assertFalse(
+            MandelbrotTiles.visibleTilesComplete(
+                1.0, -0.5, 0.0, 800, 600, 256, 0,
+            ) { it in previews },
+        )
+    }
+
+    @Test
+    fun `viewport is covered when every visible tile has all four children`() {
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
+        val children = HashSet<MandelbrotTiles.TileKey>()
+        range.forEach { x, y ->
+            for (ly in 0..1) {
+                for (lx in 0..1) {
+                    children += MandelbrotTiles.TileKey(
+                        zoomStep = 1,
+                        tileX = MandelbrotTiles.childTileX(x, lx),
+                        tileY = MandelbrotTiles.childTileY(y, ly),
+                        paletteOrdinal = 0,
+                        tilePixelSize = 256,
+                        viewMinEdge = 600,
+                        preview = false,
+                    )
+                }
+            }
+        }
+        assertTrue(
+            MandelbrotTiles.visibleViewportCovered(
+                1.0, -0.5, 0.0, 800, 600, 256, 0,
+            ) { it in children },
+        )
+        children.remove(children.first())
+        assertFalse(
+            MandelbrotTiles.visibleViewportCovered(
+                1.0, -0.5, 0.0, 800, 600, 256, 0,
+            ) { it in children },
+        )
+    }
+
+    @Test
+    fun `viewport is not covered when the cache is empty`() {
+        assertFalse(
+            MandelbrotTiles.visibleViewportCovered(
+                1.0, -0.5, 0.0, 800, 600, 256, 0,
+            ) { false },
+        )
+    }
+
+    @Test
+    fun `a two times zoom at the same center stays covered by parent tiles`() {
+        val tilePx = 256
+        val minEdge = 600
+        val range1 = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, tilePx)
+        val cached = MandelbrotTiles.keysForRange(range1, 0, 0, tilePx, minEdge, preview = false).toSet()
+        assertTrue(
+            MandelbrotTiles.visibleViewportCovered(
+                1.0, -0.5, 0.0, 800, 600, tilePx, 0,
+            ) { it in cached },
+        )
+        assertTrue(
+            MandelbrotTiles.visibleViewportCovered(
+                2.0, -0.5, 0.0, 800, 600, tilePx, 0,
+            ) { it in cached },
+        )
+        assertFalse(
+            MandelbrotTiles.visibleTilesComplete(
+                2.0, -0.5, 0.0, 800, 600, tilePx, 0,
+            ) { it in cached },
+        )
+    }
+
+    @Test
+    fun `protectable keys keep parent tiles that still paint the zoomed view`() {
+        val zoom = 2.0
+        val keys = MandelbrotTiles.protectableKeys(
+            zoom = zoom,
+            offsetX = -0.5,
+            offsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+            tilePixelSize = 256,
+            paletteOrdinal = 0,
+        )
+        val step = MandelbrotTiles.zoomStep(zoom)
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, zoom, 800, 600, step, 256)
+        range.forEach { x, y ->
+            val exact = MandelbrotTiles.TileKey(step, x, y, 0, 256, 600, preview = false)
+            val parent = MandelbrotTiles.TileKey(
+                step - 1,
+                MandelbrotTiles.parentTileX(x),
+                MandelbrotTiles.parentTileY(y),
+                0,
+                256,
+                600,
+                preview = false,
+            )
+            assertTrue(exact in keys)
+            assertTrue(parent in keys)
+        }
+    }
+
+    @Test
+    fun `a full visible range is a dense bbox so it can render in one pass`() {
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
+        val keys = MandelbrotTiles.keysForRange(range, 0, 0, 256, 600, preview = false)
+        val bbox = MandelbrotTiles.bboxOf(keys)!!
+        assertEquals(keys.size.toLong(), bbox.tileCount)
+        assertTrue(keys.size <= MandelbrotTiles.MAX_VISIBLE_BATCH)
+    }
+
+    @Test
     fun `expanding a range in the pan direction only grows that edge`() {
         val base = MandelbrotTiles.TileRange(0, 2, 0, 1)
         val right = MandelbrotTiles.expandRange(base, panSignX = 1, panSignY = 0, extra = 1)

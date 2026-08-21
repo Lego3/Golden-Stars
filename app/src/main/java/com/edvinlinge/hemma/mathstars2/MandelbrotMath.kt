@@ -14,6 +14,7 @@ internal object MandelbrotMath {
     const val ITERATIONS_PER_DECADE = 200
     const val MAX_ITERATIONS = 1500
     const val ESCAPE_RADIUS_SQUARED = 4.0
+    private const val PERIOD2_BULB_RADIUS_SQUARED = 0.0625
 
     /**
      * Size of one pixel in the complex plane. Derived from the shorter view edge so pixels stay
@@ -38,9 +39,6 @@ internal object MandelbrotMath {
             .toInt()
             .coerceIn(BASE_ITERATIONS, MAX_ITERATIONS)
 
-    /**
-     * Iterations until the orbit escapes the escape radius, or [maxIterations] if it stays bounded.
-     */
     /** Complex-plane x coordinate under a screen point at the current viewport. */
     fun complexXAtScreen(
         screenX: Float,
@@ -163,21 +161,50 @@ internal object MandelbrotMath {
     fun renderDimensions(viewWidth: Int, viewHeight: Int, downscale: Int): Pair<Int, Int> =
         (viewWidth / downscale).coerceAtLeast(1) to (viewHeight / downscale).coerceAtLeast(1)
 
+    /**
+     * True for the main cardioid and the period-2 bulb, which together contain most of the
+     * interior at typical zooms. Those points would otherwise run the full iteration budget.
+     */
+    fun inMainCardioidOrPeriod2Bulb(cr: Double, ci: Double): Boolean {
+        val crPlusOne = cr + 1.0
+        if (crPlusOne * crPlusOne + ci * ci <= PERIOD2_BULB_RADIUS_SQUARED) return true
+        val x = cr - 0.25
+        val q = x * x + ci * ci
+        return q * (q + x) <= 0.25 * ci * ci
+    }
+
+    /**
+     * Iterations until the orbit escapes the escape radius, or [maxIterations] if it stays bounded.
+     */
     fun escapeIterations(
         cr: Double,
         ci: Double,
         maxIterations: Int = MAX_ITERATIONS,
         escapeRadiusSquared: Double = ESCAPE_RADIUS_SQUARED,
     ): Int {
+        if (inMainCardioidOrPeriod2Bulb(cr, ci)) return maxIterations
         var zr = 0.0
         var zi = 0.0
+        var zr2 = 0.0
+        var zi2 = 0.0
         var iteration = 0
-        while (zr * zr + zi * zi <= escapeRadiusSquared && iteration < maxIterations) {
-            val nextZr = zr * zr - zi * zi + cr
+        while (zr2 + zi2 <= escapeRadiusSquared && iteration < maxIterations) {
             zi = 2.0 * zr * zi + ci
-            zr = nextZr
+            zr = zr2 - zi2 + cr
+            zr2 = zr * zr
+            zi2 = zi * zi
             iteration++
         }
         return iteration
     }
+
+    /**
+     * The loading circle is for holes in the viewport, not for background work. Prefetch and
+     * sharpening of already-painted (scaled or preview) tiles stay silent.
+     */
+    fun showRenderSpinner(
+        workActive: Boolean,
+        workIsPrefetch: Boolean,
+        viewportCovered: Boolean,
+    ): Boolean = workActive && !workIsPrefetch && !viewportCovered
 }
