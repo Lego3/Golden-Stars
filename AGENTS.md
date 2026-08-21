@@ -4,6 +4,8 @@
 
 Cloud Agents boot an API 34 Android emulator (`golden_stars_api34`) from
 `.cursor/scripts/start-android-emulator.sh` after each environment start.
+The emulator uses TCG, not KVM: nested virtualization currently panics on
+Cloud Agent kernels. First boot can take several minutes.
 
 To run the app and capture UI after a change:
 

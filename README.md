@@ -94,8 +94,11 @@ also cold-boots the AVD once so later agent starts load a snapshot. Platform
 packages (for example `platforms;android-37`) are fetched automatically on first
 build.
 
-**Start** (`.cursor/scripts/start-android-emulator.sh`) opens KVM access,
-boots the AVD, and leaves it running. On a Cloud Agent desktop the emulator
+**Start** (`.cursor/scripts/start-android-emulator.sh`) boots the AVD with
+TCG (software) CPU emulation and leaves it running. Nested KVM on current
+Cloud Agent kernels panics during vCPU create, so hardware acceleration is
+intentionally off. First boot can take several minutes; later boots reuse an
+AVD snapshot when one was saved. On a Cloud Agent desktop the emulator
 window is scaled to fit 1920×1200 so computer-use and screen recording can
 see it. Headless boots (no `DISPLAY`) use `-no-window`; `adb` screenshots and
 recordings still work.

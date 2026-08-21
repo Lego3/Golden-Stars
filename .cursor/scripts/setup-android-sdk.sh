@@ -184,6 +184,8 @@ create_avd() {
   set_avd_ini "$ini" hw.gpu.mode swiftshader_indirect
   set_avd_ini "$ini" hw.ramSize 2048
   set_avd_ini "$ini" showDeviceFrame no
+  set_avd_ini "$ini" firstboot.bootFromDownloadableSnapshot no
+  set_avd_ini "$ini" fastboot.forceFastBoot no
 }
 
 warm_gradle_build() {
@@ -206,11 +208,6 @@ first_boot_emulator() {
     return
   fi
 
-  if ! ensure_kvm_access; then
-    log "WARNING: skipping first-boot snapshot because KVM is unavailable"
-    return
-  fi
-
   bin="$(emulator_bin)"
   if [ -z "$bin" ]; then
     log "WARNING: emulator binary missing; skipping first-boot snapshot"
@@ -219,15 +216,16 @@ first_boot_emulator() {
 
   mkdir -p "$(dirname "$EMULATOR_LOG")"
   mapfile -t args < <(emulator_common_args)
-  args+=(-no-window)
+  args+=(-no-window -no-snapshot-load)
 
-  log "Cold-booting $AVD_NAME once so the AVD snapshot is warm for later agents"
+  log "Cold-booting $AVD_NAME with TCG so later agents can load a snapshot"
   nohup "$bin" "${args[@]}" >>"$EMULATOR_LOG" 2>&1 &
   echo $! >"$EMULATOR_PID_FILE"
 
-  if ! wait_for_emulator 240; then
+  if ! wait_for_emulator 600; then
     log "WARNING: first-boot did not finish; later agents will cold-boot. Last log lines:"
-    tail -n 80 "$EMULATOR_LOG" 2>/dev/null || true
+    tail -n 40 "$EMULATOR_LOG" 2>/dev/null || true
+    stop_emulator
     return
   fi
 
@@ -241,26 +239,12 @@ first_boot_emulator() {
   shopt -u nullglob
   if [ -n "$apk" ] && [ -f "$apk" ]; then
     log "Installing $apk on the AVD snapshot"
-    "$(adb_bin)" install -r "$apk" >/dev/null
+    "$(adb_bin)" install -r "$apk" >/dev/null || \
+      log "WARNING: could not preinstall debug APK; agents can install later"
   fi
 
   log "Stopping emulator to save the AVD snapshot"
-  "$(adb_bin)" emu kill >/dev/null 2>&1 || true
-  local pid=""
-  if [ -f "$EMULATOR_PID_FILE" ]; then
-    pid="$(cat "$EMULATOR_PID_FILE" 2>/dev/null || true)"
-  fi
-  if [ -n "$pid" ]; then
-    local waited=0
-    while kill -0 "$pid" 2>/dev/null && [ "$waited" -lt 30 ]; do
-      sleep 1
-      waited=$((waited + 1))
-    done
-    if kill -0 "$pid" 2>/dev/null; then
-      kill "$pid" 2>/dev/null || true
-    fi
-  fi
-  rm -f "$EMULATOR_PID_FILE"
+  stop_emulator
   log "First-boot snapshot saved"
 }
 

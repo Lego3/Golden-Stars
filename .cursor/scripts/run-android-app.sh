@@ -18,7 +18,7 @@ main() {
     log "No emulator device yet; starting it"
     bash "$SCRIPT_DIR/start-android-emulator.sh"
   else
-    wait_for_emulator 60
+    wait_for_emulator 420
   fi
 
   chmod +x "$REPO_ROOT/gradlew"
@@ -27,7 +27,13 @@ main() {
 
   log "Launching $LAUNCHER_ACTIVITY"
   "$(adb_bin)" shell am start -n "$LAUNCHER_ACTIVITY" >/dev/null
-  sleep 2
+  sleep 6
+  if "$(adb_bin)" shell dumpsys window 2>/dev/null | grep -q 'Application Not Responding'; then
+    log "Dismissing System UI ANR (common on TCG) by choosing Wait"
+    "$(adb_bin)" shell input keyevent KEYCODE_DPAD_DOWN >/dev/null
+    "$(adb_bin)" shell input keyevent KEYCODE_ENTER >/dev/null
+    sleep 8
+  fi
   log "App launched"
 }
 

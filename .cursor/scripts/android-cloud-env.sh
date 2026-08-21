@@ -38,22 +38,6 @@ sudo_if_available() {
   fi
 }
 
-ensure_kvm_access() {
-  if [ ! -e /dev/kvm ]; then
-    echo "KVM device /dev/kvm is missing; nested virtualization is required." >&2
-    return 1
-  fi
-  if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
-    return 0
-  fi
-  sudo_if_available chmod a+rw /dev/kvm
-  if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
-    return 0
-  fi
-  echo "Cannot read/write /dev/kvm (needed for emulator hardware acceleration)." >&2
-  return 1
-}
-
 emulator_bin() {
   if [ -x "$ANDROID_SDK_ROOT/emulator/emulator" ]; then
     echo "$ANDROID_SDK_ROOT/emulator/emulator"
@@ -91,7 +75,7 @@ adb_has_device() {
 }
 
 wait_for_emulator() {
-  local timeout_s="${1:-180}"
+  local timeout_s="${1:-420}"
   local adb
   local start now boot
   adb="$(adb_bin)"
@@ -113,7 +97,7 @@ wait_for_emulator() {
       echo "Timed out after ${timeout_s}s waiting for the Android emulator to finish booting." >&2
       return 1
     fi
-    sleep 2
+    sleep 3
   done
 }
 
@@ -129,10 +113,37 @@ disable_emulator_animations() {
   "$adb" shell wm dismiss-keyguard >/dev/null 2>&1 || true
 }
 
+stop_emulator() {
+  local pid=""
+  local adb
+  adb="$(adb_bin)"
+  if [ -n "$adb" ]; then
+    "$adb" emu kill >/dev/null 2>&1 || true
+  fi
+  if [ -f "$EMULATOR_PID_FILE" ]; then
+    pid="$(cat "$EMULATOR_PID_FILE" 2>/dev/null || true)"
+  fi
+  if [ -n "$pid" ]; then
+    kill "$pid" 2>/dev/null || true
+    local waited=0
+    while kill -0 "$pid" 2>/dev/null && [ "$waited" -lt 10 ]; do
+      sleep 1
+      waited=$((waited + 1))
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+      kill -9 "$pid" 2>/dev/null || true
+    fi
+  fi
+  rm -f "$EMULATOR_PID_FILE"
+}
+
 emulator_common_args() {
-  # Hardware acceleration + SwiftShader GPU. No audio or cameras in Cloud VMs.
+  # TCG (`-accel off`) is required: nested KVM on Cloud Agent kernels hits
+  # `kernel BUG at arch/x86/kvm/x86.c` during vCPU create and the guest never
+  # comes online. SwiftShader GPU, no audio/cameras.
   printf '%s\n' \
     -avd "$AVD_NAME" \
+    -accel off \
     -gpu swiftshader_indirect \
     -no-audio \
     -no-boot-anim \

@@ -34,7 +34,7 @@ start_emulator_process() {
     export QT_SCALE_FACTOR="${QT_SCALE_FACTOR:-0.5}"
   fi
 
-  log "Starting emulator AVD=$AVD_NAME DISPLAY=${DISPLAY:-none} accel=kvm"
+  log "Starting emulator AVD=$AVD_NAME DISPLAY=${DISPLAY:-none} accel=tcg"
   nohup "$bin" "${args[@]}" >>"$EMULATOR_LOG" 2>&1 &
   echo $! >"$EMULATOR_PID_FILE"
 }
@@ -61,7 +61,6 @@ main() {
     exit 1
   fi
 
-  ensure_kvm_access
   "$adb" start-server >/dev/null
 
   if adb_has_device; then
@@ -76,7 +75,7 @@ main() {
     start_emulator_process
   fi
 
-  if ! wait_for_emulator 180; then
+  if ! wait_for_emulator 420; then
     log "ERROR: emulator did not boot. Last log lines:"
     tail -n 80 "$EMULATOR_LOG" 2>/dev/null || true
     exit 1
