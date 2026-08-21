@@ -45,6 +45,7 @@ class MandelbrotMathTest {
     @Test
     fun `origin is inside the set and does not escape`() {
         assertEquals(MandelbrotMath.MAX_ITERATIONS, MandelbrotMath.escapeIterations(0.0, 0.0))
+        assertTrue(MandelbrotMath.inMainCardioidOrPeriod2Bulb(0.0, 0.0))
     }
 
     @Test
@@ -65,8 +66,49 @@ class MandelbrotMathTest {
     fun `escape radius of two matches the classic Mandelbrot definition`() {
         // c = -2 is on the real axis tip; it should not escape within a modest budget.
         assertEquals(100, MandelbrotMath.escapeIterations(-2.0, 0.0, maxIterations = 100))
+        assertFalse(MandelbrotMath.inMainCardioidOrPeriod2Bulb(-2.0, 0.0))
         // c = 0.25 is the cusp of the main cardioid; orbit stays bounded for many steps.
         assertEquals(100, MandelbrotMath.escapeIterations(0.25, 0.0, maxIterations = 100))
+        assertTrue(MandelbrotMath.inMainCardioidOrPeriod2Bulb(0.25, 0.0))
+    }
+
+    @Test
+    fun `period-2 bulb is treated as interior`() {
+        assertTrue(MandelbrotMath.inMainCardioidOrPeriod2Bulb(-1.0, 0.0))
+        assertEquals(200, MandelbrotMath.escapeIterations(-1.0, 0.0, maxIterations = 200))
+        assertTrue(MandelbrotMath.escapeIterations(2.0, 0.0) < 10)
+    }
+
+    @Test
+    fun `render spinner stays hidden while sharpening a covered viewport`() {
+        assertFalse(
+            MandelbrotMath.showRenderSpinner(
+                workActive = true,
+                workIsPrefetch = false,
+                viewportCovered = true,
+            ),
+        )
+        assertFalse(
+            MandelbrotMath.showRenderSpinner(
+                workActive = true,
+                workIsPrefetch = true,
+                viewportCovered = false,
+            ),
+        )
+        assertTrue(
+            MandelbrotMath.showRenderSpinner(
+                workActive = true,
+                workIsPrefetch = false,
+                viewportCovered = false,
+            ),
+        )
+        assertFalse(
+            MandelbrotMath.showRenderSpinner(
+                workActive = false,
+                workIsPrefetch = false,
+                viewportCovered = false,
+            ),
+        )
     }
 
     @Test

@@ -17,7 +17,13 @@ internal object MandelbrotTiles {
 
     const val PREVIEW_DOWNSCALE = 4
     const val MAX_ANCESTOR_LEVELS = 8
-    const val MAX_VISIBLE_BATCH = 4
+    /**
+     * Visible missing tiles render as one pass so the full picture uses the same row-parallel
+     * kernel as a single bitmap. The cap is only a safety bound for an unusually large view.
+     */
+    const val MAX_VISIBLE_BATCH = 64
+    /** Prefetch a handful of neighbours at once so idle cores stay busy without delaying cancel. */
+    const val MAX_PREFETCH_BATCH = 4
 
     /** Prefer a handful of large tiles over a sea of tiny ones so a first frame is one bbox. */
     const val LARGE_TILE_MIN_EDGE = 900
@@ -438,7 +444,7 @@ internal object MandelbrotTiles {
 
     /**
      * True when every on-screen tile at the current zoom step already has a full-resolution cache
-     * entry, so the spinner can hide even if prefetch is still running.
+     * entry, so prefetch can start even if the spinner is already hidden.
      */
     fun visibleTilesComplete(
         zoom: Double,
@@ -461,6 +467,144 @@ internal object MandelbrotTiles {
             if (!isCached(key)) complete = false
         }
         return complete
+    }
+
+    /**
+     * True when every visible tile can already be painted from cache: an exact tile, a preview,
+     * a scaled ancestor, or a complete set of children. Holes remain only where none of those
+     * exist, which is when the loading circle should show.
+     */
+    fun visibleViewportCovered(
+        zoom: Double,
+        offsetX: Double,
+        offsetY: Double,
+        viewWidth: Int,
+        viewHeight: Int,
+        tilePixelSize: Int,
+        paletteOrdinal: Int,
+        isCached: (TileKey) -> Boolean,
+    ): Boolean {
+        if (viewWidth <= 0 || viewHeight <= 0) return false
+        val step = zoomStep(zoom)
+        val minEdge = viewMinEdge(viewWidth, viewHeight)
+        val range = visibleTileRange(
+            offsetX, offsetY, zoom, viewWidth, viewHeight, step, tilePixelSize,
+        )
+        var covered = true
+        range.forEach { x, y ->
+            if (!tileIsCovered(x, y, step, paletteOrdinal, tilePixelSize, minEdge, isCached)) {
+                covered = false
+            }
+        }
+        return covered
+    }
+
+    /**
+     * Cache keys the current frame may blit: exact tiles, previews, ancestors that stand in, and
+     * one level of children. LRU eviction must keep these so a zoom does not delete the scaled
+     * image that is still on screen.
+     */
+    fun protectableKeys(
+        zoom: Double,
+        offsetX: Double,
+        offsetY: Double,
+        viewWidth: Int,
+        viewHeight: Int,
+        tilePixelSize: Int,
+        paletteOrdinal: Int,
+    ): Set<TileKey> {
+        if (viewWidth <= 0 || viewHeight <= 0) return emptySet()
+        val step = zoomStep(zoom)
+        val minEdge = viewMinEdge(viewWidth, viewHeight)
+        val range = visibleTileRange(
+            offsetX, offsetY, zoom, viewWidth, viewHeight, step, tilePixelSize,
+        )
+        val keys = HashSet<TileKey>(range.tileCount.toInt().coerceAtLeast(0) * 12)
+        range.forEach { x, y ->
+            var ax = x
+            var ay = y
+            for (level in 0..MAX_ANCESTOR_LEVELS) {
+                val full = TileKey(step - level, ax, ay, paletteOrdinal, tilePixelSize, minEdge, false)
+                keys += full
+                keys += full.copy(preview = true)
+                ax = parentTileX(ax)
+                ay = parentTileY(ay)
+            }
+            for (ly in 0..1) {
+                for (lx in 0..1) {
+                    val child = TileKey(
+                        step + 1,
+                        childTileX(x, lx),
+                        childTileY(y, ly),
+                        paletteOrdinal,
+                        tilePixelSize,
+                        minEdge,
+                        preview = false,
+                    )
+                    keys += child
+                    keys += child.copy(preview = true)
+                }
+            }
+        }
+        return keys
+    }
+
+    fun tileIsCovered(
+        tileX: Long,
+        tileY: Long,
+        tileStep: Int,
+        paletteOrdinal: Int,
+        tilePixelSize: Int,
+        viewMinEdge: Int,
+        isCached: (TileKey) -> Boolean,
+    ): Boolean {
+        if (hasCoveringSource(tileX, tileY, tileStep, paletteOrdinal, tilePixelSize, viewMinEdge, isCached)) {
+            return true
+        }
+        var childCount = 0
+        for (ly in 0..1) {
+            for (lx in 0..1) {
+                val child = TileKey(
+                    tileStep + 1,
+                    childTileX(tileX, lx),
+                    childTileY(tileY, ly),
+                    paletteOrdinal,
+                    tilePixelSize,
+                    viewMinEdge,
+                    preview = false,
+                )
+                if (isCached(child) || isCached(child.copy(preview = true))) childCount++
+            }
+        }
+        return childCount == 4
+    }
+
+    private fun hasCoveringSource(
+        tileX: Long,
+        tileY: Long,
+        tileStep: Int,
+        paletteOrdinal: Int,
+        tilePixelSize: Int,
+        viewMinEdge: Int,
+        isCached: (TileKey) -> Boolean,
+    ): Boolean {
+        var ax = tileX
+        var ay = tileY
+        for (level in 0..MAX_ANCESTOR_LEVELS) {
+            val full = TileKey(
+                tileStep - level,
+                ax,
+                ay,
+                paletteOrdinal,
+                tilePixelSize,
+                viewMinEdge,
+                preview = false,
+            )
+            if (isCached(full) || isCached(full.copy(preview = true))) return true
+            ax = parentTileX(ax)
+            ay = parentTileY(ay)
+        }
+        return false
     }
 
     private fun bestCoveringSource(

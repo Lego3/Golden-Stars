@@ -17,7 +17,11 @@ Git tags (`v1.1.0`, `v1.2.0`, …).
 
 - Mandelbrot explorer keeps a memory and disk tile cache, reuses nearby zoom steps, and
   pre-renders neighbouring tiles plus the next 2× zoom so pan and pinch stay smooth.
-  Disk eviction drops the least recently *used* tiles, including ones that stayed in RAM.
+  The loading circle shows only while the viewport still has holes. Visible tiles render
+  as one parallel pass, with cardioid/bulb interior skipping. Covering parent tiles stay
+  in memory while a sharper zoom renders, so the spinner does not flash on a painted
+  view. Disk eviction drops the least recently *used* tiles, including ones that stayed
+  in RAM.
 - Hub cards keep a content inset so they no longer run to the screen edge.
 
 ## [1.2.0] - 2026-08-09

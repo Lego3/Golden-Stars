@@ -85,9 +85,14 @@ scales with zoom (`MandelbrotMath.iterationsFor`) and is capped to keep frames b
 `MandelbrotView` composites **tiles** instead of one full-view bitmap. Cached tiles live
 on power-of-two zoom steps (`MandelbrotTiles`), in an in-memory LRU plus an on-disk
 store (`MandelbrotTileCache`). Nearby zoom steps and parent tiles stand in, scaled,
-while missing tiles render in the background. Prefetch fills neighbours and the next 2×
-zoom after a gesture settles. Disk eviction follows last *use*, including memory hits,
-so the default 1× view is not deleted just because it was written first.
+while missing tiles render in the background. The loading circle appears only when the
+viewport still has holes; scaled or preview tiles count as covered, so sharpening and
+prefetch stay silent. Visible missing tiles render as one row-parallel pass (with
+cardioid/bulb interior early-out and a colour LUT). Prefetch fills neighbours and the
+next 2× zoom after a gesture settles, a few tiles at a time. LRU eviction keeps the
+tiles the current frame still blits, including scaled parents. Disk eviction follows last
+*use*, including memory hits, so the default 1× view is not deleted just because it was
+written first.
 
 ### Settings and configuration changes
 

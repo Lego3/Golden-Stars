@@ -100,6 +100,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             panSignX = signOf(distanceX)
             panSignY = signOf(distanceY)
             invalidate()
+            updateRenderingState()
             requestPreviewRender()
             return true
         }
@@ -169,6 +170,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
 
         zoomCallback?.invoke(zoom)
         invalidate()
+        updateRenderingState()
         requestPreviewRender()
     }
 
@@ -307,8 +309,12 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             isCached = { tileCache.contains(it) },
         )
         if (isInteracting) {
-            if (plan.visiblePreview.isNotEmpty()) {
-                return WorkItem(plan.visiblePreview.take(MAX_PREVIEW_BATCH), preview = true, prefetch = false)
+            if (plan.visiblePreview.isNotEmpty() && !visibleViewportCovered()) {
+                return WorkItem(
+                    plan.visiblePreview.take(MandelbrotTiles.MAX_VISIBLE_BATCH),
+                    preview = true,
+                    prefetch = false,
+                )
             }
             return null
         }
@@ -320,7 +326,11 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             )
         }
         if (plan.prefetch.isNotEmpty() && tileCache.memoryBytes < tileCache.maxMemoryBytes) {
-            return WorkItem(listOf(plan.prefetch.first()), preview = false, prefetch = true)
+            val first = plan.prefetch.first()
+            val batch = plan.prefetch.takeWhile {
+                it.zoomStep == first.zoomStep && it.tilePixelSize == first.tilePixelSize
+            }.take(MandelbrotTiles.MAX_PREFETCH_BATCH)
+            return WorkItem(batch, preview = false, prefetch = true)
         }
         return null
     }
@@ -337,12 +347,14 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             ) {
                 tileCache.put(key, fromDisk.pixels, fromDisk.preview, visibleCacheKeys())
                 invalidate()
+                updateRenderingState()
                 continue
             }
             missing += key
         }
         if (missing.isEmpty()) {
             invalidate()
+            updateRenderingState()
             return
         }
         computeTiles(missing, item.preview)
@@ -350,28 +362,59 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
 
     private suspend fun computeTiles(keys: List<MandelbrotTiles.TileKey>, preview: Boolean) {
         if (keys.isEmpty()) return
+        val groups = keys.groupBy { it.zoomStep to it.tilePixelSize }
+        for (group in groups.values) {
+            currentCoroutineContext().ensureActive()
+            computeTileGroup(group, preview)
+        }
+    }
+
+    private suspend fun computeTileGroup(keys: List<MandelbrotTiles.TileKey>, preview: Boolean) {
+        if (keys.isEmpty()) return
         val bbox = MandelbrotTiles.bboxOf(keys) ?: return
         val dense = bbox.tileCount <= keys.size * 2L
-        if (!dense || keys.size == 1) {
-            for (key in keys) {
-                currentCoroutineContext().ensureActive()
-                computeBBox(
+        if (dense) {
+            computeBBox(
+                range = bbox,
+                zoomStep = keys.first().zoomStep,
+                tilePixelSize = keys.first().tilePixelSize,
+                preview = preview,
+                palette = colorPalette,
+            )
+            return
+        }
+        val viewWidth = width
+        val viewHeight = height
+        coroutineScope {
+            val rendered = keys.map { key ->
+                async(Dispatchers.Default) {
+                    key to renderRangePixels(
+                        range = MandelbrotTiles.TileRange(key.tileX, key.tileX, key.tileY, key.tileY),
+                        zoomStep = key.zoomStep,
+                        tilePixelSize = key.tilePixelSize,
+                        preview = preview,
+                        palette = colorPalette,
+                        viewWidth = viewWidth,
+                        viewHeight = viewHeight,
+                        parallelRows = false,
+                    )
+                }
+            }.awaitAll()
+            currentCoroutineContext().ensureActive()
+            for ((key, pixels) in rendered) {
+                if (pixels.isEmpty()) continue
+                installRenderedRange(
                     range = MandelbrotTiles.TileRange(key.tileX, key.tileX, key.tileY, key.tileY),
                     zoomStep = key.zoomStep,
                     tilePixelSize = key.tilePixelSize,
                     preview = preview,
                     palette = colorPalette,
+                    pixels = pixels,
                 )
             }
-            return
         }
-        computeBBox(
-            range = bbox,
-            zoomStep = keys.first().zoomStep,
-            tilePixelSize = keys.first().tilePixelSize,
-            preview = preview,
-            palette = colorPalette,
-        )
+        invalidate()
+        updateRenderingState()
     }
 
     private suspend fun computeBBox(
@@ -384,7 +427,36 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         val viewWidth = width
         val viewHeight = height
         if (viewWidth <= 0 || viewHeight <= 0) return
+        val pixels = withContext(Dispatchers.Default) {
+            renderRangePixels(
+                range = range,
+                zoomStep = zoomStep,
+                tilePixelSize = tilePixelSize,
+                preview = preview,
+                palette = palette,
+                viewWidth = viewWidth,
+                viewHeight = viewHeight,
+                parallelRows = true,
+            )
+        }
+        currentCoroutineContext().ensureActive()
+        if (pixels.isEmpty()) return
+        installRenderedRange(range, zoomStep, tilePixelSize, preview, palette, pixels)
+        invalidate()
+        updateRenderingState()
+    }
 
+    private suspend fun renderRangePixels(
+        range: MandelbrotTiles.TileRange,
+        zoomStep: Int,
+        tilePixelSize: Int,
+        preview: Boolean,
+        palette: Palette,
+        viewWidth: Int,
+        viewHeight: Int,
+        parallelRows: Boolean,
+    ): IntArray {
+        if (viewWidth <= 0 || viewHeight <= 0) return IntArray(0)
         val downscale = if (preview) MandelbrotTiles.PREVIEW_DOWNSCALE else 1
         val tilesX = (range.x1 - range.x0 + 1L).toInt().coerceAtLeast(1)
         val tilesY = (range.y1 - range.y0 + 1L).toInt().coerceAtLeast(1)
@@ -401,21 +473,43 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         val yMin = range.y0 * world
         val maxIterations = MandelbrotMath.iterationsFor(MandelbrotTiles.discreteZoom(zoomStep))
         val pixels = IntArray(renderWidth * renderHeight)
+        val lut = colorLut(maxIterations, palette)
+        computeMandelbrot(
+            pixels = pixels,
+            renderWidth = renderWidth,
+            renderHeight = renderHeight,
+            xMin = xMin,
+            yMin = yMin,
+            sampleStep = sampleStep,
+            maxIterations = maxIterations,
+            lut = lut,
+            parallelRows = parallelRows,
+        )
+        return pixels
+    }
 
-        withContext(Dispatchers.Default) {
-            computeMandelbrot(
-                pixels = pixels,
-                renderWidth = renderWidth,
-                renderHeight = renderHeight,
-                xMin = xMin,
-                yMin = yMin,
-                sampleStep = sampleStep,
-                maxIterations = maxIterations,
-                palette = palette,
-            )
+    private fun installRenderedRange(
+        range: MandelbrotTiles.TileRange,
+        zoomStep: Int,
+        tilePixelSize: Int,
+        preview: Boolean,
+        palette: Palette,
+        pixels: IntArray,
+    ) {
+        val viewWidth = width
+        val viewHeight = height
+        if (viewWidth <= 0 || viewHeight <= 0) return
+        val downscale = if (preview) MandelbrotTiles.PREVIEW_DOWNSCALE else 1
+        val outSize = if (preview) {
+            (tilePixelSize / downscale).coerceAtLeast(1)
+        } else {
+            tilePixelSize
         }
-        currentCoroutineContext().ensureActive()
-
+        val tilesX = (range.x1 - range.x0 + 1L).toInt().coerceAtLeast(1)
+        val renderWidth = tilesX * outSize
+        if (pixels.size < renderWidth * ((range.y1 - range.y0 + 1L).toInt().coerceAtLeast(1) * outSize)) {
+            return
+        }
         val minEdge = MandelbrotTiles.viewMinEdge(viewWidth, viewHeight)
         var ty = range.y0
         var row = 0
@@ -433,7 +527,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                     preview = preview,
                 )
                 val fullKey = key.copy(preview = false)
-                if (preview && tileCache.contains(fullKey)) {
+                if (tileCache.contains(fullKey) || (!preview && tileCache.contains(key))) {
                     col++
                     tx++
                     continue
@@ -460,7 +554,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             row++
             ty++
         }
-        invalidate()
     }
 
     private suspend fun computeMandelbrot(
@@ -471,40 +564,106 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         yMin: Double,
         sampleStep: Double,
         maxIterations: Int,
-        palette: Palette,
-    ) = coroutineScope {
-        val cores = Runtime.getRuntime().availableProcessors()
-        val rowsPerChunk = (renderHeight / cores).coerceAtLeast(1)
-
-        (0 until renderHeight step rowsPerChunk).map { startRow ->
-            async {
-                val endRow = (startRow + rowsPerChunk).coerceAtMost(renderHeight)
-                for (y in startRow until endRow) {
-                    if (!isActive) return@async
-                    val ci = yMin + y * sampleStep
-                    var index = y * renderWidth
-                    for (x in 0 until renderWidth) {
-                        val cr = xMin + x * sampleStep
-                        val iteration = MandelbrotMath.escapeIterations(cr, ci, maxIterations)
-                        pixels[index++] = if (iteration == maxIterations) {
-                            Color.BLACK
-                        } else {
-                            colorFor(iteration, maxIterations, palette)
-                        }
-                    }
+        lut: IntArray,
+        parallelRows: Boolean,
+    ) {
+        if (renderWidth <= 0 || renderHeight <= 0) return
+        if (!parallelRows) {
+            fillMandelbrotRows(
+                pixels = pixels,
+                renderWidth = renderWidth,
+                startRow = 0,
+                endRow = renderHeight,
+                xMin = xMin,
+                yMin = yMin,
+                sampleStep = sampleStep,
+                maxIterations = maxIterations,
+                lut = lut,
+            )
+            return
+        }
+        coroutineScope {
+            val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
+            val chunkCount = (cores * ROW_PARALLELISM_OVERSUB).coerceAtMost(renderHeight).coerceAtLeast(1)
+            val rowsPerChunk = (renderHeight + chunkCount - 1) / chunkCount
+            (0 until renderHeight step rowsPerChunk).map { startRow ->
+                async {
+                    fillMandelbrotRows(
+                        pixels = pixels,
+                        renderWidth = renderWidth,
+                        startRow = startRow,
+                        endRow = (startRow + rowsPerChunk).coerceAtMost(renderHeight),
+                        xMin = xMin,
+                        yMin = yMin,
+                        sampleStep = sampleStep,
+                        maxIterations = maxIterations,
+                        lut = lut,
+                    )
                 }
-            }
-        }.awaitAll()
+            }.awaitAll()
+        }
     }
 
-    private fun colorFor(iterations: Int, maxIterations: Int, palette: Palette): Int {
-        val t = iterations.toFloat() / maxIterations
-        return when (palette) {
-            Palette.GOLDEN -> Color.HSVToColor(floatArrayOf(45f, 0.8f, (t * 1.5f).coerceAtMost(1f)))
-            Palette.SILVER -> Color.HSVToColor(floatArrayOf(0f, 0f, t))
-            Palette.BLUE -> Color.HSVToColor(floatArrayOf(200f, 0.7f, t))
-            Palette.GREEN -> Color.HSVToColor(floatArrayOf(120f, 0.7f, t))
+    private suspend fun fillMandelbrotRows(
+        pixels: IntArray,
+        renderWidth: Int,
+        startRow: Int,
+        endRow: Int,
+        xMin: Double,
+        yMin: Double,
+        sampleStep: Double,
+        maxIterations: Int,
+        lut: IntArray,
+    ) {
+        val lastColor = lut.lastIndex
+        val ctx = currentCoroutineContext()
+        for (y in startRow until endRow) {
+            ctx.ensureActive()
+            val ci = yMin + y * sampleStep
+            var index = y * renderWidth
+            for (x in 0 until renderWidth) {
+                val cr = xMin + x * sampleStep
+                val iteration = MandelbrotMath.escapeIterations(cr, ci, maxIterations)
+                pixels[index++] = lut[iteration.coerceIn(0, lastColor)]
+            }
         }
+    }
+
+    private fun colorLut(maxIterations: Int, palette: Palette): IntArray {
+        val lut = IntArray(maxIterations + 1)
+        lut[maxIterations] = Color.BLACK
+        val hsv = FloatArray(3)
+        for (i in 0 until maxIterations) {
+            lut[i] = colorFor(i, maxIterations, palette, hsv)
+        }
+        return lut
+    }
+
+    private fun colorFor(iterations: Int, maxIterations: Int, palette: Palette, hsv: FloatArray): Int {
+        val t = iterations.toFloat() / maxIterations
+        when (palette) {
+            Palette.GOLDEN -> {
+                hsv[0] = 45f
+                hsv[1] = 0.8f
+                hsv[2] = (t * 1.5f).coerceAtMost(1f)
+            }
+            Palette.SILVER -> {
+                hsv[0] = 0f
+                hsv[1] = 0f
+                hsv[2] = t
+            }
+            Palette.BLUE -> {
+                hsv[0] = 200f
+                hsv[1] = 0.7f
+                hsv[2] = t
+            }
+            Palette.GREEN -> {
+                hsv[0] = 120f
+                hsv[1] = 0.7f
+                hsv[2] = t
+            }
+        }
+        return Color.HSVToColor(hsv)
     }
 
     private fun copySubgrid(
@@ -558,18 +717,15 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
 
     private fun visibleCacheKeys(): Set<MandelbrotTiles.TileKey> {
         if (width <= 0 || height <= 0) return emptySet()
-        val tilePx = MandelbrotTiles.tilePixelSize(width, height)
-        val minEdge = MandelbrotTiles.viewMinEdge(width, height)
-        val step = MandelbrotTiles.zoomStep(zoom)
-        val range = MandelbrotTiles.visibleTileRange(
-            offsetX, offsetY, zoom, width, height, step, tilePx,
+        return MandelbrotTiles.protectableKeys(
+            zoom = zoom,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            viewWidth = width,
+            viewHeight = height,
+            tilePixelSize = MandelbrotTiles.tilePixelSize(width, height),
+            paletteOrdinal = colorPalette.ordinal,
         )
-        val keys = HashSet<MandelbrotTiles.TileKey>(range.tileCount.toInt().coerceAtLeast(0) * 2)
-        range.forEach { x, y ->
-            keys += MandelbrotTiles.TileKey(step, x, y, colorPalette.ordinal, tilePx, minEdge, false)
-            keys += MandelbrotTiles.TileKey(step, x, y, colorPalette.ordinal, tilePx, minEdge, true)
-        }
-        return keys
     }
 
     private fun visibleTilesComplete(): Boolean {
@@ -586,8 +742,26 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         )
     }
 
+    private fun visibleViewportCovered(): Boolean {
+        if (width <= 0 || height <= 0) return false
+        return MandelbrotTiles.visibleViewportCovered(
+            zoom = zoom,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            viewWidth = width,
+            viewHeight = height,
+            tilePixelSize = MandelbrotTiles.tilePixelSize(width, height),
+            paletteOrdinal = colorPalette.ordinal,
+            isCached = { tileCache.contains(it) },
+        )
+    }
+
     private fun updateRenderingState(forceIdle: Boolean = false) {
-        val busy = !forceIdle && workJob?.isActive == true && !currentWorkIsPrefetch
+        val busy = !forceIdle && MandelbrotMath.showRenderSpinner(
+            workActive = workJob?.isActive == true,
+            workIsPrefetch = currentWorkIsPrefetch,
+            viewportCovered = visibleViewportCovered(),
+        )
         if (busy == spinnerVisible) return
         spinnerVisible = busy
         renderingStateCallback?.invoke(busy)
@@ -695,7 +869,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         /** Double precision runs out around here, so zooming further only adds noise. */
         const val MAX_ZOOM = 1.0e13
         const val DOUBLE_TAP_ZOOM_FACTOR = 2.0
-        const val MAX_PREVIEW_BATCH = 8
+        const val ROW_PARALLELISM_OVERSUB = 4
         const val MIN_MEMORY_BYTES = 16L * 1024L * 1024L
         const val MAX_MEMORY_BYTES = 64L * 1024L * 1024L
         const val DISK_CACHE_BYTES = 128L * 1024L * 1024L
