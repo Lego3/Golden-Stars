@@ -129,7 +129,7 @@ unnecessary builds.
 | Job | What it does |
 |-----|----------------|
 | Build, lint & unit test | `./gradlew testDebugUnitTest`, `lintDebug`, debug APK; uploads reports |
-| Instrumented tests (emulator) | Smoke tests on API 34 via `reactivecircus/android-emulator-runner` |
+| Instrumented tests (emulator) | Smoke tests on API 34 via `reactivecircus/android-emulator-runner`; retries up to three emulator boots when a run fails (flaky ADB/Espresso) |
 
 JUnit XML from both test jobs is summarized in each job's **Summary** tab on GitHub
 Actions (pass/fail counts, failure details, and a collapsible full test list). No

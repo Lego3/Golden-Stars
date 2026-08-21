@@ -19,6 +19,17 @@ Git tags (`v1.1.0`, `v1.2.0`, …).
   pre-renders neighbouring tiles plus the next 2× zoom so pan and pinch stay smooth.
   Disk eviction drops the least recently *used* tiles, including ones that stayed in RAM.
 - Hub cards keep a content inset so they no longer run to the screen edge.
+- Instrumented CI retries up to three emulator runs when ADB or Espresso flakes.
+
+### Fixed
+
+- Hub scroll view reserves clearance above the floating version label so the last card
+  does not sit underneath it.
+- Mandelbrot and Julia explorers discard in-flight preview or full renders when the
+  viewport, palette, or Julia constant no longer matches, so late results cannot overwrite
+  a correct frame.
+- Golden Stars, Spirograph, Mandelbrot, and Julia restore pan/zoom and reveal animation
+  correctly after configuration changes (rotation).
 
 ## [1.2.0] - 2026-08-09
 
