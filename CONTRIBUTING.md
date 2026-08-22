@@ -35,10 +35,10 @@ package manager.
 Edge-to-edge insets differ from the explorers: the scroll content gets system-bar and
 cutout padding (`hub_content_padding` plus bar insets), while the version label sits in a
 `CoordinatorLayout` overlay with its own bottom margin. `updateHubScrollBottomPadding`
-adds bottom padding to the `NestedScrollView` equal to the label height, margin, and
-`hub_version_clearance` so the last card can scroll fully above the label.
-`MainActivityTest` asserts both the padding math and that the Julia card does not overlap
-the label when scrolled to the end.
+adds bottom padding to the `NestedScrollView` via `hubScrollBottomPadding` (label height,
+margin, and `hub_version_clearance`) so the last card can scroll fully above the label.
+`HubLayoutTest` covers that formula; `MainActivityTest` asserts the padding is applied and
+that the Julia card does not overlap the label when scrolled to the end.
 
 ### Shared UI and persistence
 
@@ -139,7 +139,7 @@ and save so stored values always match slider bounds.
 
 | Layer | Location | Examples |
 |-------|----------|----------|
-| Unit | `app/src/test/` | `StarMathTest`, `SpirographMathTest`, `JuliaMathTest`, `MandelbrotMathTest`, `FractalColoringTest`, `MandelbrotTilesTest`, `MandelbrotTileCacheTest`, `DrawViewMathTest`, `ScreenInsetsTest` |
+| Unit | `app/src/test/` | `StarMathTest`, `SpirographMathTest`, `JuliaMathTest`, `MandelbrotMathTest`, `FractalColoringTest`, `MandelbrotTilesTest`, `MandelbrotTileCacheTest`, `DrawViewMathTest`, `ScreenInsetsTest`, `HubLayoutTest` |
 | Instrumented | `app/src/androidTest/` | Settings round-trip, rotation survival, smoke launch per activity, hub scroll/version layout (`MainActivityTest`) |
 
 When adding behaviour, extend the matching `*Math` unit tests first. Reserve
