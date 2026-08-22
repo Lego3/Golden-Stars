@@ -454,13 +454,12 @@ class MandelbrotTilesTest {
 
     @Test
     fun `tile is covered by an exact full tile in the cache`() {
-        val key = MandelbrotTiles.TileKey(0, -1, 0, 0, 256, 600, preview = false)
+        val key = MandelbrotTiles.TileKey(0, -1, 0, 256, 600, preview = false)
         assertTrue(
             MandelbrotTiles.tileIsCovered(
                 tileX = -1,
                 tileY = 0,
                 tileStep = 0,
-                paletteOrdinal = 0,
                 tilePixelSize = 256,
                 viewMinEdge = 600,
             ) { it == key },
@@ -477,7 +476,6 @@ class MandelbrotTilesTest {
                 viewWidth = 0,
                 viewHeight = 600,
                 tilePixelSize = 256,
-                paletteOrdinal = 0,
             ).isEmpty(),
         )
         assertFalse(
@@ -488,7 +486,6 @@ class MandelbrotTilesTest {
                 viewWidth = 800,
                 viewHeight = 0,
                 tilePixelSize = 256,
-                paletteOrdinal = 0,
             ) { true },
         )
     }
