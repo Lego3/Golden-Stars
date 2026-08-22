@@ -15,6 +15,8 @@ Git tags (`v1.1.0`, `v1.2.0`, …).
 
 ### Changed
 
+- Mandelbrot and Julia palettes are draw-time colour filters over a cached greyscale
+  escape map, so changing colour no longer discards tiles or rerenders.
 - Mandelbrot explorer keeps a memory and disk tile cache, reuses nearby zoom steps, and
   pre-renders neighbouring tiles plus the next 2× zoom so pan and pinch stay smooth.
   The loading circle shows only while the viewport still has holes. Visible tiles render
@@ -30,8 +32,9 @@ Git tags (`v1.1.0`, `v1.2.0`, …).
 - Hub scroll view reserves clearance above the floating version label so the last card
   does not sit underneath it.
 - Mandelbrot and Julia explorers discard in-flight preview or full renders when the
-  viewport, palette, or Julia constant no longer matches, so late results cannot overwrite
-  a correct frame.
+  viewport or Julia constant no longer matches, so late results cannot overwrite a
+  correct frame. Palette is a draw-time filter, so a colour change does not discard
+  or rerender.
 - Golden Stars, Spirograph, Mandelbrot, and Julia restore pan/zoom and reveal animation
   correctly after configuration changes (rotation).
 

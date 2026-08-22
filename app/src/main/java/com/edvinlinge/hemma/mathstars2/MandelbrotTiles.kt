@@ -34,7 +34,6 @@ internal object MandelbrotTiles {
         val zoomStep: Int,
         val tileX: Long,
         val tileY: Long,
-        val paletteOrdinal: Int,
         val tilePixelSize: Int,
         val viewMinEdge: Int,
         val preview: Boolean,
@@ -231,7 +230,6 @@ internal object MandelbrotTiles {
         viewWidth: Int,
         viewHeight: Int,
         tilePixelSize: Int,
-        paletteOrdinal: Int,
         available: Set<TileKey>,
     ): List<TileDraw> {
         if (viewWidth <= 0 || viewHeight <= 0 || available.isEmpty()) return emptyList()
@@ -251,7 +249,6 @@ internal object MandelbrotTiles {
                 tileX = tx,
                 tileY = ty,
                 tileStep = step,
-                paletteOrdinal = paletteOrdinal,
                 tilePixelSize = tilePixelSize,
                 viewMinEdge = minEdge,
                 available = available,
@@ -261,7 +258,7 @@ internal object MandelbrotTiles {
                 for (lx in 0..1) {
                     val cx = childTileX(tx, lx)
                     val cy = childTileY(ty, ly)
-                    val childFull = TileKey(step + 1, cx, cy, paletteOrdinal, tilePixelSize, minEdge, false)
+                    val childFull = TileKey(step + 1, cx, cy, tilePixelSize, minEdge, false)
                     val childPreview = childFull.copy(preview = true)
                     val child = when {
                         childFull in available -> childFull
@@ -291,7 +288,6 @@ internal object MandelbrotTiles {
         viewWidth: Int,
         viewHeight: Int,
         tilePixelSize: Int,
-        paletteOrdinal: Int,
         panSignX: Int,
         panSignY: Int,
         zoomSign: Int,
@@ -307,7 +303,7 @@ internal object MandelbrotTiles {
             offsetX, offsetY, zoom, viewWidth, viewHeight, step, tilePixelSize,
         )
         val visibleFull = keysForRange(
-            visibleRange, step, paletteOrdinal, tilePixelSize, minEdge, preview = false,
+            visibleRange, step, tilePixelSize, minEdge, preview = false,
         ).let { sortTowardFocus(it, focusX, focusY, step, tilePixelSize, viewWidth, viewHeight) }
 
         val visiblePreview = visibleFull.map { it.copy(preview = true) }
@@ -325,12 +321,12 @@ internal object MandelbrotTiles {
 
         val panRange = expandRange(visibleRange, panSignX, panSignY, extra = 1)
         addMissing(
-            keysForRange(panRange, step, paletteOrdinal, tilePixelSize, minEdge, preview = false),
+            keysForRange(panRange, step, tilePixelSize, minEdge, preview = false),
         )
 
         val ring = expandRange(visibleRange, extra = 1)
         addMissing(
-            keysForRange(ring, step, paletteOrdinal, tilePixelSize, minEdge, preview = false),
+            keysForRange(ring, step, tilePixelSize, minEdge, preview = false),
         )
 
         val zoomInFirst = zoomSign >= 0
@@ -341,7 +337,6 @@ internal object MandelbrotTiles {
             viewWidth = viewWidth,
             viewHeight = viewHeight,
             tilePixelSize = tilePixelSize,
-            paletteOrdinal = paletteOrdinal,
             minEdge = minEdge,
             focusX = focusX,
             focusY = focusY,
@@ -353,7 +348,6 @@ internal object MandelbrotTiles {
             viewWidth = viewWidth,
             viewHeight = viewHeight,
             tilePixelSize = tilePixelSize,
-            paletteOrdinal = paletteOrdinal,
             minEdge = minEdge,
             focusX = focusX,
             focusY = focusY,
@@ -396,14 +390,13 @@ internal object MandelbrotTiles {
     fun keysForRange(
         range: TileRange,
         zoomStep: Int,
-        paletteOrdinal: Int,
         tilePixelSize: Int,
         viewMinEdge: Int,
         preview: Boolean,
     ): List<TileKey> {
         val keys = ArrayList<TileKey>(range.tileCount.toInt().coerceAtLeast(0).coerceAtMost(4096))
         range.forEach { x, y ->
-            keys += TileKey(zoomStep, x, y, paletteOrdinal, tilePixelSize, viewMinEdge, preview)
+            keys += TileKey(zoomStep, x, y, tilePixelSize, viewMinEdge, preview)
         }
         return keys
     }
@@ -453,7 +446,6 @@ internal object MandelbrotTiles {
         viewWidth: Int,
         viewHeight: Int,
         tilePixelSize: Int,
-        paletteOrdinal: Int,
         isCached: (TileKey) -> Boolean,
     ): Boolean {
         val step = zoomStep(zoom)
@@ -463,7 +455,7 @@ internal object MandelbrotTiles {
         )
         var complete = true
         range.forEach { x, y ->
-            val key = TileKey(step, x, y, paletteOrdinal, tilePixelSize, minEdge, preview = false)
+            val key = TileKey(step, x, y, tilePixelSize, minEdge, preview = false)
             if (!isCached(key)) complete = false
         }
         return complete
@@ -481,7 +473,6 @@ internal object MandelbrotTiles {
         viewWidth: Int,
         viewHeight: Int,
         tilePixelSize: Int,
-        paletteOrdinal: Int,
         isCached: (TileKey) -> Boolean,
     ): Boolean {
         if (viewWidth <= 0 || viewHeight <= 0) return false
@@ -492,7 +483,7 @@ internal object MandelbrotTiles {
         )
         var covered = true
         range.forEach { x, y ->
-            if (!tileIsCovered(x, y, step, paletteOrdinal, tilePixelSize, minEdge, isCached)) {
+            if (!tileIsCovered(x, y, step, tilePixelSize, minEdge, isCached)) {
                 covered = false
             }
         }
@@ -511,7 +502,6 @@ internal object MandelbrotTiles {
         viewWidth: Int,
         viewHeight: Int,
         tilePixelSize: Int,
-        paletteOrdinal: Int,
     ): Set<TileKey> {
         if (viewWidth <= 0 || viewHeight <= 0) return emptySet()
         val step = zoomStep(zoom)
@@ -524,7 +514,7 @@ internal object MandelbrotTiles {
             var ax = x
             var ay = y
             for (level in 0..MAX_ANCESTOR_LEVELS) {
-                val full = TileKey(step - level, ax, ay, paletteOrdinal, tilePixelSize, minEdge, false)
+                val full = TileKey(step - level, ax, ay, tilePixelSize, minEdge, false)
                 keys += full
                 keys += full.copy(preview = true)
                 ax = parentTileX(ax)
@@ -536,7 +526,6 @@ internal object MandelbrotTiles {
                         step + 1,
                         childTileX(x, lx),
                         childTileY(y, ly),
-                        paletteOrdinal,
                         tilePixelSize,
                         minEdge,
                         preview = false,
@@ -553,12 +542,11 @@ internal object MandelbrotTiles {
         tileX: Long,
         tileY: Long,
         tileStep: Int,
-        paletteOrdinal: Int,
         tilePixelSize: Int,
         viewMinEdge: Int,
         isCached: (TileKey) -> Boolean,
     ): Boolean {
-        if (hasCoveringSource(tileX, tileY, tileStep, paletteOrdinal, tilePixelSize, viewMinEdge, isCached)) {
+        if (hasCoveringSource(tileX, tileY, tileStep, tilePixelSize, viewMinEdge, isCached)) {
             return true
         }
         var childCount = 0
@@ -568,7 +556,6 @@ internal object MandelbrotTiles {
                     tileStep + 1,
                     childTileX(tileX, lx),
                     childTileY(tileY, ly),
-                    paletteOrdinal,
                     tilePixelSize,
                     viewMinEdge,
                     preview = false,
@@ -583,7 +570,6 @@ internal object MandelbrotTiles {
         tileX: Long,
         tileY: Long,
         tileStep: Int,
-        paletteOrdinal: Int,
         tilePixelSize: Int,
         viewMinEdge: Int,
         isCached: (TileKey) -> Boolean,
@@ -595,7 +581,6 @@ internal object MandelbrotTiles {
                 tileStep - level,
                 ax,
                 ay,
-                paletteOrdinal,
                 tilePixelSize,
                 viewMinEdge,
                 preview = false,
@@ -611,7 +596,6 @@ internal object MandelbrotTiles {
         tileX: Long,
         tileY: Long,
         tileStep: Int,
-        paletteOrdinal: Int,
         tilePixelSize: Int,
         viewMinEdge: Int,
         available: Set<TileKey>,
@@ -622,7 +606,7 @@ internal object MandelbrotTiles {
         var bestScore = Int.MIN_VALUE
         for (level in 0..MAX_ANCESTOR_LEVELS) {
             val step = tileStep - level
-            val full = TileKey(step, ax, ay, paletteOrdinal, tilePixelSize, viewMinEdge, false)
+            val full = TileKey(step, ax, ay, tilePixelSize, viewMinEdge, false)
             val preview = full.copy(preview = true)
             if (full in available) {
                 val score = coverageSamples(full, tileStep)
@@ -662,7 +646,6 @@ internal object MandelbrotTiles {
         viewWidth: Int,
         viewHeight: Int,
         tilePixelSize: Int,
-        paletteOrdinal: Int,
         minEdge: Int,
         focusX: Double,
         focusY: Double,
@@ -672,7 +655,7 @@ internal object MandelbrotTiles {
             offsetX, offsetY, zoom, viewWidth, viewHeight, step, tilePixelSize,
         )
         return sortTowardFocus(
-            keysForRange(range, step, paletteOrdinal, tilePixelSize, minEdge, preview = false),
+            keysForRange(range, step, tilePixelSize, minEdge, preview = false),
             focusX,
             focusY,
             step,

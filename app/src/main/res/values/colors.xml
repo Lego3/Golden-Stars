@@ -7,7 +7,7 @@
     <color name="surface_dark">#121212</color>
 
     <!-- Selectable draw colours. Order must match SettingsBottomSheet.SWATCH_COLORS
-         and MandelbrotView.Palette. -->
+         and FractalPalette. -->
     <color name="swatch_gold">#FFD700</color>
     <color name="swatch_silver">#C0C0C0</color>
     <color name="swatch_blue">#00BFFF</color>
