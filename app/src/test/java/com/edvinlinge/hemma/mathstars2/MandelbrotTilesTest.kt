@@ -451,4 +451,83 @@ class MandelbrotTilesTest {
         assertEquals(256, MandelbrotTiles.pixelSize(full))
         assertEquals(64, MandelbrotTiles.pixelSize(preview))
     }
+
+    @Test
+    fun `tile is covered by an exact full tile in the cache`() {
+        val key = MandelbrotTiles.TileKey(0, -1, 0, 0, 256, 600, preview = false)
+        assertTrue(
+            MandelbrotTiles.tileIsCovered(
+                tileX = -1,
+                tileY = 0,
+                tileStep = 0,
+                paletteOrdinal = 0,
+                tilePixelSize = 256,
+                viewMinEdge = 600,
+            ) { it == key },
+        )
+    }
+
+    @Test
+    fun `tile is not covered when only three of four children exist`() {
+        val children = HashSet<MandelbrotTiles.TileKey>()
+        for (ly in 0..1) {
+            for (lx in 0..1) {
+                if (lx == 1 && ly == 1) continue
+                children += MandelbrotTiles.TileKey(
+                    zoomStep = 1,
+                    tileX = MandelbrotTiles.childTileX(0, lx),
+                    tileY = MandelbrotTiles.childTileY(0, ly),
+                    paletteOrdinal = 0,
+                    tilePixelSize = 256,
+                    viewMinEdge = 600,
+                    preview = false,
+                )
+            }
+        }
+        assertFalse(
+            MandelbrotTiles.tileIsCovered(
+                tileX = 0,
+                tileY = 0,
+                tileStep = 0,
+                paletteOrdinal = 0,
+                tilePixelSize = 256,
+                viewMinEdge = 600,
+            ) { it in children },
+        )
+    }
+
+    @Test
+    fun `zero sized views have no protectable keys and an uncovered viewport`() {
+        assertTrue(
+            MandelbrotTiles.protectableKeys(
+                zoom = 1.0,
+                offsetX = -0.5,
+                offsetY = 0.0,
+                viewWidth = 0,
+                viewHeight = 600,
+                tilePixelSize = 256,
+                paletteOrdinal = 0,
+            ).isEmpty(),
+        )
+        assertFalse(
+            MandelbrotTiles.visibleViewportCovered(
+                zoom = 1.0,
+                offsetX = -0.5,
+                offsetY = 0.0,
+                viewWidth = 800,
+                viewHeight = 0,
+                tilePixelSize = 256,
+                paletteOrdinal = 0,
+            ) { true },
+        )
+    }
+
+    @Test
+    fun `screen rect intersection rejects tiles fully outside the view`() {
+        val offscreen = MandelbrotTiles.ScreenRect(-300f, 0f, -50f, 200f)
+        assertFalse(offscreen.intersectsView(viewWidth = 800, viewHeight = 600))
+
+        val partial = MandelbrotTiles.ScreenRect(-10f, 100f, 10f, 200f)
+        assertTrue(partial.intersectsView(viewWidth = 800, viewHeight = 600))
+    }
 }
