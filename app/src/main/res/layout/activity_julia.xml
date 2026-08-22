@@ -95,12 +95,12 @@
                     app:icon="@android:drawable/ic_menu_manage" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/infoButton"
+                    android:id="@+id/helpButton"
                     style="@style/Widget.Material3.Button.IconButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:contentDescription="@string/action_details"
-                    app:icon="@android:drawable/ic_menu_info_details" />
+                    android:contentDescription="@string/help"
+                    app:icon="@android:drawable/ic_menu_help" />
 
             </LinearLayout>
 

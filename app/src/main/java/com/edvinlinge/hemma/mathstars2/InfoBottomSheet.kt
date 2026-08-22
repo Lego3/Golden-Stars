@@ -8,6 +8,10 @@ import androidx.core.text.parseAsHtml
 import com.edvinlinge.hemma.mathstars2.databinding.LayoutInfoBottomSheetBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
+/**
+ * Shared Details / Help sheet. The host supplies both the title and the message so the same
+ * layout can describe a figure (Details) or explain how a screen works (Help).
+ */
 class InfoBottomSheet : BottomSheetDialogFragment() {
 
     private var _binding: LayoutInfoBottomSheetBinding? = null
@@ -25,7 +29,10 @@ class InfoBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val message = arguments?.getString(ARG_MESSAGE) ?: ""
+        val arguments = requireArguments()
+        binding.infoTitle.text =
+            arguments.getString(ARG_TITLE) ?: getString(R.string.more_info_button)
+        val message = arguments.getString(ARG_MESSAGE) ?: ""
         binding.infoMessage.text = if (shouldParseInfoMessageAsHtml(message)) {
             message.parseAsHtml()
         } else {
@@ -42,9 +49,13 @@ class InfoBottomSheet : BottomSheetDialogFragment() {
     companion object {
         const val TAG = "InfoBottomSheet"
         private const val ARG_MESSAGE = "arg_message"
+        private const val ARG_TITLE = "arg_title"
 
-        fun newInstance(message: String): InfoBottomSheet {
-            val args = Bundle().apply { putString(ARG_MESSAGE, message) }
+        fun newInstance(message: String, title: String): InfoBottomSheet {
+            val args = Bundle().apply {
+                putString(ARG_MESSAGE, message)
+                putString(ARG_TITLE, title)
+            }
             return InfoBottomSheet().apply { arguments = args }
         }
     }

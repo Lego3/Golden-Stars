@@ -51,4 +51,13 @@ class JuliaActivityTest {
             onView(withText(R.string.customize_julia)).check(matches(isDisplayed()))
         }
     }
+
+    @Test
+    fun opensHelpSheetWithHelpTitle() {
+        ActivityScenario.launch(JuliaActivity::class.java).use {
+            onView(withId(R.id.helpButton)).perform(click())
+            onView(withId(R.id.infoTitle)).check(matches(withText(R.string.help)))
+            onView(withId(R.id.infoMessage)).check(matches(isDisplayed()))
+        }
+    }
 }

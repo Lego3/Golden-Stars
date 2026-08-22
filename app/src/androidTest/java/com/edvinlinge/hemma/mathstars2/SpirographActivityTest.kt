@@ -47,6 +47,24 @@ class SpirographActivityTest {
         }
     }
 
+    @Test
+    fun opensDetailsSheetWithDetailsTitle() {
+        ActivityScenario.launch(SpirographActivity::class.java).use {
+            onView(withId(R.id.infoButton)).perform(click())
+            onView(withId(R.id.infoTitle)).check(matches(withText(R.string.more_info_button)))
+            onView(withId(R.id.infoMessage)).check(matches(isDisplayed()))
+        }
+    }
+
+    @Test
+    fun opensHelpSheetWithHelpTitle() {
+        ActivityScenario.launch(SpirographActivity::class.java).use {
+            onView(withId(R.id.helpButton)).perform(click())
+            onView(withId(R.id.infoTitle)).check(matches(withText(R.string.help)))
+            onView(withId(R.id.infoMessage)).check(matches(isDisplayed()))
+        }
+    }
+
     private fun settingsSnapshot(
         fixedRadius: Int = SpirographMath.DEFAULT_FIXED,
         rollingRadius: Int = SpirographMath.DEFAULT_ROLLING,

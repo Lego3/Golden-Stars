@@ -91,12 +91,14 @@ class SpirographActivity : AppCompatActivity() {
 
         binding.infoButton.setOnClickListener {
             val message = binding.spirographView.getDetailsHtml(this)
-            InfoBottomSheet.newInstance(message).show(supportFragmentManager, InfoBottomSheet.TAG)
+            InfoBottomSheet.newInstance(message, getString(R.string.more_info_button))
+                .show(supportFragmentManager, InfoBottomSheet.TAG)
         }
 
         binding.helpButton.setOnClickListener {
             val helpText = getString(R.string.spirograph_help)
-            InfoBottomSheet.newInstance(helpText).show(supportFragmentManager, InfoBottomSheet.TAG)
+            InfoBottomSheet.newInstance(helpText, getString(R.string.help))
+                .show(supportFragmentManager, InfoBottomSheet.TAG)
         }
     }
 

@@ -105,7 +105,7 @@ class JuliaActivity : AppCompatActivity() {
             ).show(supportFragmentManager, SettingsBottomSheet.TAG)
         }
 
-        binding.infoButton.setOnClickListener {
+        binding.helpButton.setOnClickListener {
             val preset = JuliaMath.presetAt(presetIndex)
             val connected = JuliaMath.isLikelyConnected(preset.real, preset.imag)
             val connectivity = getString(
@@ -117,7 +117,8 @@ class JuliaActivity : AppCompatActivity() {
                 presetName(presetIndex),
                 connectivity,
             )
-            InfoBottomSheet.newInstance(helpText).show(supportFragmentManager, InfoBottomSheet.TAG)
+            InfoBottomSheet.newInstance(helpText, getString(R.string.help))
+                .show(supportFragmentManager, InfoBottomSheet.TAG)
         }
     }
 
