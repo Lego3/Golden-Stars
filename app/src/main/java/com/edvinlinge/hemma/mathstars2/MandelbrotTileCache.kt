@@ -6,6 +6,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.LinkedHashMap
+import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.Deflater
 import java.util.zip.DeflaterOutputStream
 import java.util.zip.Inflater
@@ -20,8 +21,8 @@ import java.util.zip.InflaterInputStream
  * its file is old. Access times are flushed onto file lastModified so the same policy survives
  * process death.
  *
- * Access is not synchronized. The view uses this from the main thread except for the disk helpers,
- * which only read/write byte streams and then hop back to main to [put].
+ * Access is not synchronized on the memory map; the view uses that from the main thread.
+ * Disk metadata maps are concurrent because multiple IO jobs can save or load tiles at once.
  */
 internal class MandelbrotTileCache(
     val maxMemoryBytes: Long,
@@ -40,8 +41,9 @@ internal class MandelbrotTileCache(
 
     private val memory = LinkedHashMap<MandelbrotTiles.TileKey, Entry>(16, 0.75f, true)
     private var usedBytes = 0L
-    private val lastAccessMs = HashMap<String, Long>()
-    private val lastTouchMs = HashMap<String, Long>()
+    /** Concurrent: [saveToDisk] and [loadFromDisk] run on IO while main thread also records access. */
+    private val lastAccessMs = ConcurrentHashMap<String, Long>()
+    private val lastTouchMs = ConcurrentHashMap<String, Long>()
 
     val memorySize: Int get() = memory.size
     val memoryBytes: Long get() = usedBytes

@@ -163,6 +163,31 @@ class MandelbrotTileCacheTest {
         }
     }
 
+    @Test
+    fun `concurrent disk saves keep access metadata consistent`() {
+        val dir = Files.createTempDirectory("mandelbrot-tiles-concurrent").toFile()
+        try {
+            val cache = MandelbrotTileCache(
+                maxMemoryBytes = 1024 * 1024,
+                diskDir = dir,
+                maxDiskBytes = 1024 * 1024,
+            )
+            val pixels = IntArray(64) { it * 1_000_003 }
+            val threads = (0 until 32).map { id ->
+                Thread {
+                    cache.saveToDisk(tileKey(id), pixels)
+                    cache.loadFromDisk(tileKey(id))
+                }
+            }
+            threads.forEach { it.start() }
+            threads.forEach { it.join() }
+            val files = dir.listFiles { file -> file.extension == "tile" }.orEmpty()
+            assertTrue(files.isNotEmpty())
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
     private fun tileKey(id: Int, preview: Boolean = false) = MandelbrotTiles.TileKey(
         zoomStep = 0,
         tileX = id.toLong(),

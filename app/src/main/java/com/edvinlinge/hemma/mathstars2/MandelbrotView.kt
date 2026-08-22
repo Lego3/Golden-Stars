@@ -115,6 +115,8 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         if (palette == colorPalette) return
         colorPalette = palette
         invalidate()
+        workEpoch++
+        workJob?.cancel()
         requestFullRender()
     }
 
@@ -371,6 +373,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
 
     private suspend fun computeTileGroup(keys: List<MandelbrotTiles.TileKey>, preview: Boolean) {
         if (keys.isEmpty()) return
+        val palette = colorPalette
         val bbox = MandelbrotTiles.bboxOf(keys) ?: return
         val dense = bbox.tileCount <= keys.size * 2L
         if (dense) {
@@ -379,7 +382,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                 zoomStep = keys.first().zoomStep,
                 tilePixelSize = keys.first().tilePixelSize,
                 preview = preview,
-                palette = colorPalette,
+                palette = palette,
             )
             return
         }
@@ -393,7 +396,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                         zoomStep = key.zoomStep,
                         tilePixelSize = key.tilePixelSize,
                         preview = preview,
-                        palette = colorPalette,
+                        palette = palette,
                         viewWidth = viewWidth,
                         viewHeight = viewHeight,
                         parallelRows = false,
@@ -408,7 +411,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                     zoomStep = key.zoomStep,
                     tilePixelSize = key.tilePixelSize,
                     preview = preview,
-                    palette = colorPalette,
+                    palette = palette,
                     pixels = pixels,
                 )
             }
@@ -496,6 +499,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         palette: Palette,
         pixels: IntArray,
     ) {
+        if (palette != colorPalette) return
         val viewWidth = width
         val viewHeight = height
         if (viewWidth <= 0 || viewHeight <= 0) return
