@@ -95,9 +95,10 @@ scales with zoom (`MandelbrotMath.iterationsFor`) and is capped to keep frames b
 2. When idle, a **full** pass renders at view size (`requestFullRender`).
 3. Until the new bitmap arrives, the previous one is scaled and shifted using
    `MandelbrotMath.staleBitmapDrawTransform` so pan and pinch stay responsive.
-4. In-flight results are dropped when the viewport, palette, or Julia constant no
+4. In-flight results are dropped when the viewport or Julia constant no
    longer match (`shouldApplyRenderResult`), so a late preview cannot overwrite a
-   correct full-resolution frame.
+   correct full-resolution frame. Palette is a draw-time colour filter over a
+   greyscale escape map, so changing colour does not rerender.
 5. Pixel buffers are written on a background dispatcher; `bufferJob` serializes access
    so a detached view never races with a new attach.
 
@@ -107,11 +108,12 @@ store (`MandelbrotTileCache`). Nearby zoom steps and parent tiles stand in, scal
 while missing tiles render in the background. The loading circle appears only when the
 viewport still has holes; scaled or preview tiles count as covered, so sharpening and
 prefetch stay silent. Visible missing tiles render as one row-parallel pass (with
-cardioid/bulb interior early-out and a colour LUT). Prefetch fills neighbours and the
-next 2× zoom after a gesture settles, a few tiles at a time. LRU eviction keeps the
-tiles the current frame still blits, including scaled parents. Disk eviction follows last
-*use*, including memory hits, so the default 1× view is not deleted just because it was
-written first.
+cardioid/bulb interior early-out). Cached tiles store an 8-bit escape-time alpha map;
+`ColorMatrixColorFilter` applies the current `FractalPalette` at draw time, so a colour
+change does not invalidate the cache. Prefetch fills neighbours and the next 2× zoom
+after a gesture settles, a few tiles at a time. LRU eviction keeps the tiles the current
+frame still blits, including scaled parents. Disk eviction follows last *use*, including
+memory hits, so the default 1× view is not deleted just because it was written first.
 
 ### Settings and configuration changes
 
@@ -137,7 +139,7 @@ and save so stored values always match slider bounds.
 
 | Layer | Location | Examples |
 |-------|----------|----------|
-| Unit | `app/src/test/` | `StarMathTest`, `SpirographMathTest`, `JuliaMathTest`, `MandelbrotMathTest`, `MandelbrotTilesTest`, `MandelbrotTileCacheTest`, `DrawViewMathTest`, `ScreenInsetsTest` |
+| Unit | `app/src/test/` | `StarMathTest`, `SpirographMathTest`, `JuliaMathTest`, `MandelbrotMathTest`, `FractalColoringTest`, `MandelbrotTilesTest`, `MandelbrotTileCacheTest`, `DrawViewMathTest`, `ScreenInsetsTest` |
 | Instrumented | `app/src/androidTest/` | Settings round-trip, rotation survival, smoke launch per activity, hub scroll/version layout (`MainActivityTest`) |
 
 When adding behaviour, extend the matching `*Math` unit tests first. Reserve

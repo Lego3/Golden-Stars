@@ -164,8 +164,8 @@ class JuliaActivity : AppCompatActivity() {
     )
 
     /** Swatch order matches the palette order, so the index maps straight across. */
-    private fun paletteFor(index: Int): JuliaView.Palette =
-        JuliaView.Palette.entries[index.coerceIn(JuliaView.Palette.entries.indices)]
+    private fun paletteFor(index: Int): FractalPalette =
+        FractalPalette.entries[index.coerceIn(FractalPalette.entries.indices)]
 
     companion object {
         private const val STATE_PRESET_INDEX = "preset_index"

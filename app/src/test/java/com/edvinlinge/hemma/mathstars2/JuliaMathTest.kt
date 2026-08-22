@@ -83,7 +83,7 @@ class JuliaMathTest {
     }
 
     @Test
-    fun `render result applies only when viewport constant and palette still match`() {
+    fun `render result applies only when viewport and constant still match`() {
         val viewport = arrayOf(
             2.0, -0.5, 0.1,
             2.0, -0.5, 0.1,
@@ -101,8 +101,6 @@ class JuliaMathTest {
                 renderCImag = rabbit.imag,
                 cReal = rabbit.real,
                 cImag = rabbit.imag,
-                renderPalette = "golden",
-                currentPalette = "golden",
             ),
         )
         assertFalse(
@@ -117,24 +115,6 @@ class JuliaMathTest {
                 renderCImag = rabbit.imag,
                 cReal = -0.75,
                 cImag = 0.0,
-                renderPalette = "golden",
-                currentPalette = "golden",
-            ),
-        )
-        assertFalse(
-            JuliaMath.shouldApplyRenderResult(
-                zoom = viewport[0],
-                offsetX = viewport[1],
-                offsetY = viewport[2],
-                renderZoom = viewport[3],
-                renderOffsetX = viewport[4],
-                renderOffsetY = viewport[5],
-                renderCReal = rabbit.real,
-                renderCImag = rabbit.imag,
-                cReal = rabbit.real,
-                cImag = rabbit.imag,
-                renderPalette = "golden",
-                currentPalette = "silver",
             ),
         )
         assertFalse(
@@ -149,8 +129,6 @@ class JuliaMathTest {
                 renderCImag = rabbit.imag,
                 cReal = rabbit.real,
                 cImag = rabbit.imag,
-                renderPalette = "golden",
-                currentPalette = "golden",
             ),
         )
     }

@@ -3,7 +3,8 @@ package com.edvinlinge.hemma.mathstars2
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.Rect
 import android.os.Parcel
@@ -32,6 +33,8 @@ import kotlinx.coroutines.withContext
 class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    /** Copies the greyscale preview without baking the current palette into the bitmap. */
+    private val blitPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     /** The image on screen. Always matches the view size. */
     private var bitmap: Bitmap? = null
@@ -56,7 +59,7 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     private var hasRenderedOnce = false
     private var bitmapIsPreview = false
 
-    private var colorPalette = Palette.GOLDEN
+    private var colorPalette = FractalPalette.GOLDEN
 
     /**
      * A coroutine scope is valid only while the view is attached. A View instance can be detached
@@ -72,12 +75,9 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     private var zoomCallback: ((Double) -> Unit)? = null
     private var renderingStateCallback: ((Boolean) -> Unit)? = null
 
-    enum class Palette {
-        GOLDEN, SILVER, BLUE, GREEN
-    }
-
     init {
         contentDescription = context.getString(R.string.julia_description_a11y)
+        paint.colorFilter = colorFilterFor(FractalPalette.GOLDEN)
     }
 
     private val scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -114,10 +114,11 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         }
     })
 
-    fun setColorPalette(palette: Palette) {
+    fun setColorPalette(palette: FractalPalette) {
         if (palette == colorPalette) return
         colorPalette = palette
-        requestFullRender()
+        paint.colorFilter = colorFilterFor(palette)
+        invalidate()
     }
 
     fun setConstant(real: Double, imag: Double) {
@@ -277,7 +278,6 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         val renderOffsetY = offsetY
         val renderCReal = cReal
         val renderCImag = cImag
-        val palette = colorPalette
         val downscale = if (preview) PREVIEW_DOWNSCALE else 1
         val (renderWidth, renderHeight) = MandelbrotMath.renderDimensions(viewWidth, viewHeight, downscale)
         val maxIterations = MandelbrotMath.iterationsFor(renderZoom)
@@ -312,7 +312,6 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
                         maxIterations = maxIterations,
                         cr = renderCReal,
                         ci = renderCImag,
-                        palette = palette,
                     )
                 }
 
@@ -329,8 +328,6 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
                         renderCImag = renderCImag,
                         cReal = cReal,
                         cImag = cImag,
-                        renderPalette = palette,
-                        currentPalette = colorPalette,
                     )
                 ) {
                     return@launch
@@ -345,7 +342,7 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
                         scratch,
                         Rect(0, 0, renderWidth, renderHeight),
                         Rect(0, 0, viewWidth, viewHeight),
-                        paint,
+                        blitPaint,
                     )
                 } else {
                     target.setPixels(pixels, 0, renderWidth, 0, 0, renderWidth, renderHeight)
@@ -379,7 +376,6 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         maxIterations: Int,
         cr: Double,
         ci: Double,
-        palette: Palette,
     ) = coroutineScope {
         val cores = Runtime.getRuntime().availableProcessors()
         val rowsPerChunk = (renderHeight / cores).coerceAtLeast(1)
@@ -396,26 +392,15 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
                         val iteration = JuliaMath.escapeIterations(
                             zr0, zi0, cr, ci, maxIterations,
                         )
-                        pixels[index++] = if (iteration == maxIterations) {
-                            Color.BLACK
-                        } else {
-                            colorFor(iteration, maxIterations, palette)
-                        }
+                        pixels[index++] = FractalColoring.escapeGrayArgb(iteration, maxIterations)
                     }
                 }
             }
         }.awaitAll()
     }
 
-    private fun colorFor(iterations: Int, maxIterations: Int, palette: Palette): Int {
-        val t = iterations.toFloat() / maxIterations
-        return when (palette) {
-            Palette.GOLDEN -> Color.HSVToColor(floatArrayOf(45f, 0.8f, (t * 1.5f).coerceAtMost(1f)))
-            Palette.SILVER -> Color.HSVToColor(floatArrayOf(0f, 0f, t))
-            Palette.BLUE -> Color.HSVToColor(floatArrayOf(200f, 0.7f, t))
-            Palette.GREEN -> Color.HSVToColor(floatArrayOf(120f, 0.7f, t))
-        }
-    }
+    private fun colorFilterFor(palette: FractalPalette) =
+        ColorMatrixColorFilter(ColorMatrix(FractalColoring.colorMatrixValues(palette)))
 
     private fun pixelBuffer(preview: Boolean, size: Int): IntArray {
         val cached = if (preview) previewPixels else fullPixels
@@ -432,7 +417,7 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     }
 
     // The palette and c are owned by JuliaActivity, which reapplies them before this state is
-    // restored, so only the viewport is saved here.
+    // restored (palette as a colour filter), so only the viewport is saved here.
     override fun onSaveInstanceState(): Parcelable {
         val savedState = SavedState(super.onSaveInstanceState())
         savedState.zoom = zoom
@@ -488,7 +473,7 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         renderScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-        // A palette, constant, or viewport change may have happened while detached, and a cancelled
+        // A constant or viewport change may have happened while detached, and a cancelled
         // render may never have populated the bitmap. Always refresh when an existing view is reattached.
         requestFullRender()
     }

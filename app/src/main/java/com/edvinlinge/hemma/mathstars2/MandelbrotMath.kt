@@ -118,18 +118,16 @@ internal object MandelbrotMath {
 
     /**
      * True when an in-flight render result should be written to the bitmap. Stale previews must
-     * not overwrite a full-resolution image when the user pans back, and palette changes must not
-     * apply colors from an older selection.
+     * not overwrite a full-resolution image when the user pans back. Palette is a draw-time
+     * filter, so it is not part of this check.
      */
-    fun <T> shouldApplyRenderResult(
+    fun shouldApplyRenderResult(
         zoom: Double,
         offsetX: Double,
         offsetY: Double,
         renderZoom: Double,
         renderOffsetX: Double,
         renderOffsetY: Double,
-        renderPalette: T,
-        currentPalette: T,
     ): Boolean =
         renderTargetMatchesViewport(
             zoom = zoom,
@@ -138,7 +136,7 @@ internal object MandelbrotMath {
             renderZoom = renderZoom,
             renderOffsetX = renderOffsetX,
             renderOffsetY = renderOffsetY,
-        ) && renderPalette == currentPalette
+        )
 
     /** True when the on-screen bitmap no longer matches the current viewport and needs a rerender. */
     fun needsFullRender(

@@ -101,6 +101,6 @@ class MandelbrotActivity : AppCompatActivity() {
     }
 
     /** Swatch order matches the palette order, so the index maps straight across. */
-    private fun paletteFor(index: Int): MandelbrotView.Palette =
-        MandelbrotView.Palette.entries[index.coerceIn(MandelbrotView.Palette.entries.indices)]
+    private fun paletteFor(index: Int): FractalPalette =
+        FractalPalette.entries[index.coerceIn(FractalPalette.entries.indices)]
 }

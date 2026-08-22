@@ -309,7 +309,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         const val DEFAULT_THICKNESS = 8f
         const val DEFAULT_COLOR_INDEX = 0
 
-        /** Selectable colours, in swatch order. Matches [MandelbrotView.Palette]. */
+        /** Selectable colours, in swatch order. Matches [FractalPalette]. */
         private val SWATCH_COLORS = intArrayOf(
             R.color.swatch_gold,
             R.color.swatch_silver,

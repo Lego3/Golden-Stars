@@ -319,7 +319,7 @@ class MandelbrotMathTest {
     }
 
     @Test
-    fun `render result applies only when viewport and palette still match`() {
+    fun `render result applies only when viewport still matches`() {
         val viewport = arrayOf(
             2.0, -0.5, 0.1,
             2.0, -0.5, 0.1,
@@ -332,20 +332,6 @@ class MandelbrotMathTest {
                 renderZoom = viewport[3],
                 renderOffsetX = viewport[4],
                 renderOffsetY = viewport[5],
-                renderPalette = "golden",
-                currentPalette = "golden",
-            ),
-        )
-        assertFalse(
-            MandelbrotMath.shouldApplyRenderResult(
-                zoom = viewport[0],
-                offsetX = viewport[1],
-                offsetY = viewport[2],
-                renderZoom = viewport[3],
-                renderOffsetX = viewport[4],
-                renderOffsetY = viewport[5],
-                renderPalette = "golden",
-                currentPalette = "blue",
             ),
         )
         assertFalse(
@@ -356,8 +342,6 @@ class MandelbrotMathTest {
                 renderZoom = viewport[3],
                 renderOffsetX = viewport[4],
                 renderOffsetY = viewport[5],
-                renderPalette = "golden",
-                currentPalette = "golden",
             ),
         )
     }

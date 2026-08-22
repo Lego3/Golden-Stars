@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
@@ -49,7 +51,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     private var panSignY = 0
     private var zoomSign = 0
 
-    private var colorPalette = Palette.GOLDEN
+    private var colorPalette = FractalPalette.GOLDEN
 
     /**
      * A coroutine scope is valid only while the view is attached. A View instance can be detached
@@ -65,13 +67,10 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     private var renderingStateCallback: ((Boolean) -> Unit)? = null
     private var spinnerVisible = false
 
-    enum class Palette {
-        GOLDEN, SILVER, BLUE, GREEN
-    }
-
     init {
         contentDescription = context.getString(R.string.mandelbrot_description_a11y)
         tileCache.onEvicted = ::onTileEvicted
+        bitmapPaint.colorFilter = colorFilterFor(FractalPalette.GOLDEN)
     }
 
     private val scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -111,13 +110,11 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         }
     })
 
-    fun setColorPalette(palette: Palette) {
+    fun setColorPalette(palette: FractalPalette) {
         if (palette == colorPalette) return
         colorPalette = palette
+        bitmapPaint.colorFilter = colorFilterFor(palette)
         invalidate()
-        workEpoch++
-        workJob?.cancel()
-        requestFullRender()
     }
 
     fun setOnZoomChangedListener(callback: (Double) -> Unit) {
@@ -227,7 +224,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             viewWidth = width,
             viewHeight = height,
             tilePixelSize = MandelbrotTiles.tilePixelSize(width, height),
-            paletteOrdinal = colorPalette.ordinal,
             available = tileCache.keys,
         )
         for (draw in draws) {
@@ -300,7 +296,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             viewWidth = viewWidth,
             viewHeight = viewHeight,
             tilePixelSize = MandelbrotTiles.tilePixelSize(viewWidth, viewHeight),
-            paletteOrdinal = colorPalette.ordinal,
             panSignX = panSignX,
             panSignY = panSignY,
             zoomSign = zoomSign,
@@ -373,7 +368,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
 
     private suspend fun computeTileGroup(keys: List<MandelbrotTiles.TileKey>, preview: Boolean) {
         if (keys.isEmpty()) return
-        val palette = colorPalette
         val bbox = MandelbrotTiles.bboxOf(keys) ?: return
         val dense = bbox.tileCount <= keys.size * 2L
         if (dense) {
@@ -382,7 +376,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                 zoomStep = keys.first().zoomStep,
                 tilePixelSize = keys.first().tilePixelSize,
                 preview = preview,
-                palette = palette,
             )
             return
         }
@@ -396,7 +389,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                         zoomStep = key.zoomStep,
                         tilePixelSize = key.tilePixelSize,
                         preview = preview,
-                        palette = palette,
                         viewWidth = viewWidth,
                         viewHeight = viewHeight,
                         parallelRows = false,
@@ -411,7 +403,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                     zoomStep = key.zoomStep,
                     tilePixelSize = key.tilePixelSize,
                     preview = preview,
-                    palette = palette,
                     pixels = pixels,
                 )
             }
@@ -425,7 +416,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         zoomStep: Int,
         tilePixelSize: Int,
         preview: Boolean,
-        palette: Palette,
     ) {
         val viewWidth = width
         val viewHeight = height
@@ -436,7 +426,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                 zoomStep = zoomStep,
                 tilePixelSize = tilePixelSize,
                 preview = preview,
-                palette = palette,
                 viewWidth = viewWidth,
                 viewHeight = viewHeight,
                 parallelRows = true,
@@ -444,7 +433,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         }
         currentCoroutineContext().ensureActive()
         if (pixels.isEmpty()) return
-        installRenderedRange(range, zoomStep, tilePixelSize, preview, palette, pixels)
+        installRenderedRange(range, zoomStep, tilePixelSize, preview, pixels)
         invalidate()
         updateRenderingState()
     }
@@ -454,12 +443,11 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         zoomStep: Int,
         tilePixelSize: Int,
         preview: Boolean,
-        palette: Palette,
         viewWidth: Int,
         viewHeight: Int,
         parallelRows: Boolean,
-    ): IntArray {
-        if (viewWidth <= 0 || viewHeight <= 0) return IntArray(0)
+    ): ByteArray {
+        if (viewWidth <= 0 || viewHeight <= 0) return ByteArray(0)
         val downscale = if (preview) MandelbrotTiles.PREVIEW_DOWNSCALE else 1
         val tilesX = (range.x1 - range.x0 + 1L).toInt().coerceAtLeast(1)
         val tilesY = (range.y1 - range.y0 + 1L).toInt().coerceAtLeast(1)
@@ -475,8 +463,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         val xMin = range.x0 * world
         val yMin = range.y0 * world
         val maxIterations = MandelbrotMath.iterationsFor(MandelbrotTiles.discreteZoom(zoomStep))
-        val pixels = IntArray(renderWidth * renderHeight)
-        val lut = colorLut(maxIterations, palette)
+        val pixels = ByteArray(renderWidth * renderHeight)
         computeMandelbrot(
             pixels = pixels,
             renderWidth = renderWidth,
@@ -485,7 +472,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             yMin = yMin,
             sampleStep = sampleStep,
             maxIterations = maxIterations,
-            lut = lut,
             parallelRows = parallelRows,
         )
         return pixels
@@ -496,10 +482,8 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         zoomStep: Int,
         tilePixelSize: Int,
         preview: Boolean,
-        palette: Palette,
-        pixels: IntArray,
+        pixels: ByteArray,
     ) {
-        if (palette != colorPalette) return
         val viewWidth = width
         val viewHeight = height
         if (viewWidth <= 0 || viewHeight <= 0) return
@@ -525,7 +509,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                     zoomStep = zoomStep,
                     tileX = tx,
                     tileY = ty,
-                    paletteOrdinal = palette.ordinal,
                     tilePixelSize = tilePixelSize,
                     viewMinEdge = minEdge,
                     preview = preview,
@@ -536,7 +519,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                     tx++
                     continue
                 }
-                val tilePixels = IntArray(outSize * outSize)
+                val tilePixels = ByteArray(outSize * outSize)
                 copySubgrid(
                     source = pixels,
                     sourceWidth = renderWidth,
@@ -561,14 +544,13 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     }
 
     private suspend fun computeMandelbrot(
-        pixels: IntArray,
+        pixels: ByteArray,
         renderWidth: Int,
         renderHeight: Int,
         xMin: Double,
         yMin: Double,
         sampleStep: Double,
         maxIterations: Int,
-        lut: IntArray,
         parallelRows: Boolean,
     ) {
         if (renderWidth <= 0 || renderHeight <= 0) return
@@ -582,7 +564,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                 yMin = yMin,
                 sampleStep = sampleStep,
                 maxIterations = maxIterations,
-                lut = lut,
             )
             return
         }
@@ -601,7 +582,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                         yMin = yMin,
                         sampleStep = sampleStep,
                         maxIterations = maxIterations,
-                        lut = lut,
                     )
                 }
             }.awaitAll()
@@ -609,7 +589,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     }
 
     private suspend fun fillMandelbrotRows(
-        pixels: IntArray,
+        pixels: ByteArray,
         renderWidth: Int,
         startRow: Int,
         endRow: Int,
@@ -617,9 +597,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         yMin: Double,
         sampleStep: Double,
         maxIterations: Int,
-        lut: IntArray,
     ) {
-        val lastColor = lut.lastIndex
         val ctx = currentCoroutineContext()
         for (y in startRow until endRow) {
             ctx.ensureActive()
@@ -628,55 +606,18 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             for (x in 0 until renderWidth) {
                 val cr = xMin + x * sampleStep
                 val iteration = MandelbrotMath.escapeIterations(cr, ci, maxIterations)
-                pixels[index++] = lut[iteration.coerceIn(0, lastColor)]
+                pixels[index++] = FractalColoring.escapeAlpha(iteration, maxIterations).toByte()
             }
         }
-    }
-
-    private fun colorLut(maxIterations: Int, palette: Palette): IntArray {
-        val lut = IntArray(maxIterations + 1)
-        lut[maxIterations] = Color.BLACK
-        val hsv = FloatArray(3)
-        for (i in 0 until maxIterations) {
-            lut[i] = colorFor(i, maxIterations, palette, hsv)
-        }
-        return lut
-    }
-
-    private fun colorFor(iterations: Int, maxIterations: Int, palette: Palette, hsv: FloatArray): Int {
-        val t = iterations.toFloat() / maxIterations
-        when (palette) {
-            Palette.GOLDEN -> {
-                hsv[0] = 45f
-                hsv[1] = 0.8f
-                hsv[2] = (t * 1.5f).coerceAtMost(1f)
-            }
-            Palette.SILVER -> {
-                hsv[0] = 0f
-                hsv[1] = 0f
-                hsv[2] = t
-            }
-            Palette.BLUE -> {
-                hsv[0] = 200f
-                hsv[1] = 0.7f
-                hsv[2] = t
-            }
-            Palette.GREEN -> {
-                hsv[0] = 120f
-                hsv[1] = 0.7f
-                hsv[2] = t
-            }
-        }
-        return Color.HSVToColor(hsv)
     }
 
     private fun copySubgrid(
-        source: IntArray,
+        source: ByteArray,
         sourceWidth: Int,
         srcX: Int,
         srcY: Int,
         size: Int,
-        dest: IntArray,
+        dest: ByteArray,
     ) {
         var dst = 0
         for (y in 0 until size) {
@@ -693,7 +634,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         return bitmaps[key]
     }
 
-    private fun installBitmap(key: MandelbrotTiles.TileKey, pixels: IntArray) {
+    private fun installBitmap(key: MandelbrotTiles.TileKey, pixels: ByteArray) {
         val size = MandelbrotTiles.pixelSize(key)
         if (pixels.size != size * size) return
         val existing = bitmaps[key]
@@ -703,7 +644,10 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             existing?.recycle()
             createBitmap(size, size, Bitmap.Config.ARGB_8888).also { bitmaps[key] = it }
         }
-        bmp.setPixels(pixels, 0, size, 0, 0, size, size)
+        val argb = IntArray(pixels.size) { i ->
+            FractalColoring.grayArgb(pixels[i].toInt() and 0xFF)
+        }
+        bmp.setPixels(argb, 0, size, 0, 0, size, size)
     }
 
     private fun onTileEvicted(key: MandelbrotTiles.TileKey) {
@@ -728,7 +672,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             viewWidth = width,
             viewHeight = height,
             tilePixelSize = MandelbrotTiles.tilePixelSize(width, height),
-            paletteOrdinal = colorPalette.ordinal,
         )
     }
 
@@ -741,7 +684,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             viewWidth = width,
             viewHeight = height,
             tilePixelSize = MandelbrotTiles.tilePixelSize(width, height),
-            paletteOrdinal = colorPalette.ordinal,
             isCached = { tileCache.contains(it) },
         )
     }
@@ -755,10 +697,12 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             viewWidth = width,
             viewHeight = height,
             tilePixelSize = MandelbrotTiles.tilePixelSize(width, height),
-            paletteOrdinal = colorPalette.ordinal,
             isCached = { tileCache.contains(it) },
         )
     }
+
+    private fun colorFilterFor(palette: FractalPalette) =
+        ColorMatrixColorFilter(ColorMatrix(FractalColoring.colorMatrixValues(palette)))
 
     private fun updateRenderingState(forceIdle: Boolean = false) {
         val busy = !forceIdle && MandelbrotMath.showRenderSpinner(
@@ -777,8 +721,8 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         else -> 0
     }
 
-    // The palette is owned by MandelbrotActivity, which reapplies it before this state is
-    // restored, so only the viewport is saved here.
+    // The palette is owned by MandelbrotActivity, which reapplies the colour filter before
+    // this state is restored, so only the viewport is saved here.
     override fun onSaveInstanceState(): Parcelable {
         val savedState = SavedState(super.onSaveInstanceState())
         savedState.zoom = zoom
@@ -837,8 +781,8 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         super.onAttachedToWindow()
         tileCache.onEvicted = ::onTileEvicted
         renderScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-        // A palette or viewport change may have happened while detached, and cached tiles from a
-        // previous visit can paint immediately. Always refresh when an existing view is reattached.
+        // A viewport change may have happened while detached, and cached tiles from a previous
+        // visit can paint immediately. Always refresh when an existing view is reattached.
         requestFullRender()
     }
 

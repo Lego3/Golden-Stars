@@ -142,16 +142,16 @@ class MandelbrotTilesTest {
     @Test
     fun `a parent full tile outranks a same-step preview because it contributes more pixels`() {
         val targetStep = 2
-        val preview = MandelbrotTiles.TileKey(2, 0, 0, 0, 256, 600, preview = true)
-        val parentFull = MandelbrotTiles.TileKey(1, 0, 0, 0, 256, 600, preview = false)
-        val selfFull = MandelbrotTiles.TileKey(2, 0, 0, 0, 256, 600, preview = false)
+        val preview = MandelbrotTiles.TileKey(2, 0, 0, 256, 600, preview = true)
+        val parentFull = MandelbrotTiles.TileKey(1, 0, 0, 256, 600, preview = false)
+        val selfFull = MandelbrotTiles.TileKey(2, 0, 0, 256, 600, preview = false)
         assertTrue(MandelbrotTiles.coverageSamples(parentFull, targetStep) > MandelbrotTiles.coverageSamples(preview, targetStep))
         assertTrue(MandelbrotTiles.coverageSamples(selfFull, targetStep) > MandelbrotTiles.coverageSamples(parentFull, targetStep))
     }
 
     @Test
     fun `compose draw list scales a parent tile into the missing child`() {
-        val parent = MandelbrotTiles.TileKey(0, -1, -1, 0, 256, 600, preview = false)
+        val parent = MandelbrotTiles.TileKey(0, -1, -1, 256, 600, preview = false)
         val draws = MandelbrotTiles.composeDrawList(
             zoom = 2.0,
             offsetX = -0.5,
@@ -159,7 +159,6 @@ class MandelbrotTilesTest {
             viewWidth = 800,
             viewHeight = 600,
             tilePixelSize = 256,
-            paletteOrdinal = 0,
             available = setOf(parent),
         )
         assertTrue(draws.isNotEmpty())
@@ -169,12 +168,11 @@ class MandelbrotTilesTest {
 
     @Test
     fun `compose draw list paints sharper children on top of a parent`() {
-        val parent = MandelbrotTiles.TileKey(0, -1, 0, 0, 256, 600, preview = false)
+        val parent = MandelbrotTiles.TileKey(0, -1, 0, 256, 600, preview = false)
         val child = MandelbrotTiles.TileKey(
             zoomStep = 1,
             tileX = MandelbrotTiles.childTileX(-1, 0),
             tileY = MandelbrotTiles.childTileY(0, 0),
-            paletteOrdinal = 0,
             tilePixelSize = 256,
             viewMinEdge = 600,
             preview = false,
@@ -186,7 +184,6 @@ class MandelbrotTilesTest {
             viewWidth = 800,
             viewHeight = 600,
             tilePixelSize = 256,
-            paletteOrdinal = 0,
             available = setOf(parent, child),
         )
         val lastChild = draws.indexOfLast { it.key == child }
@@ -206,7 +203,6 @@ class MandelbrotTilesTest {
             viewWidth = 800,
             viewHeight = 600,
             tilePixelSize = 256,
-            paletteOrdinal = 0,
             panSignX = 1,
             panSignY = 0,
             zoomSign = 1,
@@ -235,7 +231,6 @@ class MandelbrotTilesTest {
             viewWidth = 800,
             viewHeight = 600,
             tilePixelSize = 256,
-            paletteOrdinal = 0,
             panSignX = 1,
             panSignY = 0,
             zoomSign = 1,
@@ -253,17 +248,17 @@ class MandelbrotTilesTest {
     @Test
     fun `visible tiles complete only when every on-screen full tile is cached`() {
         val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
-        val keys = MandelbrotTiles.keysForRange(range, 0, 0, 256, 600, preview = false)
+        val keys = MandelbrotTiles.keysForRange(range, 0, 256, 600, preview = false)
         val cached = keys.toMutableSet()
         assertTrue(
             MandelbrotTiles.visibleTilesComplete(
-                1.0, -0.5, 0.0, 800, 600, 256, 0,
+                1.0, -0.5, 0.0, 800, 600, 256,
             ) { it in cached },
         )
         cached.remove(keys.first())
         assertFalse(
             MandelbrotTiles.visibleTilesComplete(
-                1.0, -0.5, 0.0, 800, 600, 256, 0,
+                1.0, -0.5, 0.0, 800, 600, 256,
             ) { it in cached },
         )
     }
@@ -279,7 +274,6 @@ class MandelbrotTilesTest {
                 zoomStep = step - 1,
                 tileX = MandelbrotTiles.parentTileX(x),
                 tileY = MandelbrotTiles.parentTileY(y),
-                paletteOrdinal = 0,
                 tilePixelSize = 256,
                 viewMinEdge = 600,
                 preview = false,
@@ -287,12 +281,12 @@ class MandelbrotTilesTest {
         }
         assertTrue(
             MandelbrotTiles.visibleViewportCovered(
-                zoom, -0.5, 0.0, 800, 600, 256, 0,
+                zoom, -0.5, 0.0, 800, 600, 256,
             ) { it in parents },
         )
         assertFalse(
             MandelbrotTiles.visibleTilesComplete(
-                zoom, -0.5, 0.0, 800, 600, 256, 0,
+                zoom, -0.5, 0.0, 800, 600, 256,
             ) { it in parents },
         )
     }
@@ -300,15 +294,15 @@ class MandelbrotTilesTest {
     @Test
     fun `viewport is covered by same-step previews`() {
         val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
-        val previews = MandelbrotTiles.keysForRange(range, 0, 0, 256, 600, preview = true).toSet()
+        val previews = MandelbrotTiles.keysForRange(range, 0, 256, 600, preview = true).toSet()
         assertTrue(
             MandelbrotTiles.visibleViewportCovered(
-                1.0, -0.5, 0.0, 800, 600, 256, 0,
+                1.0, -0.5, 0.0, 800, 600, 256,
             ) { it in previews },
         )
         assertFalse(
             MandelbrotTiles.visibleTilesComplete(
-                1.0, -0.5, 0.0, 800, 600, 256, 0,
+                1.0, -0.5, 0.0, 800, 600, 256,
             ) { it in previews },
         )
     }
@@ -324,7 +318,6 @@ class MandelbrotTilesTest {
                         zoomStep = 1,
                         tileX = MandelbrotTiles.childTileX(x, lx),
                         tileY = MandelbrotTiles.childTileY(y, ly),
-                        paletteOrdinal = 0,
                         tilePixelSize = 256,
                         viewMinEdge = 600,
                         preview = false,
@@ -334,13 +327,13 @@ class MandelbrotTilesTest {
         }
         assertTrue(
             MandelbrotTiles.visibleViewportCovered(
-                1.0, -0.5, 0.0, 800, 600, 256, 0,
+                1.0, -0.5, 0.0, 800, 600, 256,
             ) { it in children },
         )
         children.remove(children.first())
         assertFalse(
             MandelbrotTiles.visibleViewportCovered(
-                1.0, -0.5, 0.0, 800, 600, 256, 0,
+                1.0, -0.5, 0.0, 800, 600, 256,
             ) { it in children },
         )
     }
@@ -349,7 +342,7 @@ class MandelbrotTilesTest {
     fun `viewport is not covered when the cache is empty`() {
         assertFalse(
             MandelbrotTiles.visibleViewportCovered(
-                1.0, -0.5, 0.0, 800, 600, 256, 0,
+                1.0, -0.5, 0.0, 800, 600, 256,
             ) { false },
         )
     }
@@ -359,20 +352,20 @@ class MandelbrotTilesTest {
         val tilePx = 256
         val minEdge = 600
         val range1 = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, tilePx)
-        val cached = MandelbrotTiles.keysForRange(range1, 0, 0, tilePx, minEdge, preview = false).toSet()
+        val cached = MandelbrotTiles.keysForRange(range1, 0, tilePx, minEdge, preview = false).toSet()
         assertTrue(
             MandelbrotTiles.visibleViewportCovered(
-                1.0, -0.5, 0.0, 800, 600, tilePx, 0,
+                1.0, -0.5, 0.0, 800, 600, tilePx,
             ) { it in cached },
         )
         assertTrue(
             MandelbrotTiles.visibleViewportCovered(
-                2.0, -0.5, 0.0, 800, 600, tilePx, 0,
+                2.0, -0.5, 0.0, 800, 600, tilePx,
             ) { it in cached },
         )
         assertFalse(
             MandelbrotTiles.visibleTilesComplete(
-                2.0, -0.5, 0.0, 800, 600, tilePx, 0,
+                2.0, -0.5, 0.0, 800, 600, tilePx,
             ) { it in cached },
         )
     }
@@ -387,17 +380,15 @@ class MandelbrotTilesTest {
             viewWidth = 800,
             viewHeight = 600,
             tilePixelSize = 256,
-            paletteOrdinal = 0,
         )
         val step = MandelbrotTiles.zoomStep(zoom)
         val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, zoom, 800, 600, step, 256)
         range.forEach { x, y ->
-            val exact = MandelbrotTiles.TileKey(step, x, y, 0, 256, 600, preview = false)
+            val exact = MandelbrotTiles.TileKey(step, x, y, 256, 600, preview = false)
             val parent = MandelbrotTiles.TileKey(
                 step - 1,
                 MandelbrotTiles.parentTileX(x),
                 MandelbrotTiles.parentTileY(y),
-                0,
                 256,
                 600,
                 preview = false,
@@ -410,7 +401,7 @@ class MandelbrotTilesTest {
     @Test
     fun `a full visible range is a dense bbox so it can render in one pass`() {
         val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
-        val keys = MandelbrotTiles.keysForRange(range, 0, 0, 256, 600, preview = false)
+        val keys = MandelbrotTiles.keysForRange(range, 0, 256, 600, preview = false)
         val bbox = MandelbrotTiles.bboxOf(keys)!!
         assertEquals(keys.size.toLong(), bbox.tileCount)
         assertTrue(keys.size <= MandelbrotTiles.MAX_VISIBLE_BATCH)
@@ -435,9 +426,9 @@ class MandelbrotTilesTest {
     @Test
     fun `sort toward focus puts the tile under the pointer first`() {
         val keys = listOf(
-            MandelbrotTiles.TileKey(0, 4, 4, 0, 256, 600, false),
-            MandelbrotTiles.TileKey(0, 0, 0, 0, 256, 600, false),
-            MandelbrotTiles.TileKey(0, 1, 0, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 4, 4, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 0, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 1, 0, 256, 600, false),
         )
         val world = MandelbrotTiles.tileWorldSize(0, 256, 800, 600)
         val sorted = MandelbrotTiles.sortTowardFocus(
@@ -455,7 +446,7 @@ class MandelbrotTilesTest {
 
     @Test
     fun `preview pixel size is a quarter of a full tile`() {
-        val full = MandelbrotTiles.TileKey(0, 0, 0, 0, 256, 600, preview = false)
+        val full = MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = false)
         val preview = full.copy(preview = true)
         assertEquals(256, MandelbrotTiles.pixelSize(full))
         assertEquals(64, MandelbrotTiles.pixelSize(preview))

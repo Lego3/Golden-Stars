@@ -13,8 +13,9 @@ import java.util.zip.Inflater
 import java.util.zip.InflaterInputStream
 
 /**
- * LRU pixel cache for Mandelbrot tiles. The memory map is the live working set; the optional disk
- * directory keeps recently used tiles across view recreation and process death.
+ * LRU cache of Mandelbrot escape-time alpha maps. Tiles are palette-independent; colour is applied
+ * at draw time. The memory map is the live working set; the optional disk directory keeps recently
+ * used tiles across view recreation and process death.
  *
  * Disk eviction follows last *use*, not first write. A tile that stays in RAM (the default 1× view
  * is the usual case) still counts as used, so a long zooming session does not delete it just because
@@ -31,10 +32,10 @@ internal class MandelbrotTileCache(
     private val currentTimeMs: () -> Long = { System.currentTimeMillis() },
 ) {
     data class Entry(
-        val pixels: IntArray,
+        val pixels: ByteArray,
         val preview: Boolean,
     ) {
-        val byteCount: Int get() = pixels.size * Int.SIZE_BYTES
+        val byteCount: Int get() = pixels.size
     }
 
     var onEvicted: ((MandelbrotTiles.TileKey) -> Unit)? = null
@@ -59,7 +60,7 @@ internal class MandelbrotTileCache(
 
     fun put(
         key: MandelbrotTiles.TileKey,
-        pixels: IntArray,
+        pixels: ByteArray,
         preview: Boolean = key.preview,
         protectedKeys: Set<MandelbrotTiles.TileKey> = emptySet(),
     ) {
@@ -82,10 +83,8 @@ internal class MandelbrotTileCache(
                         if (magic != MAGIC) return null
                         val count = input.readInt()
                         if (count <= 0 || count > MAX_PIXELS) return null
-                        val pixels = IntArray(count)
-                        for (i in 0 until count) {
-                            pixels[i] = input.readInt()
-                        }
+                        val pixels = ByteArray(count)
+                        input.readFully(pixels)
                         recordAccess(key)
                         touchFile(file)
                         Entry(pixels, key.preview)
@@ -98,7 +97,7 @@ internal class MandelbrotTileCache(
         }
     }
 
-    fun saveToDisk(key: MandelbrotTiles.TileKey, pixels: IntArray) {
+    fun saveToDisk(key: MandelbrotTiles.TileKey, pixels: ByteArray) {
         val dir = diskDir ?: return
         if (key.preview) return
         dir.mkdirs()
@@ -110,9 +109,7 @@ internal class MandelbrotTileCache(
                     DataOutputStream(deflated).use { output ->
                         output.writeInt(MAGIC)
                         output.writeInt(pixels.size)
-                        for (pixel in pixels) {
-                            output.writeInt(pixel)
-                        }
+                        output.write(pixels)
                     }
                 }
             }
@@ -177,8 +174,7 @@ internal class MandelbrotTileCache(
     private fun diskFile(key: MandelbrotTiles.TileKey): File? {
         val dir = diskDir ?: return null
         val name = buildString {
-            append("p").append(key.paletteOrdinal)
-            append("_e").append(key.viewMinEdge)
+            append("e").append(key.viewMinEdge)
             append("_s").append(key.zoomStep)
             append("_x").append(key.tileX)
             append("_y").append(key.tileY)
@@ -209,7 +205,7 @@ internal class MandelbrotTileCache(
     }
 
     companion object {
-        private const val MAGIC = 0x4D425431 // "MBT1"
+        private const val MAGIC = 0x4D425432 // "MBT2" greyscale alpha map
         private const val MAX_PIXELS = 512 * 512 * 16
         private const val TOUCH_MIN_INTERVAL_MS = 30_000L
     }
