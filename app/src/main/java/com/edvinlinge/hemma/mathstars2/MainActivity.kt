@@ -85,6 +85,11 @@ class MainActivity : AppCompatActivity() {
 
         val versionMargin = (version.layoutParams as CoordinatorLayout.LayoutParams).bottomMargin
         val extraGap = resources.getDimensionPixelSize(R.dimen.hub_version_clearance)
-        binding.hubScrollView.setPadding(0, 0, 0, version.height + versionMargin + extraGap)
+        binding.hubScrollView.setPadding(
+            0,
+            0,
+            0,
+            hubScrollBottomPadding(version.height, versionMargin, extraGap),
+        )
     }
 }
