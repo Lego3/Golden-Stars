@@ -70,6 +70,24 @@ class DrawActivityTest {
         }
     }
 
+    @Test
+    fun opensDetailsSheetWithDetailsTitle() {
+        ActivityScenario.launch(DrawActivity::class.java).use {
+            onView(withId(R.id.infoButton)).perform(click())
+            onView(withId(R.id.infoTitle)).check(matches(withText(R.string.more_info_button)))
+            onView(withId(R.id.infoMessage)).check(matches(isDisplayed()))
+        }
+    }
+
+    @Test
+    fun opensHelpSheetWithHelpTitle() {
+        ActivityScenario.launch(DrawActivity::class.java).use {
+            onView(withId(R.id.helpButton)).perform(click())
+            onView(withId(R.id.infoTitle)).check(matches(withText(R.string.help)))
+            onView(withId(R.id.infoMessage)).check(matches(isDisplayed()))
+        }
+    }
+
     private fun settingsSnapshot(
         dots: Int = SettingsBottomSheet.DEFAULT_DOTS,
         skips: Int = SettingsBottomSheet.DEFAULT_SKIPS,

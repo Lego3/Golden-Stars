@@ -84,9 +84,10 @@ class MandelbrotActivity : AppCompatActivity() {
             ).show(supportFragmentManager, SettingsBottomSheet.TAG)
         }
 
-        binding.infoButton.setOnClickListener {
+        binding.helpButton.setOnClickListener {
             val helpText = getString(R.string.mandelbrot_help)
-            InfoBottomSheet.newInstance(helpText).show(supportFragmentManager, InfoBottomSheet.TAG)
+            InfoBottomSheet.newInstance(helpText, getString(R.string.help))
+                .show(supportFragmentManager, InfoBottomSheet.TAG)
         }
     }
 
