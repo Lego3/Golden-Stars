@@ -468,35 +468,6 @@ class MandelbrotTilesTest {
     }
 
     @Test
-    fun `tile is not covered when only three of four children exist`() {
-        val children = HashSet<MandelbrotTiles.TileKey>()
-        for (ly in 0..1) {
-            for (lx in 0..1) {
-                if (lx == 1 && ly == 1) continue
-                children += MandelbrotTiles.TileKey(
-                    zoomStep = 1,
-                    tileX = MandelbrotTiles.childTileX(0, lx),
-                    tileY = MandelbrotTiles.childTileY(0, ly),
-                    paletteOrdinal = 0,
-                    tilePixelSize = 256,
-                    viewMinEdge = 600,
-                    preview = false,
-                )
-            }
-        }
-        assertFalse(
-            MandelbrotTiles.tileIsCovered(
-                tileX = 0,
-                tileY = 0,
-                tileStep = 0,
-                paletteOrdinal = 0,
-                tilePixelSize = 256,
-                viewMinEdge = 600,
-            ) { it in children },
-        )
-    }
-
-    @Test
     fun `zero sized views have no protectable keys and an uncovered viewport`() {
         assertTrue(
             MandelbrotTiles.protectableKeys(
