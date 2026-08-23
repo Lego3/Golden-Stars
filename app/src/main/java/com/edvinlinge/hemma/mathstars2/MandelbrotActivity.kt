@@ -34,7 +34,7 @@ class MandelbrotActivity : AppCompatActivity() {
         colorIndex = savedInstanceState?.getInt(SettingsBottomSheet.KEY_COLOR_INDEX)
             ?: preferences.loadMandelbrotColorIndex()
 
-        binding.mandelbrotView.setColorPalette(paletteFor(colorIndex))
+        binding.mandelbrotView.setColorPalette(fractalPaletteFor(colorIndex))
 
         binding.mandelbrotView.setOnZoomChangedListener { zoom ->
             val formatted = formatZoom(zoom)
@@ -69,7 +69,7 @@ class MandelbrotActivity : AppCompatActivity() {
             val newColorIndex = result.getInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
             if (newColorIndex != colorIndex) {
                 colorIndex = newColorIndex
-                binding.mandelbrotView.setColorPalette(paletteFor(colorIndex))
+                binding.mandelbrotView.setColorPalette(fractalPaletteFor(colorIndex))
                 preferences.saveMandelbrotColorIndex(colorIndex)
             }
         }
@@ -101,7 +101,4 @@ class MandelbrotActivity : AppCompatActivity() {
         outState.putInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
     }
 
-    /** Swatch order matches the palette order, so the index maps straight across. */
-    private fun paletteFor(index: Int): FractalPalette =
-        FractalPalette.entries[index.coerceIn(FractalPalette.entries.indices)]
 }

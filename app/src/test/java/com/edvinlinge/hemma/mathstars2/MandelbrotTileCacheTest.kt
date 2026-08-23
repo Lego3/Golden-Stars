@@ -2,11 +2,17 @@ package com.edvinlinge.hemma.mathstars2
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.DataOutputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.nio.file.Files
+import java.util.zip.Deflater
+import java.util.zip.DeflaterOutputStream
 
 class MandelbrotTileCacheTest {
 
@@ -108,6 +114,73 @@ class MandelbrotTileCacheTest {
     }
 
     @Test
+    fun `corrupt disk tile is discarded instead of crashing the cache`() {
+        val dir = Files.createTempDirectory("mandelbrot-tiles-corrupt").toFile()
+        try {
+            val cache = MandelbrotTileCache(
+                maxMemoryBytes = 1024 * 1024,
+                diskDir = dir,
+                maxDiskBytes = 1024 * 1024,
+            )
+            val key = tileKey(42)
+            val corrupt = File(dir, "e600_s0_x42_y0_t256.tile")
+            dir.mkdirs()
+            corrupt.writeBytes(byteArrayOf(0, 0, 0, 0, 0, 0, 0, 1))
+
+            assertNull(cache.loadFromDisk(key))
+            assertFalse(corrupt.exists())
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `stale MBT1 disk tile is discarded after the greyscale format change`() {
+        val dir = Files.createTempDirectory("mandelbrot-tiles-mbt1").toFile()
+        try {
+            val cache = MandelbrotTileCache(
+                maxMemoryBytes = 1024 * 1024,
+                diskDir = dir,
+                maxDiskBytes = 1024 * 1024,
+            )
+            val key = tileKey(42)
+            val stale = File(dir, "e600_s0_x42_y0_t256.tile")
+            writeCompressedTile(stale, magic = 0x4D425431, pixelCount = 4, pixels = byteArrayOf(1, 2, 3, 4))
+
+            assertNull(cache.loadFromDisk(key))
+            assertFalse(stale.exists())
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `disk tile with an impossible pixel count is discarded`() {
+        val dir = Files.createTempDirectory("mandelbrot-tiles-bad-count").toFile()
+        try {
+            val cache = MandelbrotTileCache(
+                maxMemoryBytes = 1024 * 1024,
+                diskDir = dir,
+                maxDiskBytes = 1024 * 1024,
+            )
+            val key = tileKey(42)
+            val emptyCount = File(dir, "e600_s0_x42_y0_t256.tile")
+            writeCompressedTile(emptyCount, magic = 0x4D425432, pixelCount = 0)
+
+            assertNull(cache.loadFromDisk(key))
+            assertFalse(emptyCount.exists())
+
+            val hugeCount = File(dir, "e600_s0_x42_y0_t256.tile")
+            writeCompressedTile(hugeCount, magic = 0x4D425432, pixelCount = 512 * 512 * 16 + 1)
+
+            assertNull(cache.loadFromDisk(key))
+            assertFalse(hugeCount.exists())
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
     fun `disk prune deletes files when over the size cap`() {
         val dir = Files.createTempDirectory("mandelbrot-tiles-prune").toFile()
         try {
@@ -188,6 +261,26 @@ class MandelbrotTileCacheTest {
             assertTrue(files.isNotEmpty())
         } finally {
             dir.deleteRecursively()
+        }
+    }
+
+    private fun writeCompressedTile(
+        file: File,
+        magic: Int,
+        pixelCount: Int,
+        pixels: ByteArray = ByteArray(0),
+    ) {
+        file.parentFile?.mkdirs()
+        FileOutputStream(file).use { fileStream ->
+            DeflaterOutputStream(fileStream, Deflater(Deflater.BEST_SPEED)).use { deflated ->
+                DataOutputStream(deflated).use { output ->
+                    output.writeInt(magic)
+                    output.writeInt(pixelCount)
+                    if (pixels.isNotEmpty()) {
+                        output.write(pixels)
+                    }
+                }
+            }
         }
     }
 

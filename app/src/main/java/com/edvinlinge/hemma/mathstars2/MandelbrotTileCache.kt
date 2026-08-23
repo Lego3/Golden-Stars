@@ -80,9 +80,12 @@ internal class MandelbrotTileCache(
                 InflaterInputStream(fileStream, Inflater()).use { inflated ->
                     DataInputStream(inflated).use { input ->
                         val magic = input.readInt()
-                        if (magic != MAGIC) return null
-                        val count = input.readInt()
-                        if (count <= 0 || count > MAX_PIXELS) return null
+                        val count = if (magic == MAGIC) input.readInt() else -1
+                        // Drop stale MBT1 tiles and impossible sizes; inflate errors already delete.
+                        if (magic != MAGIC || count <= 0 || count > MAX_PIXELS) {
+                            file.delete()
+                            return null
+                        }
                         val pixels = ByteArray(count)
                         input.readFully(pixels)
                         recordAccess(key)
