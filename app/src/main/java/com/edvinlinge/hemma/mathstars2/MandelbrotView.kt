@@ -364,8 +364,17 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         if (keys.isEmpty()) return
         val groups = keys.groupBy { it.zoomStep to it.tilePixelSize }
         for (group in groups.values) {
-            currentCoroutineContext().ensureActive()
-            computeTileGroup(group, preview)
+            if (preview) {
+                currentCoroutineContext().ensureActive()
+                computeTileGroup(group, preview = true)
+                continue
+            }
+            // Finish visible tiles one by one so the finished/queued count can move
+            // and sharper pieces appear before the whole bbox is done.
+            for (key in group) {
+                currentCoroutineContext().ensureActive()
+                computeTileGroup(listOf(key), preview = false)
+            }
         }
     }
 
