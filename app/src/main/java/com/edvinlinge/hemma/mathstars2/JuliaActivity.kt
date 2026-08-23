@@ -42,7 +42,7 @@ class JuliaActivity : AppCompatActivity() {
             presetIndex = preferences.loadJuliaPresetIndex()
         }
 
-        binding.juliaView.setColorPalette(paletteFor(colorIndex))
+        binding.juliaView.setColorPalette(fractalPaletteFor(colorIndex))
         applyPreset()
 
         binding.juliaView.setOnZoomChangedListener { zoom ->
@@ -78,7 +78,7 @@ class JuliaActivity : AppCompatActivity() {
             val newColorIndex = result.getInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
             if (newColorIndex != colorIndex) {
                 colorIndex = newColorIndex
-                binding.juliaView.setColorPalette(paletteFor(colorIndex))
+                binding.juliaView.setColorPalette(fractalPaletteFor(colorIndex))
                 persistJuliaSettings()
             }
         }
@@ -163,10 +163,6 @@ class JuliaActivity : AppCompatActivity() {
             else -> R.string.julia_preset_dust
         },
     )
-
-    /** Swatch order matches the palette order, so the index maps straight across. */
-    private fun paletteFor(index: Int): FractalPalette =
-        FractalPalette.entries[index.coerceIn(FractalPalette.entries.indices)]
 
     companion object {
         private const val STATE_PRESET_INDEX = "preset_index"

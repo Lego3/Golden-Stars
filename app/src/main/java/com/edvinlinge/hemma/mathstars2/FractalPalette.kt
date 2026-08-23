@@ -15,6 +15,10 @@ enum class FractalPalette {
     GREEN,
 }
 
+/** Swatch order matches [SettingsBottomSheet] colour chips and saved preference indices. */
+internal fun fractalPaletteFor(colorIndex: Int): FractalPalette =
+    FractalPalette.entries[colorIndex.coerceIn(FractalPalette.entries.indices)]
+
 /**
  * Palette-independent escape encoding and the colour-matrix that tints that map on screen.
  * Android-free so JVM unit tests can check the numbers the views feed to ColorMatrix.

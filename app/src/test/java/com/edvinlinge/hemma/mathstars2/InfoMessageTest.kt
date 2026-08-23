@@ -1,5 +1,6 @@
 package com.edvinlinge.hemma.mathstars2
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -26,5 +27,21 @@ class InfoMessageTest {
     @Test
     fun `single line plain text without tags is not parsed as html`() {
         assertFalse(shouldParseInfoMessageAsHtml("Move 2 dots while drawing."))
+    }
+
+    @Test
+    fun `info sheet title uses the supplied value when present`() {
+        assertEquals("Help", infoSheetTitle("Help", "Details"))
+        assertEquals("Details", infoSheetTitle("Details", "Help"))
+    }
+
+    @Test
+    fun `info sheet title falls back when the host omits a title`() {
+        assertEquals("Details", infoSheetTitle(null, "Details"))
+    }
+
+    @Test
+    fun `info sheet title keeps an explicit empty string`() {
+        assertEquals("", infoSheetTitle("", "Details"))
     }
 }
