@@ -2,6 +2,11 @@
 .gradle
 /local.properties
 
+# Keep release keys out of git; the committed debug keystore is intentional.
+*.jks
+*.keystore
+!/app/debug.keystore
+
 /.idea
 /.artifacts
 

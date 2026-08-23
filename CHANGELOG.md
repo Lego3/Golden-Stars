@@ -29,6 +29,9 @@ Git tags (`v1.1.0`, `v1.2.0`, …).
 
 ### Fixed
 
+- Debug and CI test APKs are signed with a committed debug keystore so a new sideload
+  updates the installed app instead of reporting a package conflict. The Google Play
+  build still uses a different key, so it cannot be overwritten by these APKs.
 - Hub scroll view reserves clearance above the floating version label so the last card
   does not sit underneath it.
 - Mandelbrot and Julia explorers discard in-flight preview or full renders when the

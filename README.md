@@ -146,6 +146,13 @@ a `-test` suffix (for example `Golden-Stars-1.2.0-test-debug.zip`) so post-relea
 builds are clearly distinct from tagged GitHub Releases. Tagged releases are handled
 separately, see [Releasing](#releasing).
 
+Those debug APKs (CI artifacts, GitHub Releases, and local `assembleDebug`) share
+`app/debug.keystore`, so installing a newer one updates the app already on the device.
+If an older test APK was signed with a machine-local or CI-generated debug key, uninstall
+that copy once; later sideloads then update in place. A Google Play install uses a
+different signing key and still has to be uninstalled before a debug APK can be
+installed.
+
 ## Releasing
 
 Version history and release notes live in [CHANGELOG.md](CHANGELOG.md). GitHub Releases
@@ -164,8 +171,10 @@ manual step.
    ```
 
 3. The `.github/workflows/release.yml` workflow runs on the tag push, builds a debug
-   APK, and creates a GitHub Release with notes from the matching `CHANGELOG.md`
-   section (or the annotated tag message as a fallback) and a direct `.apk` attachment.
+   APK signed with `app/debug.keystore`, and creates a GitHub Release with notes from
+   the matching `CHANGELOG.md` section (or the annotated tag message as a fallback)
+   and a direct `.apk` attachment. That APK can update a previously sideloaded debug
+   or test build; it cannot replace a Google Play install.
 
 ## Contributing
 
