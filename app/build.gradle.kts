@@ -26,6 +26,17 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
         viewBinding = true
     }
 
+    // Shared debug key so CI artifacts, GitHub Release APKs, and local
+    // assembleDebug installs can update each other instead of conflicting.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
