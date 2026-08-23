@@ -80,33 +80,33 @@ class MandelbrotMathTest {
     }
 
     @Test
-    fun `render spinner stays hidden while sharpening a covered viewport`() {
+    fun `render spinner shows while visible tiles are still sharpening`() {
+        assertTrue(
+            MandelbrotMath.showRenderSpinner(
+                workActive = true,
+                workIsPrefetch = false,
+                visibleTilesComplete = false,
+            ),
+        )
         assertFalse(
             MandelbrotMath.showRenderSpinner(
                 workActive = true,
                 workIsPrefetch = false,
-                viewportCovered = true,
+                visibleTilesComplete = true,
             ),
         )
         assertFalse(
             MandelbrotMath.showRenderSpinner(
                 workActive = true,
                 workIsPrefetch = true,
-                viewportCovered = false,
-            ),
-        )
-        assertTrue(
-            MandelbrotMath.showRenderSpinner(
-                workActive = true,
-                workIsPrefetch = false,
-                viewportCovered = false,
+                visibleTilesComplete = false,
             ),
         )
         assertFalse(
             MandelbrotMath.showRenderSpinner(
                 workActive = false,
                 workIsPrefetch = false,
-                viewportCovered = false,
+                visibleTilesComplete = false,
             ),
         )
     }

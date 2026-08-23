@@ -246,6 +246,78 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `visible full keys match the current zoom step range`() {
+        val keys = MandelbrotTiles.visibleFullKeys(
+            zoom = 1.0,
+            offsetX = -0.5,
+            offsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+            tilePixelSize = 256,
+        )
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
+        assertEquals(
+            MandelbrotTiles.keysForRange(range, 0, 256, 600, preview = false),
+            keys,
+        )
+        assertTrue(keys.isNotEmpty())
+        assertTrue(keys.none { it.preview })
+        assertTrue(keys.all { it.zoomStep == 0 })
+    }
+
+    @Test
+    fun `visible tile queue keeps finished tiles and drops ones that left the view`() {
+        val visible = listOf(
+            MandelbrotTiles.TileKey(1, 0, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(1, 1, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(1, 2, 0, 256, 600, false),
+        )
+        val cached = mutableSetOf<MandelbrotTiles.TileKey>()
+        val initial = MandelbrotTiles.mergeVisibleTileQueue(emptySet(), visible) { it in cached }
+        assertEquals(visible.toSet(), initial)
+
+        cached += visible[0]
+        cached += visible[1]
+        val afterSomeDone = MandelbrotTiles.mergeVisibleTileQueue(initial, visible) { it in cached }
+        assertEquals(visible.toSet(), afterSomeDone)
+        assertEquals(
+            MandelbrotTiles.VisibleTileProgress(finished = 2, queued = 3),
+            MandelbrotTiles.visibleTileProgress(afterSomeDone) { it in cached },
+        )
+
+        val afterPan = listOf(visible[1], visible[2], MandelbrotTiles.TileKey(1, 3, 0, 256, 600, false))
+        val mergedAfterPan = MandelbrotTiles.mergeVisibleTileQueue(afterSomeDone, afterPan) { it in cached }
+        assertEquals(
+            setOf(visible[1], visible[2], afterPan[2]),
+            mergedAfterPan,
+        )
+        assertEquals(
+            MandelbrotTiles.VisibleTileProgress(finished = 1, queued = 3),
+            MandelbrotTiles.visibleTileProgress(mergedAfterPan) { it in cached },
+        )
+    }
+
+    @Test
+    fun `visible tile queue resets when the zoom step changes`() {
+        val oldStep = setOf(MandelbrotTiles.TileKey(0, 0, 0, 256, 600, false))
+        val newStep = listOf(MandelbrotTiles.TileKey(1, 0, 0, 256, 600, false))
+        val merged = MandelbrotTiles.mergeVisibleTileQueue(oldStep, newStep) { false }
+        assertEquals(newStep.toSet(), merged)
+        assertEquals(
+            MandelbrotTiles.VisibleTileProgress(finished = 0, queued = 1),
+            MandelbrotTiles.visibleTileProgress(merged) { false },
+        )
+    }
+
+    @Test
+    fun `visible tile progress is zero when nothing is queued`() {
+        assertEquals(
+            MandelbrotTiles.VisibleTileProgress(finished = 0, queued = 0),
+            MandelbrotTiles.visibleTileProgress(emptySet()) { true },
+        )
+    }
+
+    @Test
     fun `visible tiles complete only when every on-screen full tile is cached`() {
         val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
         val keys = MandelbrotTiles.keysForRange(range, 0, 256, 600, preview = false)
@@ -480,6 +552,26 @@ class MandelbrotTilesTest {
         )
         assertFalse(
             MandelbrotTiles.visibleViewportCovered(
+                zoom = 1.0,
+                offsetX = -0.5,
+                offsetY = 0.0,
+                viewWidth = 800,
+                viewHeight = 0,
+                tilePixelSize = 256,
+            ) { true },
+        )
+        assertTrue(
+            MandelbrotTiles.visibleFullKeys(
+                zoom = 1.0,
+                offsetX = -0.5,
+                offsetY = 0.0,
+                viewWidth = 0,
+                viewHeight = 600,
+                tilePixelSize = 256,
+            ).isEmpty(),
+        )
+        assertFalse(
+            MandelbrotTiles.visibleTilesComplete(
                 zoom = 1.0,
                 offsetX = -0.5,
                 offsetY = 0.0,

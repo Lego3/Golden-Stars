@@ -30,18 +30,41 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:text="1.0x" />
 
-    <com.google.android.material.progressindicator.CircularProgressIndicator
-        android:id="@+id/renderProgress"
+    <LinearLayout
+        android:id="@+id/renderProgressGroup"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/overlay_edge_margin"
+        android:accessibilityLiveRegion="polite"
+        android:background="@drawable/bg_zoom_label"
         android:contentDescription="@string/rendering"
-        android:indeterminate="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="4dp"
         android:visibility="gone"
-        app:indicatorSize="24dp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:trackThickness="3dp" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/renderProgress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:importantForAccessibility="no"
+            android:indeterminate="true"
+            app:indicatorSize="18dp"
+            app:trackThickness="3dp" />
+
+        <TextView
+            android:id="@+id/renderProgressText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:importantForAccessibility="no"
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            tools:text="4/10" />
+    </LinearLayout>
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/controlPanel"

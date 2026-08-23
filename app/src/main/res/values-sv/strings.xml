@@ -67,6 +67,8 @@
     <string name="action_settings">Inställningar</string>
     <string name="action_details">Visa detaljer</string>
     <string name="rendering">Renderar</string>
+    <string name="render_progress_format">%1$d/%2$d</string>
+    <string name="rendering_progress_a11y">Renderar %1$d av %2$d rutor</string>
     <string name="zoom_level_format">Zoomnivå %1$s</string>
     <string name="star_description_a11y">Stjärnritning med %1$d punkter och hopp om %2$d. Nyp för att zooma, dra för att panorera, dubbeltryck för att zooma in.</string>
     <string name="mandelbrot_description_a11y">Mandelbrotmängden. Nyp för att zooma, dra för att panorera, dubbeltryck för att zooma in.</string>
