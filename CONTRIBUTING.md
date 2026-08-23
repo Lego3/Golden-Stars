@@ -108,10 +108,9 @@ store (`MandelbrotTileCache`). Nearby zoom steps and parent tiles stand in, scal
 while missing tiles render in the background. The loading circle appears while visible
 full-resolution tiles are still missing, including when a scaled parent or preview is
 already on screen, and shows how many of those tiles have finished. Prefetch of
-off-screen neighbours stays silent. Visible full-resolution tiles render one at a
-time (with cardioid/bulb interior early-out) so the finished/queued count can
-move. Cached tiles store an 8-bit escape-time alpha map; `ColorMatrixColorFilter`
-applies the current `FractalPalette` at draw time,
+off-screen neighbours stays silent. Visible missing tiles render as one row-parallel
+pass (with cardioid/bulb interior early-out). Cached tiles store an 8-bit escape-time
+alpha map; `ColorMatrixColorFilter` applies the current `FractalPalette` at draw time,
 so a colour change does not invalidate the cache. Prefetch fills neighbours and the
 next 2× zoom after a gesture settles, a few tiles at a time. LRU eviction keeps the
 tiles the current frame still blits, including scaled parents. Disk eviction follows
