@@ -64,8 +64,11 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
 
     private var isInteracting = false
     private var zoomCallback: ((Double) -> Unit)? = null
-    private var renderingStateCallback: ((Boolean) -> Unit)? = null
+    private var renderingStateCallback: ((Boolean, Int, Int) -> Unit)? = null
     private var spinnerVisible = false
+    private var lastProgressFinished = -1
+    private var lastProgressQueued = -1
+    private var queuedVisibleKeys: Set<MandelbrotTiles.TileKey> = emptySet()
 
     init {
         contentDescription = context.getString(R.string.mandelbrot_description_a11y)
@@ -122,7 +125,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         callback(zoom)
     }
 
-    fun setOnRenderingStateChangedListener(callback: (Boolean) -> Unit) {
+    fun setOnRenderingStateChangedListener(callback: (Boolean, Int, Int) -> Unit) {
         renderingStateCallback = callback
     }
 
@@ -405,6 +408,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                     preview = preview,
                     pixels = pixels,
                 )
+                updateRenderingState()
             }
         }
         invalidate()
@@ -705,14 +709,48 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         ColorMatrixColorFilter(ColorMatrix(FractalColoring.colorMatrixValues(palette)))
 
     private fun updateRenderingState(forceIdle: Boolean = false) {
+        val visibleKeys = visibleFullKeys()
+        queuedVisibleKeys = MandelbrotTiles.mergeVisibleTileQueue(
+            tracked = queuedVisibleKeys,
+            visibleKeys = visibleKeys,
+            isCached = { tileCache.contains(it) },
+        )
+        val progress = MandelbrotTiles.visibleTileProgress(
+            queuedKeys = queuedVisibleKeys,
+            isCached = { tileCache.contains(it) },
+        )
         val busy = !forceIdle && MandelbrotMath.showRenderSpinner(
             workActive = workJob?.isActive == true,
             workIsPrefetch = currentWorkIsPrefetch,
-            viewportCovered = visibleViewportCovered(),
+            visibleTilesComplete = visibleTilesComplete(),
         )
-        if (busy == spinnerVisible) return
+        if (!busy) {
+            queuedVisibleKeys = emptySet()
+        }
+        val finished = if (busy) progress.finished else 0
+        val queued = if (busy) progress.queued else 0
+        if (busy == spinnerVisible &&
+            finished == lastProgressFinished &&
+            queued == lastProgressQueued
+        ) {
+            return
+        }
         spinnerVisible = busy
-        renderingStateCallback?.invoke(busy)
+        lastProgressFinished = finished
+        lastProgressQueued = queued
+        renderingStateCallback?.invoke(busy, finished, queued)
+    }
+
+    private fun visibleFullKeys(): List<MandelbrotTiles.TileKey> {
+        if (width <= 0 || height <= 0) return emptyList()
+        return MandelbrotTiles.visibleFullKeys(
+            zoom = zoom,
+            offsetX = offsetX,
+            offsetY = offsetY,
+            viewWidth = width,
+            viewHeight = height,
+            tilePixelSize = MandelbrotTiles.tilePixelSize(width, height),
+        )
     }
 
     private fun signOf(value: Float): Int = when {
@@ -795,9 +833,12 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         currentWorkIsPrefetch = false
         tileCache.onEvicted = null
         recycleBitmaps()
-        if (spinnerVisible) {
+        queuedVisibleKeys = emptySet()
+        if (spinnerVisible || lastProgressQueued != 0) {
             spinnerVisible = false
-            renderingStateCallback?.invoke(false)
+            lastProgressFinished = 0
+            lastProgressQueued = 0
+            renderingStateCallback?.invoke(false, 0, 0)
         }
         super.onDetachedFromWindow()
     }

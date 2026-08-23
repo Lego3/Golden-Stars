@@ -197,12 +197,13 @@ internal object MandelbrotMath {
     }
 
     /**
-     * The loading circle is for holes in the viewport, not for background work. Prefetch and
-     * sharpening of already-painted (scaled or preview) tiles stay silent.
+     * The loading circle is for work that will improve the current view: filling holes or
+     * replacing scaled/preview stand-ins with sharper tiles. Prefetch of off-screen tiles
+     * stays silent even if a job is running.
      */
     fun showRenderSpinner(
         workActive: Boolean,
         workIsPrefetch: Boolean,
-        viewportCovered: Boolean,
-    ): Boolean = workActive && !workIsPrefetch && !viewportCovered
+        visibleTilesComplete: Boolean,
+    ): Boolean = workActive && !workIsPrefetch && !visibleTilesComplete
 }

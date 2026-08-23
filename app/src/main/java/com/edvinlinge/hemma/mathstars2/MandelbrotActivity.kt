@@ -42,8 +42,17 @@ class MandelbrotActivity : AppCompatActivity() {
             binding.zoomText.contentDescription = getString(R.string.zoom_level_format, formatted)
         }
 
-        binding.mandelbrotView.setOnRenderingStateChangedListener { isRendering ->
-            binding.renderProgress.isVisible = isRendering
+        binding.mandelbrotView.setOnRenderingStateChangedListener { isRendering, finished, queued ->
+            binding.renderProgressGroup.isVisible = isRendering
+            if (isRendering && queued > 0) {
+                binding.renderProgressText.text = getString(R.string.render_progress_format, finished, queued)
+                binding.renderProgressText.isVisible = true
+                binding.renderProgressGroup.contentDescription =
+                    getString(R.string.rendering_progress_a11y, finished, queued)
+            } else {
+                binding.renderProgressText.isVisible = false
+                binding.renderProgressGroup.contentDescription = getString(R.string.rendering)
+            }
         }
 
         doOnScreenInsets { insets ->
@@ -56,7 +65,7 @@ class MandelbrotActivity : AppCompatActivity() {
                 topMargin = insets.top + insets.edgeMargin
                 marginEnd = insets.end + insets.edgeMargin
             }
-            binding.renderProgress.updateLayoutParams<MarginLayoutParams> {
+            binding.renderProgressGroup.updateLayoutParams<MarginLayoutParams> {
                 topMargin = insets.top + insets.edgeMargin
                 marginStart = insets.start + insets.edgeMargin
             }

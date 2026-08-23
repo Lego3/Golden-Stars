@@ -88,6 +88,9 @@ internal object MandelbrotTiles {
         val prefetch: List<TileKey>,
     )
 
+    /** How many on-screen tiles from a queued set have finished, of how many were queued. */
+    data class VisibleTileProgress(val finished: Int, val queued: Int)
+
     fun viewMinEdge(viewWidth: Int, viewHeight: Int): Int =
         minOf(viewWidth, viewHeight).coerceAtLeast(1)
 
@@ -436,8 +439,60 @@ internal object MandelbrotTiles {
     }
 
     /**
+     * Full-resolution keys that cover the current viewport at its discrete zoom step. These are
+     * the tiles that will sharpen what the user is looking at; prefetch neighbours are excluded.
+     */
+    fun visibleFullKeys(
+        zoom: Double,
+        offsetX: Double,
+        offsetY: Double,
+        viewWidth: Int,
+        viewHeight: Int,
+        tilePixelSize: Int,
+    ): List<TileKey> {
+        if (viewWidth <= 0 || viewHeight <= 0) return emptyList()
+        val step = zoomStep(zoom)
+        val minEdge = viewMinEdge(viewWidth, viewHeight)
+        val range = visibleTileRange(
+            offsetX, offsetY, zoom, viewWidth, viewHeight, step, tilePixelSize,
+        )
+        return keysForRange(range, step, tilePixelSize, minEdge, preview = false)
+    }
+
+    /**
+     * Keeps finished tiles that are still on screen so progress can read 4/10, drops tiles that
+     * panned away, and adds newly missing visible tiles after a pan or zoom.
+     */
+    fun mergeVisibleTileQueue(
+        tracked: Set<TileKey>,
+        visibleKeys: Collection<TileKey>,
+        isCached: (TileKey) -> Boolean,
+    ): Set<TileKey> {
+        val visibleSet = if (visibleKeys is Set) visibleKeys else visibleKeys.toSet()
+        val merged = LinkedHashSet<TileKey>(tracked.size + visibleSet.size)
+        for (key in tracked) {
+            if (key in visibleSet) merged += key
+        }
+        for (key in visibleKeys) {
+            if (!isCached(key)) merged += key
+        }
+        return merged
+    }
+
+    fun visibleTileProgress(
+        queuedKeys: Set<TileKey>,
+        isCached: (TileKey) -> Boolean,
+    ): VisibleTileProgress {
+        var finished = 0
+        for (key in queuedKeys) {
+            if (isCached(key)) finished++
+        }
+        return VisibleTileProgress(finished = finished, queued = queuedKeys.size)
+    }
+
+    /**
      * True when every on-screen tile at the current zoom step already has a full-resolution cache
-     * entry, so prefetch can start even if the spinner is already hidden.
+     * entry, so prefetch can start and the loading circle can hide.
      */
     fun visibleTilesComplete(
         zoom: Double,
@@ -448,23 +503,21 @@ internal object MandelbrotTiles {
         tilePixelSize: Int,
         isCached: (TileKey) -> Boolean,
     ): Boolean {
-        val step = zoomStep(zoom)
-        val minEdge = viewMinEdge(viewWidth, viewHeight)
-        val range = visibleTileRange(
-            offsetX, offsetY, zoom, viewWidth, viewHeight, step, tilePixelSize,
+        val keys = visibleFullKeys(
+            zoom, offsetX, offsetY, viewWidth, viewHeight, tilePixelSize,
         )
-        var complete = true
-        range.forEach { x, y ->
-            val key = TileKey(step, x, y, tilePixelSize, minEdge, preview = false)
-            if (!isCached(key)) complete = false
+        if (keys.isEmpty()) return false
+        for (key in keys) {
+            if (!isCached(key)) return false
         }
-        return complete
+        return true
     }
 
     /**
      * True when every visible tile can already be painted from cache: an exact tile, a preview,
-     * a scaled ancestor, or a complete set of children. Holes remain only where none of those
-     * exist, which is when the loading circle should show.
+     * a scaled ancestor, or a complete set of children. Used to skip preview work during a
+     * gesture when something is already on screen; the loading circle uses [visibleTilesComplete]
+     * instead so sharpening still shows progress.
      */
     fun visibleViewportCovered(
         zoom: Double,
