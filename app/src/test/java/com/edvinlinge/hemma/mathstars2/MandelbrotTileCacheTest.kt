@@ -155,6 +155,31 @@ class MandelbrotTileCacheTest {
     }
 
     @Test
+    fun `disk tile with truncated pixel payload is discarded`() {
+        val dir = Files.createTempDirectory("mandelbrot-tiles-truncated").toFile()
+        try {
+            val cache = MandelbrotTileCache(
+                maxMemoryBytes = 1024 * 1024,
+                diskDir = dir,
+                maxDiskBytes = 1024 * 1024,
+            )
+            val key = tileKey(42)
+            val truncated = File(dir, "e600_s0_x42_y0_t256.tile")
+            writeCompressedTile(
+                truncated,
+                magic = 0x4D425432,
+                pixelCount = 16,
+                pixels = byteArrayOf(1, 2, 3, 4),
+            )
+
+            assertNull(cache.loadFromDisk(key))
+            assertFalse(truncated.exists())
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
     fun `disk tile with an impossible pixel count is discarded`() {
         val dir = Files.createTempDirectory("mandelbrot-tiles-bad-count").toFile()
         try {
