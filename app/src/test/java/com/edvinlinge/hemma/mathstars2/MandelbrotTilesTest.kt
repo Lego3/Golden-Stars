@@ -498,4 +498,95 @@ class MandelbrotTilesTest {
         val partial = MandelbrotTiles.ScreenRect(-10f, 100f, 10f, 200f)
         assertTrue(partial.intersectsView(viewWidth = 800, viewHeight = 600))
     }
+
+    @Test
+    fun `render plan skips preview work when full tile is already cached`() {
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
+        val cached = MandelbrotTiles.keysForRange(range, 0, 256, 600, preview = false).toSet()
+        val plan = renderPlanWithEmptyGesture(cached)
+        assertTrue(plan.visibleFull.isEmpty())
+        assertTrue(plan.visiblePreview.isEmpty())
+    }
+
+    @Test
+    fun `render plan requests preview when neither preview nor full tile is cached`() {
+        val plan = renderPlanWithEmptyGesture(emptySet())
+        assertTrue(plan.visibleFull.isNotEmpty())
+        assertTrue(plan.visiblePreview.isNotEmpty())
+        assertTrue(plan.visiblePreview.all { it.preview })
+        assertTrue(plan.visiblePreview.none { isCachedFull(it, emptySet()) })
+    }
+
+    @Test
+    fun `render plan omits preview keys that are already cached`() {
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
+        val previewOnly = MandelbrotTiles.keysForRange(range, 0, 256, 600, preview = true).toSet()
+        val plan = renderPlanWithEmptyGesture(previewOnly)
+        assertTrue(plan.visibleFull.isNotEmpty())
+        assertTrue(plan.visiblePreview.isEmpty())
+    }
+
+    @Test
+    fun `tile is covered by ancestor preview when full resolution is still rendering`() {
+        val parentPreview = MandelbrotTiles.TileKey(0, -1, 0, 256, 600, preview = true)
+        assertTrue(
+            MandelbrotTiles.tileIsCovered(
+                tileX = MandelbrotTiles.childTileX(-1, 0),
+                tileY = MandelbrotTiles.childTileY(0, 0),
+                tileStep = 1,
+                tilePixelSize = 256,
+                viewMinEdge = 600,
+            ) { it == parentPreview },
+        )
+    }
+
+    @Test
+    fun `child tile contributes more samples than its parent at the same zoom step`() {
+        val parent = MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = false)
+        val child = MandelbrotTiles.TileKey(1, 0, 0, 256, 600, preview = false)
+        assertTrue(
+            MandelbrotTiles.coverageSamples(child, targetStep = 1) >
+                MandelbrotTiles.coverageSamples(parent, targetStep = 1),
+        )
+    }
+
+    @Test
+    fun `source rect returns the full ancestor when zoom steps match`() {
+        val src = MandelbrotTiles.sourceRectInAncestor(
+            tileX = 3,
+            tileY = 4,
+            tileStep = 2,
+            ancestorX = 3,
+            ancestorY = 4,
+            ancestorStep = 2,
+            ancestorPixelSize = 256,
+        )
+        assertEquals(0, src.left)
+        assertEquals(0, src.top)
+        assertEquals(256, src.right)
+        assertEquals(256, src.bottom)
+    }
+
+    private fun renderPlanWithEmptyGesture(cached: Set<MandelbrotTiles.TileKey>): MandelbrotTiles.RenderPlan =
+        MandelbrotTiles.renderPlan(
+            zoom = 1.0,
+            offsetX = -0.5,
+            offsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+            tilePixelSize = 256,
+            panSignX = 0,
+            panSignY = 0,
+            zoomSign = 0,
+            focusX = -0.5,
+            focusY = 0.0,
+            minZoom = 0.5,
+            maxZoom = 1.0e13,
+            isCached = { key -> isCachedFull(key, cached) },
+        )
+
+    private fun isCachedFull(key: MandelbrotTiles.TileKey, cached: Set<MandelbrotTiles.TileKey>): Boolean {
+        val full = if (key.preview) key.copy(preview = false) else key
+        return full in cached || key in cached
+    }
 }
