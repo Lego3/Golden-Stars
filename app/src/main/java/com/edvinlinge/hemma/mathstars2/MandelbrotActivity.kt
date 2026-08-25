@@ -34,7 +34,7 @@ class MandelbrotActivity : AppCompatActivity() {
         colorIndex = savedInstanceState?.getInt(SettingsBottomSheet.KEY_COLOR_INDEX)
             ?: preferences.loadMandelbrotColorIndex()
 
-        binding.mandelbrotView.setColorPalette(paletteFor(colorIndex))
+        binding.mandelbrotView.setColorPalette(fractalPaletteFor(colorIndex))
 
         binding.mandelbrotView.setOnZoomChangedListener { zoom ->
             val formatted = formatZoom(zoom)
@@ -42,8 +42,17 @@ class MandelbrotActivity : AppCompatActivity() {
             binding.zoomText.contentDescription = getString(R.string.zoom_level_format, formatted)
         }
 
-        binding.mandelbrotView.setOnRenderingStateChangedListener { isRendering ->
-            binding.renderProgress.isVisible = isRendering
+        binding.mandelbrotView.setOnRenderingStateChangedListener { isRendering, finished, queued ->
+            binding.renderProgressGroup.isVisible = isRendering
+            if (isRendering && queued > 0) {
+                binding.renderProgressText.text = getString(R.string.render_progress_format, finished, queued)
+                binding.renderProgressText.isVisible = true
+                binding.renderProgressGroup.contentDescription =
+                    getString(R.string.rendering_progress_a11y, finished, queued)
+            } else {
+                binding.renderProgressText.isVisible = false
+                binding.renderProgressGroup.contentDescription = getString(R.string.rendering)
+            }
         }
 
         doOnScreenInsets { insets ->
@@ -56,7 +65,7 @@ class MandelbrotActivity : AppCompatActivity() {
                 topMargin = insets.top + insets.edgeMargin
                 marginEnd = insets.end + insets.edgeMargin
             }
-            binding.renderProgress.updateLayoutParams<MarginLayoutParams> {
+            binding.renderProgressGroup.updateLayoutParams<MarginLayoutParams> {
                 topMargin = insets.top + insets.edgeMargin
                 marginStart = insets.start + insets.edgeMargin
             }
@@ -69,7 +78,7 @@ class MandelbrotActivity : AppCompatActivity() {
             val newColorIndex = result.getInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
             if (newColorIndex != colorIndex) {
                 colorIndex = newColorIndex
-                binding.mandelbrotView.setColorPalette(paletteFor(colorIndex))
+                binding.mandelbrotView.setColorPalette(fractalPaletteFor(colorIndex))
                 preferences.saveMandelbrotColorIndex(colorIndex)
             }
         }
@@ -101,7 +110,4 @@ class MandelbrotActivity : AppCompatActivity() {
         outState.putInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
     }
 
-    /** Swatch order matches the palette order, so the index maps straight across. */
-    private fun paletteFor(index: Int): FractalPalette =
-        FractalPalette.entries[index.coerceIn(FractalPalette.entries.indices)]
 }

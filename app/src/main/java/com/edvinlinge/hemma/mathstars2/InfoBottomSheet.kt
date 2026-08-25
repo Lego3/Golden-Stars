@@ -30,8 +30,10 @@ class InfoBottomSheet : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val arguments = requireArguments()
-        binding.infoTitle.text =
-            arguments.getString(ARG_TITLE) ?: getString(R.string.more_info_button)
+        binding.infoTitle.text = infoSheetTitle(
+            arguments.getString(ARG_TITLE),
+            getString(R.string.more_info_button),
+        )
         val message = arguments.getString(ARG_MESSAGE) ?: ""
         binding.infoMessage.text = if (shouldParseInfoMessageAsHtml(message)) {
             message.parseAsHtml()

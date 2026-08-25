@@ -66,6 +66,8 @@
     <string name="action_settings">Settings</string>
     <string name="action_details">Show details</string>
     <string name="rendering">Rendering</string>
+    <string name="render_progress_format">%1$d/%2$d</string>
+    <string name="rendering_progress_a11y">Rendering %1$d of %2$d tiles</string>
     <string name="zoom_level_format">Zoom level %1$s</string>
     <string name="star_description_a11y">Star drawing with %1$d dots, moving %2$d at a time. Pinch to zoom, drag to pan, double tap to zoom in.</string>
     <string name="mandelbrot_description_a11y">Mandelbrot set. Pinch to zoom, drag to pan, double tap to zoom in.</string>
