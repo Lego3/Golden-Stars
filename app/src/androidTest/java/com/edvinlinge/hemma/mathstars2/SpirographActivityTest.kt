@@ -1,7 +1,6 @@
 package com.edvinlinge.hemma.mathstars2
 
 import android.os.Bundle
-import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.assertion.ViewAssertions.matches
@@ -19,7 +18,7 @@ class SpirographActivityTest {
 
     @Test
     fun retainsGeometryAfterRotation() {
-        ActivityScenario.launch(SpirographActivity::class.java).use { scenario ->
+        launchResumedActivity<SpirographActivity>().use { scenario ->
             scenario.onActivity { activity ->
                 activity.supportFragmentManager.setFragmentResult(
                     SettingsBottomSheet.REQUEST_KEY,
@@ -41,7 +40,7 @@ class SpirographActivityTest {
 
     @Test
     fun opensSettingsSheet() {
-        ActivityScenario.launch(SpirographActivity::class.java).use {
+        launchResumedActivity<SpirographActivity>().use {
             onView(withId(R.id.settingsButton)).perform(click())
             onView(withText(R.string.customize_spirograph)).check(matches(isDisplayed()))
         }
@@ -49,7 +48,7 @@ class SpirographActivityTest {
 
     @Test
     fun opensDetailsSheetWithDetailsTitle() {
-        ActivityScenario.launch(SpirographActivity::class.java).use {
+        launchResumedActivity<SpirographActivity>().use {
             onView(withId(R.id.infoButton)).perform(click())
             onView(withId(R.id.infoTitle)).check(matches(withText(R.string.more_info_button)))
             onView(withId(R.id.infoMessage)).check(matches(isDisplayed()))
@@ -58,7 +57,7 @@ class SpirographActivityTest {
 
     @Test
     fun opensHelpSheetWithHelpTitle() {
-        ActivityScenario.launch(SpirographActivity::class.java).use {
+        launchResumedActivity<SpirographActivity>().use {
             onView(withId(R.id.helpButton)).perform(click())
             onView(withId(R.id.infoTitle)).check(matches(withText(R.string.help)))
             onView(withId(R.id.infoMessage)).check(matches(isDisplayed()))

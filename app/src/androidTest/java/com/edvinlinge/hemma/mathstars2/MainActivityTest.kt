@@ -3,7 +3,6 @@ package com.edvinlinge.hemma.mathstars2
 import android.view.View
 import android.widget.TextView
 import androidx.core.widget.NestedScrollView
-import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -20,7 +19,7 @@ class MainActivityTest {
         var paddingBottom = 0
         var requiredPadding = 0
 
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+        launchResumedActivity<MainActivity>().use { scenario ->
             scenario.onActivity { activity ->
                 val scrollView = activity.findViewById<NestedScrollView>(R.id.hubScrollView)
                 val versionText = activity.findViewById<TextView>(R.id.versionText)
@@ -46,7 +45,7 @@ class MainActivityTest {
         var cardBottom = 0
         var versionTop = 0
 
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+        launchResumedActivity<MainActivity>().use { scenario ->
             scenario.onActivity { activity ->
                 val scrollView = activity.findViewById<NestedScrollView>(R.id.hubScrollView)
                 val cardJulia = activity.findViewById<View>(R.id.cardJulia)

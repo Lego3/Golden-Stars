@@ -1,9 +1,6 @@
 package com.edvinlinge.hemma.mathstars2
 
-import android.content.Intent
 import android.os.Bundle
-import androidx.test.core.app.ActivityScenario
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.assertion.ViewAssertions.matches
@@ -21,15 +18,10 @@ class DrawActivityTest {
 
     @Test
     fun retainsLaunchGeometryAfterRotation() {
-        val intent = Intent(
-            ApplicationProvider.getApplicationContext(),
-            DrawActivity::class.java,
-        ).apply {
+        launchResumedActivity<DrawActivity> {
             putExtra(DrawActivity.EXTRA_DOTS, 7)
             putExtra(DrawActivity.EXTRA_SKIPS, 3)
-        }
-
-        ActivityScenario.launch<DrawActivity>(intent).use { scenario ->
+        }.use { scenario ->
             onView(withId(R.id.drawView)).check(
                 matches(withContentDescription(containsString("7 dots"))),
             )
@@ -42,7 +34,7 @@ class DrawActivityTest {
 
     @Test
     fun retainsSettingsAfterRotation() {
-        ActivityScenario.launch(DrawActivity::class.java).use { scenario ->
+        launchResumedActivity<DrawActivity>().use { scenario ->
             scenario.onActivity { activity ->
                 activity.supportFragmentManager.setFragmentResult(
                     SettingsBottomSheet.REQUEST_KEY,
@@ -64,7 +56,7 @@ class DrawActivityTest {
 
     @Test
     fun opensSettingsSheet() {
-        ActivityScenario.launch(DrawActivity::class.java).use {
+        launchResumedActivity<DrawActivity>().use {
             onView(withId(R.id.settingsButton)).perform(click())
             onView(withText(R.string.customize_star)).check(matches(isDisplayed()))
         }
@@ -72,7 +64,7 @@ class DrawActivityTest {
 
     @Test
     fun opensDetailsSheetWithDetailsTitle() {
-        ActivityScenario.launch(DrawActivity::class.java).use {
+        launchResumedActivity<DrawActivity>().use {
             onView(withId(R.id.infoButton)).perform(click())
             onView(withId(R.id.infoTitle)).check(matches(withText(R.string.more_info_button)))
             onView(withId(R.id.infoMessage)).check(matches(isDisplayed()))
@@ -81,7 +73,7 @@ class DrawActivityTest {
 
     @Test
     fun opensHelpSheetWithHelpTitle() {
-        ActivityScenario.launch(DrawActivity::class.java).use {
+        launchResumedActivity<DrawActivity>().use {
             onView(withId(R.id.helpButton)).perform(click())
             onView(withId(R.id.infoTitle)).check(matches(withText(R.string.help)))
             onView(withId(R.id.infoMessage)).check(matches(isDisplayed()))
