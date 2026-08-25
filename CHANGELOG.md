@@ -8,6 +8,9 @@ Git tags (`v1.1.0`, `v1.2.0`, …).
 
 ### Added
 
+- Debug builds use applicationId `com.edvinlinge.hemma.mathstars2.debug`, the launcher
+  title Golden Stars (D), and a green-banner icon so they can sit next to the Play Store
+  app.
 - Spirograph explorer for hypotrochoids and epitrochoids, with animated drawing,
   GCD-based details, and the same pan/zoom controls as Golden Stars.
 - Julia set explorer with pinch-to-zoom, colour palettes, well-known *c* presets, and
@@ -30,8 +33,7 @@ Git tags (`v1.1.0`, `v1.2.0`, …).
 ### Fixed
 
 - Debug and CI test APKs are signed with a committed debug keystore so a new sideload
-  updates the installed app instead of reporting a package conflict. The Google Play
-  build still uses a different key, so it cannot be overwritten by these APKs.
+  updates the installed debug app instead of reporting a package conflict.
 - Hub scroll view reserves clearance above the floating version label so the last card
   does not sit underneath it.
 - Mandelbrot and Julia explorers discard in-flight preview or full renders when the

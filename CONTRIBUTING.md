@@ -50,8 +50,9 @@ that the Julia card does not overlap the label when scrolled to the end.
 | `ScreenInsets` / `doOnScreenInsets` | Maps system bars and cutouts to layout-direction-aware start/end insets for floating overlays |
 | `ZoomFormat` | Human-readable zoom labels on Mandelbrot and Julia screens |
 
-Package: `com.edvinlinge.hemma.mathstars2`. View binding is enabled; layouts live under
-`app/src/main/res/layout/`.
+Package: `com.edvinlinge.hemma.mathstars2`. Debug builds append `.debug` to the
+installed applicationId and override the launcher name/icon from `app/src/debug/`.
+View binding is enabled; layouts live under `app/src/main/res/layout/`.
 
 ### Math layer
 
@@ -142,7 +143,7 @@ and save so stored values always match slider bounds.
 | Layer | Location | Examples |
 |-------|----------|----------|
 | Unit | `app/src/test/` | `StarMathTest`, `SpirographMathTest`, `JuliaMathTest`, `MandelbrotMathTest`, `FractalColoringTest`, `MandelbrotTilesTest`, `MandelbrotTileCacheTest`, `DrawViewMathTest`, `ScreenInsetsTest`, `HubLayoutTest` |
-| Instrumented | `app/src/androidTest/` | Settings round-trip, rotation survival, smoke launch per activity, hub scroll/version layout (`MainActivityTest`) |
+| Instrumented | `app/src/androidTest/` | Settings round-trip, rotation survival, smoke launch per activity, hub scroll/version layout (`MainActivityTest`), debug applicationId and launcher title (`DebugBuildIdentityTest`) |
 
 When adding behaviour, extend the matching `*Math` unit tests first. Reserve
 instrumented tests for Android integration (preferences, fragments, configuration
