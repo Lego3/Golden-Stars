@@ -619,6 +619,16 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `render plan prefetch never queues on-screen tiles even when they are already cached`() {
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
+        val allVisible = MandelbrotTiles.keysForRange(range, 0, 256, 600, preview = false)
+        val cached = allVisible.take(1).toSet()
+        val plan = renderPlanWithEmptyGesture(cached)
+        val visibleSet = allVisible.toSet()
+        assertTrue(plan.prefetch.none { it in visibleSet })
+    }
+
+    @Test
     fun `tile is covered by ancestor preview when full resolution is still rendering`() {
         val parentPreview = MandelbrotTiles.TileKey(0, -1, 0, 256, 600, preview = true)
         assertTrue(
@@ -657,6 +667,84 @@ class MandelbrotTilesTest {
         assertEquals(0, src.top)
         assertEquals(256, src.right)
         assertEquals(256, src.bottom)
+    }
+
+    @Test
+    fun `compose draw list uses preview child when full child is missing`() {
+        val childPreview = MandelbrotTiles.TileKey(
+            zoomStep = 1,
+            tileX = MandelbrotTiles.childTileX(-1, 0),
+            tileY = MandelbrotTiles.childTileY(0, 0),
+            tilePixelSize = 256,
+            viewMinEdge = 600,
+            preview = true,
+        )
+        val draws = MandelbrotTiles.composeDrawList(
+            zoom = 1.5,
+            offsetX = -0.5,
+            offsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+            tilePixelSize = 256,
+            available = setOf(childPreview),
+        )
+        assertTrue(draws.any { it.key == childPreview })
+    }
+
+    @Test
+    fun `compose draw list paints full child over preview parent`() {
+        val parentPreview = MandelbrotTiles.TileKey(0, -1, 0, 256, 600, preview = true)
+        val child = MandelbrotTiles.TileKey(
+            zoomStep = 1,
+            tileX = MandelbrotTiles.childTileX(-1, 0),
+            tileY = MandelbrotTiles.childTileY(0, 0),
+            tilePixelSize = 256,
+            viewMinEdge = 600,
+            preview = false,
+        )
+        val draws = MandelbrotTiles.composeDrawList(
+            zoom = 1.5,
+            offsetX = -0.5,
+            offsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+            tilePixelSize = 256,
+            available = setOf(parentPreview, child),
+        )
+        val lastChild = draws.indexOfLast { it.key == child }
+        val lastParent = draws.indexOfLast { it.key == parentPreview }
+        assertTrue(lastChild >= 0)
+        assertTrue(lastParent >= 0)
+        assertTrue(lastChild > lastParent)
+    }
+
+    @Test
+    fun `tile is not covered when only three of four children are cached`() {
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
+        val tx = range.x0
+        val ty = range.y0
+        val children = (0..1).flatMap { ly ->
+            (0..1).map { lx ->
+                MandelbrotTiles.TileKey(
+                    zoomStep = 1,
+                    tileX = MandelbrotTiles.childTileX(tx, lx),
+                    tileY = MandelbrotTiles.childTileY(ty, ly),
+                    tilePixelSize = 256,
+                    viewMinEdge = 600,
+                    preview = false,
+                )
+            }
+        }
+        val threeChildren = children.drop(1).toSet()
+        assertFalse(
+            MandelbrotTiles.tileIsCovered(
+                tileX = tx,
+                tileY = ty,
+                tileStep = 0,
+                tilePixelSize = 256,
+                viewMinEdge = 600,
+            ) { it in threeChildren },
+        )
     }
 
     private fun renderPlanWithEmptyGesture(cached: Set<MandelbrotTiles.TileKey>): MandelbrotTiles.RenderPlan =
