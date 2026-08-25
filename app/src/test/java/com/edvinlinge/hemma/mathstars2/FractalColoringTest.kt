@@ -31,6 +31,18 @@ class FractalColoringTest {
     }
 
     @Test
+    fun `escape alpha returns zero when max iterations is non-positive`() {
+        assertEquals(0, FractalColoring.escapeAlpha(50, 0))
+        assertEquals(0, FractalColoring.escapeAlpha(50, -10))
+    }
+
+    @Test
+    fun `gray argb clamps alpha to byte range`() {
+        assertEquals(0xFF000000.toInt(), FractalColoring.grayArgb(-5))
+        assertEquals(0xFFFFFFFF.toInt(), FractalColoring.grayArgb(300))
+    }
+
+    @Test
     fun `silver matrix leaves grayscale unchanged`() {
         val matrix = FractalColoring.colorMatrixValues(FractalPalette.SILVER)
         val out = FractalColoring.applyColorMatrix(matrix, 100f, 100f, 100f, 255f)
