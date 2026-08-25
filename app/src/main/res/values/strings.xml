@@ -16,12 +16,12 @@
     <string name="details_success">Congratulations! You made a %1$d-pointed star in one stroke!</string>
     <string name="details_fail">It is not possible to draw a %1$d-pointed star in one stroke.</string>
     <string name="details_polygon">Moving 1 dot at a time joins every neighbour in turn, so you get a regular %1$d-sided polygon rather than a star. Move 2 or more dots at a time to make a star.</string>
-    <string name="details_is_prime">Because %1$d is a prime you can actually choose any movement number and still get a %1$d-pointed star.</string>
+    <string name="details_is_prime">Because %1$d is a prime you can actually choose any skip count and still get a %1$d-pointed star.</string>
     <string name="details_info">It is possible to draw %2$d different %1$d-pointed stars in one stroke. Mirrored stars are not counted. For example, moving 2 or 3 dots at a time to get a 5-pointed star is the same solution.</string>
-    <string name="details_help">The following move numbers can be used to achieve a %1$d-pointed star:</string>
+    <string name="details_help">The following skip counts can be used to achieve a %1$d-pointed star:</string>
     <string name="details_fair">With %1$d dots available, moving %2$d dots at a time results in a %3$d-pointed star.</string>
     <string name="help">Help</string>
-    <string name="help_details">This screen draws an N-pointed regular star (if possible) using only straight lines, without lifting the pen. Start at one dot, then keep drawing lines that skip the same number of dots each time, until the path returns to the start. The classic example is the 5-pointed golden star, which skips 2 dots.\n\nAfter a star is drawn, Details lists the other skip counts that still make an N-pointed star with the same number of dots. The same arithmetic is the greatest common divisor (GCD).\n\nPinch to zoom, drag to pan, and use the sliders to change the number of dots and how many to skip.</string>
+    <string name="help_details">This screen draws an N-pointed regular star (if possible) using only straight lines, without lifting the pen. Start at one dot, then keep drawing lines that skip the same number of dots each time, until the path returns to the start. The classic example is the 5-pointed golden star, which skips 2 dots.\n\nAfter a star is drawn, Details lists the other skip counts that still make an N-pointed star with the same number of dots. The same arithmetic uses the greatest common divisor (GCD).\n\nPinch to zoom, drag to pan, and use the sliders to change the number of dots and how many to skip.</string>
     <string name="version_format">v %1$s</string>
     <string name="speed">Speed</string>
     <string name="customize_star">Customize Star</string>
@@ -29,7 +29,7 @@
     <string name="color">Color</string>
     <string name="close">Close</string>
     <string name="reset_view">Reset View</string>
-    <string name="mandelbrot_help">The Mandelbrot set is the set of complex numbers c for which the function f(z) = z² + c does not diverge to infinity when iterated from z = 0. It is one of the most famous examples of fractal geometry.\n\nUse pinch-to-zoom to explore the infinite boundaries of the set!</string>
+    <string name="mandelbrot_help">The Mandelbrot set is the set of complex numbers c for which the function f(z) = z² + c does not diverge to infinity when iterated from z = 0. It is one of the most famous examples of fractal geometry.\n\nPinch to zoom and drag to pan through the infinite boundaries of the set.</string>
     <string name="customize_mandelbrot">Customize Mandelbrot</string>
     <string name="customize_spirograph">Customize Spirograph</string>
     <string name="spirograph_fixed_hint">Fixed ring</string>
@@ -43,7 +43,7 @@
     <string name="spirograph_details_hypocycloid">The pen sits on the wheel rim, so this is a hypocycloid, a special hypotrochoid with sharp cusps.</string>
     <string name="spirograph_details_epicycloid">The pen sits on the wheel rim, so this is an epicycloid, a special epitrochoid with sharp cusps.</string>
     <string name="spirograph_details_circle">The pen is at the wheel centre, so the trace is a circle.</string>
-    <string name="spirograph_help">A Spirograph traces the path of a pen attached to a circle rolling around a fixed circle, the same idea as the toothed rings and wheels in the toy.\n\nWhen the two radii are whole numbers, the curve eventually closes. The number of loops is governed by the greatest common divisor (GCD) of the two radii, the same arithmetic that decides which star figures can be drawn in one stroke.\n\nDrag the sliders to change the ring, the wheel, and how far the pen sits from the wheel centre. Switch off roll-inside to roll on the outside instead (an epitrochoid).</string>
+    <string name="spirograph_help">A Spirograph traces the path of a pen attached to a circle rolling around a fixed circle, the same idea as the toothed rings and wheels in the toy.\n\nWhen the two radii are whole numbers, the curve eventually closes. The number of loops is governed by the greatest common divisor (GCD) of the two radii, the same arithmetic that decides which star figures can be drawn in one stroke.\n\nDrag the sliders to change the ring, the wheel, and how far the pen sits from the wheel centre. Turn off Roll inside the ring to roll on the outside instead (an epitrochoid).</string>
     <string name="spirograph_description_a11y">Spirograph with fixed ring %1$d, rolling wheel %2$d, pen distance %3$d. Pinch to zoom, drag to pan, double tap to zoom in.</string>
     <string name="customize_julia">Customize Julia</string>
     <string name="julia_preset">Julia shape</string>

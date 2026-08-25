@@ -36,10 +36,10 @@ closes, using the same GCD arithmetic as the star figures.
 
 **Julia Sets:** Hold *c* fixed and iterate *z → z² + c* from every point in the plane.
 A slider steps through well-known constants (the Douady rabbit, San Marco, a Cantor
-dust, and more). Info explains whether that *c* sits inside the Mandelbrot set.
+dust, and more). Help explains whether that *c* sits inside the Mandelbrot set.
 
-All screens share a dark, edge-to-edge layout with floating controls, settings sheets,
-and a short in-app help panel.
+Each explorer uses a dark, edge-to-edge layout with floating controls, a settings
+sheet, and a short in-app help panel. The hub follows the system light/dark theme.
 
 ## Contents
 
@@ -142,7 +142,7 @@ A separate workflow (`.github/workflows/static.yml`) deploys `index.html` and
 
 Every push to `master` also uploads a **debug APK** as a CI artifact (zipped download
 from the Actions tab). The artifact and APK names include the current `versionName` with
-a `-test` suffix (for example `Golden-Stars-1.2.0-test-debug.zip`) so post-release master
+a `-test` suffix (for example `Golden-Stars-1.3.0-test-debug.zip`) so post-release master
 builds are clearly distinct from tagged GitHub Releases. Tagged releases are handled
 separately, see [Releasing](#releasing).
 
@@ -168,10 +168,10 @@ manual step.
 2. Commit and push to `master`, then tag:
 
    ```bash
-   git commit -m "Release 1.2.0"
-   git tag -a v1.2.0 -m "Optional short summary if CHANGELOG is skipped"
+   git commit -m "Release 1.3.0"
+   git tag -a v1.3.0 -m "Optional short summary if CHANGELOG is skipped"
    git push origin master
-   git push origin v1.2.0
+   git push origin v1.3.0
    ```
 
 3. The `.github/workflows/release.yml` workflow runs on the tag push, builds a debug

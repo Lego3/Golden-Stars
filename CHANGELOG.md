@@ -2,32 +2,40 @@
 
 All notable changes to Golden Stars are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions match
-Git tags (`v1.1.0`, `v1.2.0`, …).
+Git tags (`v1.1.0`, `v1.2.0`, `v1.3.0`, …).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-08-25
+
+Two new explorers join Golden Stars and Mandelbrot: a Spirograph that traces
+hypotrochoids and epitrochoids, and a Julia set viewer for well-known values of
+*c*. Mandelbrot pan and zoom is also much smoother, with cached tiles and instant
+palette changes.
+
 ### Added
 
-- Debug builds use applicationId `com.edvinlinge.hemma.mathstars2.debug`, the launcher
-  title Golden Stars (D), and a green-banner icon so they can sit next to the Play Store
-  app.
 - Spirograph explorer for hypotrochoids and epitrochoids, with animated drawing,
   GCD-based details, and the same pan/zoom controls as Golden Stars.
 - Julia set explorer with pinch-to-zoom, colour palettes, well-known *c* presets, and
   progressive rendering previews.
+- Debug builds use applicationId `com.edvinlinge.hemma.mathstars2.debug`, the launcher
+  title Golden Stars (D), and a green-banner icon so they can sit next to the Play Store
+  app.
 
 ### Changed
 
-- Mandelbrot and Julia palettes are draw-time colour filters over a cached greyscale
-  escape map, so changing colour no longer discards tiles or rerenders.
-- Mandelbrot explorer keeps a memory and disk tile cache, reuses nearby zoom steps, and
-  pre-renders neighbouring tiles plus the next 2× zoom so pan and pinch stay smooth.
-  The loading circle shows while on-screen tiles are still missing or only covered by a
-  scaled/preview stand-in, with a finished/queued count for those tiles. Prefetch of
-  neighbours stays silent. Visible tiles render as one parallel pass, with cardioid/bulb
-  interior skipping. Covering parent tiles stay in memory while a sharper zoom renders.
-  Disk eviction drops the least recently *used* tiles, including ones that stayed in RAM.
+- Mandelbrot pan and pinch stay smooth: tiles are cached in memory and on disk,
+  nearby zoom levels stand in while a sharper image renders, and neighbours plus the
+  next 2× zoom are pre-fetched. The loading circle shows a finished/queued count while
+  the current view is still sharpening; silent prefetch does not.
+- Mandelbrot palettes apply as a draw-time colour filter, so changing colour is instant
+  and does not discard cached tiles. Julia uses the same approach.
 - Hub cards keep a content inset so they no longer run to the screen edge.
+- Details and Help sheets now use titles that match their contents (Help for how-to
+  text, Details for figure math).
+- CI and local debug APKs use a `-test` suffix in the filename so they stay distinct
+  from tagged GitHub Releases.
 - Instrumented CI retries up to three emulator runs when ADB or Espresso flakes.
 
 ### Fixed
@@ -36,12 +44,10 @@ Git tags (`v1.1.0`, `v1.2.0`, …).
   updates the installed debug app instead of reporting a package conflict.
 - Hub scroll view reserves clearance above the floating version label so the last card
   does not sit underneath it.
-- Mandelbrot and Julia explorers discard in-flight preview or full renders when the
-  viewport or Julia constant no longer matches, so late results cannot overwrite a
-  correct frame. Palette is a draw-time filter, so a colour change does not discard
-  or rerender.
-- Golden Stars, Spirograph, Mandelbrot, and Julia restore pan/zoom and reveal animation
-  correctly after configuration changes (rotation).
+- Mandelbrot no longer applies a late preview or full render after the viewport has
+  already changed.
+- Golden Stars reveal animation resumes after rotation instead of restarting from the
+  beginning.
 
 ## [1.2.0] - 2026-08-09
 
