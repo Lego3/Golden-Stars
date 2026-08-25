@@ -146,12 +146,16 @@ a `-test` suffix (for example `Golden-Stars-1.2.0-test-debug.zip`) so post-relea
 builds are clearly distinct from tagged GitHub Releases. Tagged releases are handled
 separately, see [Releasing](#releasing).
 
-Those debug APKs (CI artifacts, GitHub Releases, and local `assembleDebug`) share
-`app/debug.keystore`, so installing a newer one updates the app already on the device.
-If an older test APK was signed with a machine-local or CI-generated debug key, uninstall
-that copy once; later sideloads then update in place. A Google Play install uses a
-different signing key and still has to be uninstalled before a debug APK can be
-installed.
+Those debug APKs (CI artifacts, GitHub Releases, and local `assembleDebug`) are a
+separate app from the Play Store build:
+
+- applicationId `com.edvinlinge.hemma.mathstars2.debug`, so both can be installed at once
+- launcher title **Golden Stars (D)** (Swedish: **Mattestjärnor (D)**) and a green-banner
+  icon
+- `app/debug.keystore`, so a newer debug APK updates the existing debug install
+
+If you still have an older test APK that used the Play Store applicationId, uninstall
+that copy once. Later debug sideloads then appear as a second icon beside Play.
 
 ## Releasing
 
@@ -173,8 +177,8 @@ manual step.
 3. The `.github/workflows/release.yml` workflow runs on the tag push, builds a debug
    APK signed with `app/debug.keystore`, and creates a GitHub Release with notes from
    the matching `CHANGELOG.md` section (or the annotated tag message as a fallback)
-   and a direct `.apk` attachment. That APK can update a previously sideloaded debug
-   or test build; it cannot replace a Google Play install.
+   and a direct `.apk` attachment. That APK installs as **Golden Stars (D)** beside a
+   Google Play install, and can update a previously sideloaded debug or test build.
 
 ## Contributing
 

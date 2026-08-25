@@ -38,6 +38,10 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
     }
 
     buildTypes {
+        getByName("debug") {
+            // Parallel install next to the Play Store app.
+            applicationIdSuffix = ".debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

@@ -6,8 +6,9 @@
 
 AVD_NAME="${AVD_NAME:-golden_stars_api34}"
 SYSTEM_IMAGE="${SYSTEM_IMAGE:-system-images;android-34;google_apis;x86_64}"
-APP_ID="${APP_ID:-com.edvinlinge.hemma.mathstars2}"
-LAUNCHER_ACTIVITY="${LAUNCHER_ACTIVITY:-com.edvinlinge.hemma.mathstars2/.MainActivity}"
+APP_ID="${APP_ID:-com.edvinlinge.hemma.mathstars2.debug}"
+# applicationIdSuffix means the installed package is not the Java namespace.
+LAUNCHER_ACTIVITY="${LAUNCHER_ACTIVITY:-com.edvinlinge.hemma.mathstars2.debug/com.edvinlinge.hemma.mathstars2.MainActivity}"
 
 ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$HOME/android-sdk}"
 ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
