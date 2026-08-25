@@ -7,7 +7,7 @@
     <string name="mandelbrot_title">Mandelbrotmängden</string>
     <string name="mandelbrot_description">Utforska den mest kända fraktalen. Zooma in för att hitta oändlig komplexitet.</string>
     <string name="spirograph_title">Spirograph</string>
-    <string name="spirograph_description">Se en hypotrokoid ritas i ett drag. Ändra ring, hjul och penna för att stänga nya kurvor.</string>
+    <string name="spirograph_description">Se en hypotrokoid ritas i ett drag. Ändra ring, hjul och penna för att rita nya slutna kurvor.</string>
     <string name="julia_title">Juliamängder</string>
     <string name="julia_description">Håll c fast och iterera z → z² + c från varje punkt. Byt c för att få nya former.</string>
     <string name="skips_hint">Hopp</string>
@@ -17,12 +17,12 @@
     <string name="details_success">Grattis! Du gjorde en %1$d-uddig stjärna med ett penseldrag!</string>
     <string name="details_fail">Det går inte att rita en %1$d-uddig stjärna i ett penseldrag.</string>
     <string name="details_polygon">Med hopp om 1 punkt förbinds varje granne i tur och ordning, så det blir en regelbunden %1$d-hörning i stället för en stjärna. Hoppa 2 eller fler punkter för att göra en stjärna.</string>
-    <string name="details_is_prime">Eftersom %1$d är ett primtal går det att välja vilket nummer som helst och ändå få en %1$d-uddig stjärna.</string>
+    <string name="details_is_prime">Eftersom %1$d är ett primtal går det att välja vilket hopp som helst och ändå få en %1$d-uddig stjärna.</string>
     <string name="details_info">Det går att rita %2$d olika %1$d-uddiga stjärnor i ett penseldrag. Spegelvända stjärnor räknas inte. Till exempel är både 2 och 3 hopp för att skapa en 5-uddig stjärna samma lösning.</string>
     <string name="details_help">Följande hopp kan användas för att åstadkomma en %1$d-uddig stjärna:</string>
     <string name="details_fair">Med %1$d punkter tillgängliga och hopp på %2$d punkter blir det en %3$d-uddig stjärna.</string>
     <string name="help">Hjälp</string>
-    <string name="help_details">Den här skärmen ritar N-uddiga stjärnor (om det går) med bara raka linjer, utan att lyfta pennan. Börja i en punkt och dra sedan linjer som hoppar lika många punkter varje gång, tills banan är tillbaka vid starten. Det klassiska exemplet är den 5-uddiga guldstjärnan, som hoppar 2 punkter.\n\nNär en stjärna är ritad listar Detaljer de andra hopp som fortfarande ger en N-uddig stjärna med samma antal punkter. Samma räkning är den största gemensamma delaren (SGD).\n\nNyp för att zooma, dra för att panorera och använd skjutreglagen för att ändra antalet punkter och hur många du hoppar.</string>
+    <string name="help_details">Den här skärmen ritar N-uddiga stjärnor (om det går) med bara raka linjer, utan att lyfta pennan. Börja i en punkt och dra sedan linjer som hoppar lika många punkter varje gång, tills banan är tillbaka vid starten. Det klassiska exemplet är den 5-uddiga guldstjärnan, som hoppar 2 punkter.\n\nNär en stjärna är ritad listar Detaljer de andra hopp som fortfarande ger en N-uddig stjärna med samma antal punkter. Samma räkning använder den största gemensamma delaren (SGD).\n\nNyp för att zooma, dra för att panorera och använd skjutreglagen för att ändra antalet punkter och hur många du hoppar.</string>
     <string name="version_format">v %1$s</string>
     <string name="speed">Hastighet</string>
     <string name="customize_star">Anpassa stjärna</string>
@@ -30,7 +30,7 @@
     <string name="color">Färg</string>
     <string name="close">Stäng</string>
     <string name="reset_view">Återställ vy</string>
-    <string name="mandelbrot_help">Mandelbrotmängden är mängden av komplexa tal c för vilka funktionen f(z) = z² + c inte divergerar mot oändligheten när den itereras från z = 0. Det är ett av de mest kända exemplen på fraktalgeometri.\n\nAnvänd nyp-för-att-zooma för att utforska mängdens oändliga gränser!</string>
+    <string name="mandelbrot_help">Mandelbrotmängden är mängden av komplexa tal c för vilka funktionen f(z) = z² + c inte divergerar mot oändligheten när den itereras från z = 0. Det är ett av de mest kända exemplen på fraktalgeometri.\n\nNyp för att zooma och dra för att panorera genom mängdens oändliga gränser.</string>
     <string name="customize_mandelbrot">Anpassa Mandelbrot</string>
     <string name="customize_spirograph">Anpassa Spirograph</string>
     <string name="spirograph_fixed_hint">Fast ring</string>
@@ -44,7 +44,7 @@
     <string name="spirograph_details_hypocycloid">Pennan sitter på hjulets kant, så det här är en hypocykloid, en särskild hypotrokoid med skarpa spetsar.</string>
     <string name="spirograph_details_epicycloid">Pennan sitter på hjulets kant, så det här är en epicykloid, en särskild epitrokoid med skarpa spetsar.</string>
     <string name="spirograph_details_circle">Pennan sitter i hjulets mitt, så spåret blir en cirkel.</string>
-    <string name="spirograph_help">En Spirograph ritar banan för en penna fäst vid en cirkel som rullar runt en fast cirkel, samma idé som de kuggade ringarna och hjulen i leksaken.\n\nNär de två radierna är heltal sluts kurvan till slut. Antalet slingor styrs av den största gemensamma delaren (SGD) av de två radierna, samma räkning som avgör vilka stjärnor som kan ritas i ett penseldrag.\n\nDra i skjutreglagen för att ändra ringen, hjulet och hur långt pennan sitter från hjulets mitt. Stäng av rulla-inuti för att rulla på utsidan i stället (en epitrokoid).</string>
+    <string name="spirograph_help">En Spirograph ritar banan för en penna fäst vid en cirkel som rullar runt en fast cirkel, samma idé som de kuggade ringarna och hjulen i leksaken.\n\nNär de två radierna är heltal sluts kurvan till slut. Antalet slingor styrs av den största gemensamma delaren (SGD) av de två radierna, samma räkning som avgör vilka stjärnor som kan ritas i ett penseldrag.\n\nDra i skjutreglagen för att ändra ringen, hjulet och hur långt pennan sitter från hjulets mitt. Slå av Rulla inuti ringen för att rulla på utsidan i stället (en epitrokoid).</string>
     <string name="spirograph_description_a11y">Spirograph med fast ring %1$d, rullande hjul %2$d, pennavstånd %3$d. Nyp för att zooma, dra för att panorera, dubbeltryck för att zooma in.</string>
     <string name="customize_julia">Anpassa Julia</string>
     <string name="julia_preset">Juliaform</string>
