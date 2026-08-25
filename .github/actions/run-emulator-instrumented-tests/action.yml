@@ -13,4 +13,8 @@ runs:
         disable-animations: true
         force-avd-creation: false
         emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-        script: ./gradlew connectedDebugAndroidTest --stacktrace
+        script: |
+          adb shell settings put global verifier_verify_adb_installs 0
+          adb shell settings put global package_verifier_enable 0
+          adb shell wm dismiss-keyguard || true
+          ./gradlew connectedDebugAndroidTest --stacktrace

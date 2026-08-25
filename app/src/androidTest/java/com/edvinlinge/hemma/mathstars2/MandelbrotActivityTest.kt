@@ -1,6 +1,5 @@
 package com.edvinlinge.hemma.mathstars2
 
-import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.action.ViewActions.doubleClick
@@ -17,7 +16,7 @@ class MandelbrotActivityTest {
 
     @Test
     fun retainsZoomAfterRotation() {
-        ActivityScenario.launch(MandelbrotActivity::class.java).use { scenario ->
+        launchResumedActivity<MandelbrotActivity>().use { scenario ->
             onView(withId(R.id.mandelbrotView)).perform(doubleClick())
             onView(withId(R.id.zoomText)).check(matches(withText("2.0x")))
 
@@ -29,7 +28,7 @@ class MandelbrotActivityTest {
 
     @Test
     fun opensHelpSheetWithHelpTitle() {
-        ActivityScenario.launch(MandelbrotActivity::class.java).use {
+        launchResumedActivity<MandelbrotActivity>().use {
             onView(withId(R.id.helpButton)).perform(click())
             onView(withId(R.id.infoTitle)).check(matches(withText(R.string.help)))
             onView(withId(R.id.infoMessage)).check(matches(isDisplayed()))

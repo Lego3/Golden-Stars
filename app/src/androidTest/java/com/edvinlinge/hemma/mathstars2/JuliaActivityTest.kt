@@ -1,6 +1,5 @@
 package com.edvinlinge.hemma.mathstars2
 
-import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.action.ViewActions.doubleClick
@@ -19,7 +18,7 @@ class JuliaActivityTest {
 
     @Test
     fun retainsZoomAfterRotation() {
-        ActivityScenario.launch(JuliaActivity::class.java).use { scenario ->
+        launchResumedActivity<JuliaActivity>().use { scenario ->
             onView(withId(R.id.juliaView)).perform(doubleClick())
             onView(withId(R.id.zoomText)).check(matches(withText("2.0x")))
 
@@ -31,7 +30,7 @@ class JuliaActivityTest {
 
     @Test
     fun retainsPresetAfterRotation() {
-        ActivityScenario.launch(JuliaActivity::class.java).use { scenario ->
+        launchResumedActivity<JuliaActivity>().use { scenario ->
             scenario.onActivity { activity ->
                 activity.findViewById<Slider>(R.id.presetSlider).value = 1f
             }
@@ -46,7 +45,7 @@ class JuliaActivityTest {
 
     @Test
     fun opensSettingsSheet() {
-        ActivityScenario.launch(JuliaActivity::class.java).use {
+        launchResumedActivity<JuliaActivity>().use {
             onView(withId(R.id.settingsButton)).perform(click())
             onView(withText(R.string.customize_julia)).check(matches(isDisplayed()))
         }
@@ -54,7 +53,7 @@ class JuliaActivityTest {
 
     @Test
     fun opensHelpSheetWithHelpTitle() {
-        ActivityScenario.launch(JuliaActivity::class.java).use {
+        launchResumedActivity<JuliaActivity>().use {
             onView(withId(R.id.helpButton)).perform(click())
             onView(withId(R.id.infoTitle)).check(matches(withText(R.string.help)))
             onView(withId(R.id.infoMessage)).check(matches(isDisplayed()))
