@@ -242,14 +242,24 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     fun setAnimationSpeed(speedMultiplier: Float) {
         // A multiplier of 1 is the default duration, 2 is twice as fast, 0.5 half as fast.
         val newDuration = DrawViewMath.animationDurationMs(speedMultiplier) ?: return
-        val durationChanged = newDuration != animationDuration
+        if (newDuration == animationDuration) return
         animationDuration = newDuration
-        if (
-            durationChanged &&
-            DrawViewMath.shouldRetargetRevealSpeed(isRevealing, instantRender, currentPhase)
-        ) {
-            startAnimation()
+        retargetRunningReveal()
+    }
+
+    /**
+     * Applies [animationDuration] to an in-progress reveal without resetting [currentPhase].
+     * Seeking the running animator avoids [ValueAnimator.cancel] rewinding to the previous
+     * start value, which would make the figure vanish and restart.
+     */
+    private fun retargetRunningReveal() {
+        if (!DrawViewMath.shouldRetargetRevealSpeed(isRevealing, instantRender, currentPhase)) {
+            return
         }
+        val running = animator ?: return
+        if (!running.isRunning) return
+        running.duration = animationDuration
+        running.currentPlayTime = DrawViewMath.animationPlayTimeMs(currentPhase, animationDuration)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -265,7 +275,7 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     }
 
     private fun startAnimation() {
-        animator?.cancel()
+        cancelAnimatorPreservingPhase()
         if (currentPhase <= 0f || instantRender) {
             showComplete()
             return
@@ -274,17 +284,28 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         startRevealAnimator()
     }
 
+    /** Stops the running animator without letting cancel rewind [currentPhase]. */
+    private fun cancelAnimatorPreservingPhase() {
+        val phase = currentPhase
+        animator?.removeAllUpdateListeners()
+        animator?.removeAllListeners()
+        animator?.cancel()
+        animator = null
+        currentPhase = phase
+    }
+
     /** Starts a linear reveal from [currentPhase] without resetting progress. */
     private fun startRevealAnimator() {
         isRevealing = true
         paint.style = Paint.Style.STROKE
         setPhase(currentPhase)
 
-        animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
-            duration = DrawViewMath.remainingAnimationDurationMs(currentPhase, animationDuration)
-            // Linear so a speed change can retarget remaining time from the current phase
+        animator = ValueAnimator.ofFloat(1f, 0f).apply {
+            duration = animationDuration
+            // Linear so a speed change can seek remaining time from the current phase
             // without restarting an ease-in/out on the leftover segment.
             interpolator = LinearInterpolator()
+            currentPlayTime = DrawViewMath.animationPlayTimeMs(currentPhase, animationDuration)
             addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
             addListener(object : AnimatorListenerAdapter() {
                 private var canceled = false
@@ -403,7 +424,7 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
     /** Re-syncs the reveal animator after [onRestoreInstanceState] overrides an eager [startAnimation]. */
     private fun resumeAnimationFromRestoredPhase() {
-        animator?.cancel()
+        cancelAnimatorPreservingPhase()
         when (
             DrawViewMath.revealRestoreAction(
                 currentPhase = currentPhase,

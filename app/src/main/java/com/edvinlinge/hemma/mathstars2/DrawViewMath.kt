@@ -49,6 +49,10 @@ internal object DrawViewMath {
     fun remainingAnimationDurationMs(currentPhase: Float, animationDurationMs: Long): Long =
         (coercedPhase(currentPhase) * animationDurationMs).toLong()
 
+    /** Elapsed time into a linear 1→0 reveal that is currently at [currentPhase]. */
+    fun animationPlayTimeMs(currentPhase: Float, animationDurationMs: Long): Long =
+        ((1f - coercedPhase(currentPhase)) * animationDurationMs).toLong()
+
     /**
      * True when a speed change should restart the in-progress reveal from the current
      * phase, so the new duration applies immediately instead of on the next replay.

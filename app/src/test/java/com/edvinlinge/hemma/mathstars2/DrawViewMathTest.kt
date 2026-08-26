@@ -181,6 +181,19 @@ class DrawViewMathTest {
             1250L,
             DrawViewMath.remainingAnimationDurationMs(currentPhase = 0.5f, animationDurationMs = newDuration),
         )
+        assertEquals(
+            1250L,
+            DrawViewMath.animationPlayTimeMs(currentPhase = 0.5f, animationDurationMs = newDuration),
+        )
+    }
+
+    @Test
+    fun `animation play time is the elapsed portion of a linear reveal`() {
+        assertEquals(0L, DrawViewMath.animationPlayTimeMs(currentPhase = 1f, animationDurationMs = 5000L))
+        assertEquals(2500L, DrawViewMath.animationPlayTimeMs(currentPhase = 0.5f, animationDurationMs = 5000L))
+        assertEquals(5000L, DrawViewMath.animationPlayTimeMs(currentPhase = 0f, animationDurationMs = 5000L))
+        assertEquals(0L, DrawViewMath.animationPlayTimeMs(currentPhase = 2f, animationDurationMs = 5000L))
+        assertEquals(5000L, DrawViewMath.animationPlayTimeMs(currentPhase = -0.5f, animationDurationMs = 5000L))
     }
 
     @Test
