@@ -50,6 +50,16 @@ internal object DrawViewMath {
         (coercedPhase(currentPhase) * animationDurationMs).toLong()
 
     /**
+     * True when a speed change should restart the in-progress reveal from the current
+     * phase, so the new duration applies immediately instead of on the next replay.
+     */
+    fun shouldRetargetRevealSpeed(
+        isRevealing: Boolean,
+        instantRender: Boolean,
+        currentPhase: Float,
+    ): Boolean = isRevealing && !instantRender && coercedPhase(currentPhase) > 0f
+
+    /**
      * Chooses how to resume the reveal animation after [onRestoreInstanceState], when
      * [onSizeChanged] may already have started a fresh animation at phase 1.
      */

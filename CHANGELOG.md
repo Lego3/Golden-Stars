@@ -6,6 +6,12 @@ Git tags (`v1.1.0`, `v1.2.0`, `v1.3.0`, …).
 
 ## [Unreleased]
 
+### Changed
+
+- Golden Stars and Spirograph speed sliders retarget an in-progress drawing
+  immediately from the current stroke, instead of applying the new rate only on
+  the next replay.
+
 ## [1.3.0] - 2026-08-25
 
 Two new explorers join Golden Stars and Mandelbrot: a Spirograph that traces
