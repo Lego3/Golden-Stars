@@ -16,6 +16,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
+import android.view.animation.LinearInterpolator
 import androidx.core.graphics.withSave
 import kotlin.math.cos
 import kotlin.math.min
@@ -240,7 +241,15 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
     fun setAnimationSpeed(speedMultiplier: Float) {
         // A multiplier of 1 is the default duration, 2 is twice as fast, 0.5 half as fast.
-        animationDuration = DrawViewMath.animationDurationMs(speedMultiplier) ?: return
+        val newDuration = DrawViewMath.animationDurationMs(speedMultiplier) ?: return
+        val durationChanged = newDuration != animationDuration
+        animationDuration = newDuration
+        if (
+            durationChanged &&
+            DrawViewMath.shouldRetargetRevealSpeed(isRevealing, instantRender, currentPhase)
+        ) {
+            startAnimation()
+        }
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -262,15 +271,30 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
             return
         }
 
+        startRevealAnimator()
+    }
+
+    /** Starts a linear reveal from [currentPhase] without resetting progress. */
+    private fun startRevealAnimator() {
         isRevealing = true
         paint.style = Paint.Style.STROKE
         setPhase(currentPhase)
 
         animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
             duration = DrawViewMath.remainingAnimationDurationMs(currentPhase, animationDuration)
+            // Linear so a speed change can retarget remaining time from the current phase
+            // without restarting an ease-in/out on the leftover segment.
+            interpolator = LinearInterpolator()
             addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
             addListener(object : AnimatorListenerAdapter() {
+                private var canceled = false
+
+                override fun onAnimationCancel(animation: Animator) {
+                    canceled = true
+                }
+
                 override fun onAnimationEnd(animation: Animator) {
+                    if (canceled) return
                     isRevealing = false
                     applyCompletedStyle()
                     invalidate()
@@ -389,24 +413,7 @@ class DrawView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         ) {
             RevealRestoreAction.SHOW_COMPLETE -> showComplete()
             RevealRestoreAction.SKIP -> Unit
-            RevealRestoreAction.RESUME -> {
-                isRevealing = true
-                paint.style = Paint.Style.STROKE
-                setPhase(currentPhase)
-
-                animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
-                    duration = DrawViewMath.remainingAnimationDurationMs(currentPhase, animationDuration)
-                    addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
-                    addListener(object : AnimatorListenerAdapter() {
-                        override fun onAnimationEnd(animation: Animator) {
-                            isRevealing = false
-                            applyCompletedStyle()
-                            invalidate()
-                        }
-                    })
-                    start()
-                }
-            }
+            RevealRestoreAction.RESUME -> startRevealAnimator()
         }
     }
 

@@ -16,6 +16,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
+import android.view.animation.LinearInterpolator
 import androidx.core.graphics.withSave
 import kotlin.math.min
 
@@ -233,7 +234,15 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
     }
 
     fun setAnimationSpeed(speedMultiplier: Float) {
-        animationDuration = DrawViewMath.animationDurationMs(speedMultiplier) ?: return
+        val newDuration = DrawViewMath.animationDurationMs(speedMultiplier) ?: return
+        val durationChanged = newDuration != animationDuration
+        animationDuration = newDuration
+        if (
+            durationChanged &&
+            DrawViewMath.shouldRetargetRevealSpeed(isRevealing, instantRender, currentPhase)
+        ) {
+            startAnimation()
+        }
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -255,14 +264,27 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
             return
         }
 
+        startRevealAnimator()
+    }
+
+    /** Starts a linear reveal from [currentPhase] without resetting progress. */
+    private fun startRevealAnimator() {
         isRevealing = true
         setPhase(currentPhase)
 
         animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
             duration = DrawViewMath.remainingAnimationDurationMs(currentPhase, animationDuration)
+            interpolator = LinearInterpolator()
             addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
             addListener(object : AnimatorListenerAdapter() {
+                private var canceled = false
+
+                override fun onAnimationCancel(animation: Animator) {
+                    canceled = true
+                }
+
                 override fun onAnimationEnd(animation: Animator) {
+                    if (canceled) return
                     isRevealing = false
                     invalidate()
                 }
@@ -367,22 +389,7 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
         ) {
             RevealRestoreAction.SHOW_COMPLETE -> showComplete()
             RevealRestoreAction.SKIP -> Unit
-            RevealRestoreAction.RESUME -> {
-                isRevealing = true
-                setPhase(currentPhase)
-
-                animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
-                    duration = DrawViewMath.remainingAnimationDurationMs(currentPhase, animationDuration)
-                    addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
-                    addListener(object : AnimatorListenerAdapter() {
-                        override fun onAnimationEnd(animation: Animator) {
-                            isRevealing = false
-                            invalidate()
-                        }
-                    })
-                    start()
-                }
-            }
+            RevealRestoreAction.RESUME -> startRevealAnimator()
         }
     }
 

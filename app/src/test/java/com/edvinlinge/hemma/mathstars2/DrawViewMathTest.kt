@@ -175,9 +175,68 @@ class DrawViewMathTest {
     }
 
     @Test
+    fun `live speed change keeps remaining time proportional to the new duration`() {
+        val newDuration = DrawViewMath.animationDurationMs(speedMultiplier = 2.0f)!!
+        assertEquals(
+            1250L,
+            DrawViewMath.remainingAnimationDurationMs(currentPhase = 0.5f, animationDurationMs = newDuration),
+        )
+    }
+
+    @Test
     fun `remaining animation duration clamps out of range phases`() {
         assertEquals(5000L, DrawViewMath.remainingAnimationDurationMs(currentPhase = 2f, animationDurationMs = 5000L))
         assertEquals(0L, DrawViewMath.remainingAnimationDurationMs(currentPhase = -0.5f, animationDurationMs = 5000L))
+    }
+
+    @Test
+    fun `speed change retargets an in progress reveal from the current phase`() {
+        assertTrue(
+            DrawViewMath.shouldRetargetRevealSpeed(
+                isRevealing = true,
+                instantRender = false,
+                currentPhase = 0.5f,
+            ),
+        )
+        assertTrue(
+            DrawViewMath.shouldRetargetRevealSpeed(
+                isRevealing = true,
+                instantRender = false,
+                currentPhase = 1f,
+            ),
+        )
+    }
+
+    @Test
+    fun `speed change does not retarget a finished or instant reveal`() {
+        assertFalse(
+            DrawViewMath.shouldRetargetRevealSpeed(
+                isRevealing = false,
+                instantRender = false,
+                currentPhase = 0.5f,
+            ),
+        )
+        assertFalse(
+            DrawViewMath.shouldRetargetRevealSpeed(
+                isRevealing = true,
+                instantRender = true,
+                currentPhase = 0.5f,
+            ),
+        )
+        assertFalse(
+            DrawViewMath.shouldRetargetRevealSpeed(
+                isRevealing = true,
+                instantRender = false,
+                currentPhase = 0f,
+            ),
+        )
+        assertFalse(
+            DrawViewMath.shouldRetargetRevealSpeed(
+                isRevealing = true,
+                instantRender = false,
+                currentPhase = -0.5f,
+            ),
+        )
     }
 
     @Test
