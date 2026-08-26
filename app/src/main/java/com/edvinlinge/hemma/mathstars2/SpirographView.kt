@@ -251,8 +251,11 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
         }
         val running = animator ?: return
         if (!running.isRunning) return
+        val phase = currentPhase
+        running.pause()
         running.duration = animationDuration
-        running.currentPlayTime = DrawViewMath.animationPlayTimeMs(currentPhase, animationDuration)
+        running.currentPlayTime = DrawViewMath.animationPlayTimeMs(phase, animationDuration)
+        running.resume()
     }
 
     override fun onDraw(canvas: Canvas) {
