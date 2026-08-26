@@ -131,6 +131,34 @@ class JuliaMathTest {
                 cImag = rabbit.imag,
             ),
         )
+        assertFalse(
+            JuliaMath.shouldApplyRenderResult(
+                zoom = viewport[0],
+                offsetX = -0.4,
+                offsetY = viewport[2],
+                renderZoom = viewport[3],
+                renderOffsetX = viewport[4],
+                renderOffsetY = viewport[5],
+                renderCReal = rabbit.real,
+                renderCImag = rabbit.imag,
+                cReal = rabbit.real,
+                cImag = rabbit.imag,
+            ),
+        )
+        assertFalse(
+            JuliaMath.shouldApplyRenderResult(
+                zoom = viewport[0],
+                offsetX = viewport[1],
+                offsetY = 0.2,
+                renderZoom = viewport[3],
+                renderOffsetX = viewport[4],
+                renderOffsetY = viewport[5],
+                renderCReal = rabbit.real,
+                renderCImag = rabbit.imag,
+                cReal = rabbit.real,
+                cImag = rabbit.imag,
+            ),
+        )
     }
 
     @Test

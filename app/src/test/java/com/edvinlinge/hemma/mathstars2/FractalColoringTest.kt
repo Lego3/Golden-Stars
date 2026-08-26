@@ -15,6 +15,18 @@ class FractalColoringTest {
     }
 
     @Test
+    fun `escape gray argb stores the same sample in every channel`() {
+        val maxIterations = 100
+        val iteration = 50
+        val alpha = FractalColoring.escapeAlpha(iteration, maxIterations)
+        val color = FractalColoring.escapeGrayArgb(iteration, maxIterations)
+        assertEquals(0xFF, color ushr 24)
+        assertEquals(alpha, (color shr 16) and 0xFF)
+        assertEquals(alpha, (color shr 8) and 0xFF)
+        assertEquals(alpha, color and 0xFF)
+    }
+
+    @Test
     fun `escape alpha scales linearly with iteration count`() {
         assertEquals(127, FractalColoring.escapeAlpha(50, 100))
         assertEquals((99 * 255) / 100, FractalColoring.escapeAlpha(99, 100))
