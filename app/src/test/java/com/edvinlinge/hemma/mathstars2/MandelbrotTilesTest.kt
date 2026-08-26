@@ -150,6 +150,49 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `compose draw list is empty when nothing is available`() {
+        val draws = MandelbrotTiles.composeDrawList(
+            zoom = 1.0,
+            offsetX = -0.5,
+            offsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+            tilePixelSize = 256,
+            available = emptySet(),
+        )
+        assertTrue(draws.isEmpty())
+    }
+
+    @Test
+    fun `visible tile progress reaches full count as on-screen tiles finish sharpening`() {
+        val visible = listOf(
+            MandelbrotTiles.TileKey(1, 0, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(1, 1, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(1, 2, 0, 256, 600, false),
+        )
+        val cached = mutableSetOf<MandelbrotTiles.TileKey>()
+        val initial = MandelbrotTiles.mergeVisibleTileQueue(emptySet(), visible) { it in cached }
+        assertEquals(
+            MandelbrotTiles.VisibleTileProgress(finished = 0, queued = 3),
+            MandelbrotTiles.visibleTileProgress(initial) { it in cached },
+        )
+
+        cached += visible[0]
+        val partial = MandelbrotTiles.mergeVisibleTileQueue(initial, visible) { it in cached }
+        assertEquals(
+            MandelbrotTiles.VisibleTileProgress(finished = 1, queued = 3),
+            MandelbrotTiles.visibleTileProgress(partial) { it in cached },
+        )
+
+        cached += visible
+        val complete = MandelbrotTiles.mergeVisibleTileQueue(partial, visible) { it in cached }
+        assertEquals(
+            MandelbrotTiles.VisibleTileProgress(finished = 3, queued = 3),
+            MandelbrotTiles.visibleTileProgress(complete) { it in cached },
+        )
+    }
+
+    @Test
     fun `compose draw list scales a parent tile into the missing child`() {
         val parent = MandelbrotTiles.TileKey(0, -1, -1, 256, 600, preview = false)
         val draws = MandelbrotTiles.composeDrawList(

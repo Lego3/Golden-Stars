@@ -265,6 +265,27 @@ class MandelbrotTileCacheTest {
     }
 
     @Test
+    fun `clear memory evicts every cached key through the callback`() {
+        val cache = MandelbrotTileCache(maxMemoryBytes = 1024 * 1024, diskDir = null, maxDiskBytes = 0)
+        val evicted = mutableListOf<MandelbrotTiles.TileKey>()
+        cache.onEvicted = { evicted += it }
+
+        val first = tileKey(1)
+        val second = tileKey(2)
+        cache.put(first, byteArrayOf(1, 2, 3, 4))
+        cache.put(second, byteArrayOf(5, 6, 7, 8))
+        assertEquals(2, cache.memorySize)
+
+        cache.clearMemory()
+
+        assertEquals(0, cache.memorySize)
+        assertEquals(0L, cache.memoryBytes)
+        assertEquals(setOf(first, second), evicted.toSet())
+        assertNull(cache.get(first))
+        assertNull(cache.get(second))
+    }
+
+    @Test
     fun `concurrent disk saves keep access metadata consistent`() {
         val dir = Files.createTempDirectory("mandelbrot-tiles-concurrent").toFile()
         try {
