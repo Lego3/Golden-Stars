@@ -235,14 +235,24 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
 
     fun setAnimationSpeed(speedMultiplier: Float) {
         val newDuration = DrawViewMath.animationDurationMs(speedMultiplier) ?: return
-        val durationChanged = newDuration != animationDuration
+        if (newDuration == animationDuration) return
         animationDuration = newDuration
-        if (
-            durationChanged &&
-            DrawViewMath.shouldRetargetRevealSpeed(isRevealing, instantRender, currentPhase)
-        ) {
-            startAnimation()
+        retargetRunningReveal()
+    }
+
+    /**
+     * Applies [animationDuration] to an in-progress reveal without resetting [currentPhase].
+     * Seeking the running animator avoids [ValueAnimator.cancel] rewinding to the previous
+     * start value, which would make the figure vanish and restart.
+     */
+    private fun retargetRunningReveal() {
+        if (!DrawViewMath.shouldRetargetRevealSpeed(isRevealing, instantRender, currentPhase)) {
+            return
         }
+        val running = animator ?: return
+        if (!running.isRunning) return
+        running.duration = animationDuration
+        running.currentPlayTime = DrawViewMath.animationPlayTimeMs(currentPhase, animationDuration)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -258,7 +268,7 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
     }
 
     private fun startAnimation() {
-        animator?.cancel()
+        cancelAnimatorPreservingPhase()
         if (currentPhase <= 0f || instantRender) {
             showComplete()
             return
@@ -267,14 +277,25 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
         startRevealAnimator()
     }
 
+    /** Stops the running animator without letting cancel rewind [currentPhase]. */
+    private fun cancelAnimatorPreservingPhase() {
+        val phase = currentPhase
+        animator?.removeAllUpdateListeners()
+        animator?.removeAllListeners()
+        animator?.cancel()
+        animator = null
+        currentPhase = phase
+    }
+
     /** Starts a linear reveal from [currentPhase] without resetting progress. */
     private fun startRevealAnimator() {
         isRevealing = true
         setPhase(currentPhase)
 
-        animator = ValueAnimator.ofFloat(currentPhase, 0f).apply {
-            duration = DrawViewMath.remainingAnimationDurationMs(currentPhase, animationDuration)
+        animator = ValueAnimator.ofFloat(1f, 0f).apply {
+            duration = animationDuration
             interpolator = LinearInterpolator()
+            currentPlayTime = DrawViewMath.animationPlayTimeMs(currentPhase, animationDuration)
             addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
             addListener(object : AnimatorListenerAdapter() {
                 private var canceled = false
@@ -379,7 +400,7 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
 
     /** Re-syncs the reveal animator after [onRestoreInstanceState] overrides an eager [startAnimation]. */
     private fun resumeAnimationFromRestoredPhase() {
-        animator?.cancel()
+        cancelAnimatorPreservingPhase()
         when (
             DrawViewMath.revealRestoreAction(
                 currentPhase = currentPhase,
