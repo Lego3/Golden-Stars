@@ -8,7 +8,7 @@
     <string name="spirograph_title">Spirograph</string>
     <string name="spirograph_description">Watch a hypotrochoid draw itself. Change the ring, wheel, and pen to close new curves.</string>
     <string name="julia_title">Julia Sets</string>
-    <string name="julia_description">Fix c and iterate z → z² + c from every point. Change c to grow new shapes.</string>
+    <string name="julia_description">Each point in the Mandelbrot set has its own Julia fractal. Change the shape and zoom in.</string>
     <string name="skips_hint">Skips</string>
     <string name="dots_hint">Dots</string>
     <string name="more_info_button">Details</string>

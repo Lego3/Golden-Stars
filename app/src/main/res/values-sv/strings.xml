@@ -9,7 +9,7 @@
     <string name="spirograph_title">Spirograph</string>
     <string name="spirograph_description">Se en hypotrokoid ritas i ett drag. Ändra ring, hjul och penna för att rita nya slutna kurvor.</string>
     <string name="julia_title">Juliamängder</string>
-    <string name="julia_description">Håll c fast och iterera z → z² + c från varje punkt. Byt c för att få nya former.</string>
+    <string name="julia_description">Varje punkt i Mandelbrotmängden har sin egen Juliamängd. Byt form och zooma in.</string>
     <string name="skips_hint">Hopp</string>
     <string name="dots_hint">Punkter</string>
     <string name="more_info_button">Detaljer</string>
