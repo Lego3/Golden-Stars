@@ -43,6 +43,8 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
     private var currentPhase = 1f
     private var isRevealing = false
     private var animator: ValueAnimator? = null
+    /** Source of truth for live speed seeks; not re-derived from [currentPhase] each tick. */
+    private var revealProgress: RevealProgress? = null
 
     private var drawColor = Color.YELLOW
     private var strokeWidth = 8f
@@ -244,6 +246,9 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
      * Applies [animationDuration] to an in-progress reveal without resetting [currentPhase].
      * Seeking the running animator avoids [ValueAnimator.cancel] rewinding to the previous
      * start value, which would make the figure vanish and restart.
+     *
+     * Play time comes from [revealProgress], a stored revealed fraction, so rounding to a
+     * whole millisecond cannot accumulate while the speed slider is dragged.
      */
     private fun retargetRunningReveal() {
         if (!DrawViewMath.shouldRetargetRevealSpeed(isRevealing, instantRender, currentPhase)) {
@@ -251,10 +256,17 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
         }
         val running = animator ?: return
         if (!running.isRunning) return
-        val phase = currentPhase
+        val progress = revealProgress
+            ?: DrawViewMath.revealProgressFromPhase(currentPhase, running.duration)
+        val retargeted = DrawViewMath.retargetRevealProgress(
+            progress,
+            currentPlayTimeMs = running.currentPlayTime,
+            newDurationMs = animationDuration,
+        )
+        revealProgress = retargeted
         running.pause()
         running.duration = animationDuration
-        running.currentPlayTime = DrawViewMath.animationPlayTimeMs(phase, animationDuration)
+        running.currentPlayTime = retargeted.lastPlayTimeMs
         running.resume()
     }
 
@@ -287,6 +299,7 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
         animator?.removeAllListeners()
         animator?.cancel()
         animator = null
+        revealProgress = null
         currentPhase = phase
     }
 
@@ -294,11 +307,13 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
     private fun startRevealAnimator() {
         isRevealing = true
         setPhase(currentPhase)
+        val progress = DrawViewMath.revealProgressFromPhase(currentPhase, animationDuration)
+        revealProgress = progress
 
         animator = ValueAnimator.ofFloat(1f, 0f).apply {
             duration = animationDuration
             interpolator = LinearInterpolator()
-            currentPlayTime = DrawViewMath.animationPlayTimeMs(currentPhase, animationDuration)
+            currentPlayTime = progress.lastPlayTimeMs
             addUpdateListener { animation -> setPhase(animation.animatedValue as Float) }
             addListener(object : AnimatorListenerAdapter() {
                 private var canceled = false
@@ -310,6 +325,7 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
                 override fun onAnimationEnd(animation: Animator) {
                     if (canceled) return
                     isRevealing = false
+                    revealProgress = null
                     invalidate()
                 }
             })
@@ -321,6 +337,7 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
         animator?.cancel()
         currentPhase = 0f
         isRevealing = false
+        revealProgress = null
         invalidate()
     }
 

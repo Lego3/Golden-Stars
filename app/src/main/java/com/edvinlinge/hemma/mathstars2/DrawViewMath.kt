@@ -1,6 +1,6 @@
 package com.edvinlinge.hemma.mathstars2
 
-import kotlin.math.ceil
+import kotlin.math.roundToLong
 
 /**
  * Screen-space pan/zoom math for [DrawView], free of Android types so it can be covered by fast
@@ -12,6 +12,19 @@ internal enum class RevealRestoreAction {
     SKIP,
     RESUME,
 }
+
+/**
+ * Canonical in-progress reveal that is not re-derived from the animator's quantized
+ * play time on every speed-slider tick.
+ *
+ * [revealed] is 0 when nothing is drawn and 1 when the stroke is complete.
+ * [lastPlayTimeMs] is the whole-millisecond seek last applied at [durationMs].
+ */
+internal data class RevealProgress(
+    val revealed: Double,
+    val lastPlayTimeMs: Long,
+    val durationMs: Long,
+)
 
 internal object DrawViewMath {
 
@@ -54,20 +67,74 @@ internal object DrawViewMath {
     }
 
     /**
-     * Elapsed time into a linear 1→0 reveal that is currently at [currentPhase].
-     *
-     * Play time is a whole millisecond, so the conversion rounds **up**. Truncating would
-     * shrink the revealed length on every speed-slider tick and crawl the stroke backwards.
+     * Whole-millisecond play time for a linear 1→0 reveal at [revealed] of the stroke
+     * (0 = hidden, 1 = complete). Rounds to nearest; the live speed slider must keep
+     * [RevealProgress.revealed] as the source of truth so this quantization cannot
+     * accumulate.
      */
-    fun animationPlayTimeMs(currentPhase: Float, animationDurationMs: Long): Long {
-        if (animationDurationMs <= 0L) return 0L
-        val revealed = (1.0 - coercedPhase(currentPhase).toDouble()).coerceIn(0.0, 1.0)
-        return ceil(revealed * animationDurationMs).toLong().coerceIn(0L, animationDurationMs)
+    fun playTimeMs(revealed: Double, durationMs: Long): Long {
+        if (durationMs <= 0L) return 0L
+        return (revealed.coerceIn(0.0, 1.0) * durationMs).roundToLong().coerceIn(0L, durationMs)
     }
 
     /**
-     * True when a speed change should restart the in-progress reveal from the current
-     * phase, so the new duration applies immediately instead of on the next replay.
+     * One-shot elapsed time into a linear 1→0 reveal at [currentPhase].
+     * Live speed changes should use [retargetRevealProgress] instead of feeding the
+     * resulting play time back into [currentPhase].
+     */
+    fun animationPlayTimeMs(currentPhase: Float, animationDurationMs: Long): Long =
+        playTimeMs(1.0 - coercedPhase(currentPhase).toDouble(), animationDurationMs)
+
+    /** Seeds [RevealProgress] from a 1→0 phase. Used once when a reveal starts. */
+    fun revealProgressFromPhase(phase: Float, durationMs: Long): RevealProgress {
+        val revealed = (1.0 - coercedPhase(phase).toDouble()).coerceIn(0.0, 1.0)
+        return RevealProgress(
+            revealed = revealed,
+            lastPlayTimeMs = playTimeMs(revealed, durationMs),
+            durationMs = durationMs.coerceAtLeast(0L),
+        )
+    }
+
+    /**
+     * Advances [progress] by the play-time delta since the last snapshot, at the
+     * duration that was in effect for that interval.
+     */
+    fun advanceRevealProgress(progress: RevealProgress, currentPlayTimeMs: Long): RevealProgress {
+        val duration = progress.durationMs
+        if (duration <= 0L) {
+            return progress.copy(revealed = progress.revealed.coerceIn(0.0, 1.0))
+        }
+        val delta = (currentPlayTimeMs - progress.lastPlayTimeMs).coerceAtLeast(0L)
+        val revealed = (progress.revealed + delta.toDouble() / duration.toDouble()).coerceIn(0.0, 1.0)
+        return RevealProgress(
+            revealed = revealed,
+            lastPlayTimeMs = currentPlayTimeMs.coerceIn(0L, duration),
+            durationMs = duration,
+        )
+    }
+
+    /**
+     * Applies a new duration while keeping [RevealProgress.revealed] as a double.
+     * The new play time is rounded for the animator; that rounding is not written
+     * back into [RevealProgress.revealed], so slider ticks cannot accumulate error.
+     */
+    fun retargetRevealProgress(
+        progress: RevealProgress,
+        currentPlayTimeMs: Long,
+        newDurationMs: Long,
+    ): RevealProgress {
+        val advanced = advanceRevealProgress(progress, currentPlayTimeMs)
+        val duration = newDurationMs.coerceAtLeast(0L)
+        return RevealProgress(
+            revealed = advanced.revealed,
+            lastPlayTimeMs = playTimeMs(advanced.revealed, duration),
+            durationMs = duration,
+        )
+    }
+
+    /**
+     * True when a speed change should seek the in-progress reveal from stored
+     * progress, so the new duration applies immediately instead of on the next replay.
      */
     fun shouldRetargetRevealSpeed(
         isRevealing: Boolean,
