@@ -197,6 +197,44 @@ class DrawViewMathTest {
     }
 
     @Test
+    fun `truncating play time crawls revealed progress backwards across duration changes`() {
+        var phase = 0.41f
+        var previousRevealed = 1.0 - phase.toDouble()
+        var rewound = false
+        for (duration in 5000L downTo 2600L step 13L) {
+            val play = ((1f - DrawViewMath.coercedPhase(phase)) * duration).toLong()
+            val revealed = play.toDouble() / duration
+            if (revealed < previousRevealed - 1e-12) rewound = true
+            phase = (1.0 - revealed).toFloat()
+            previousRevealed = 1.0 - phase.toDouble()
+        }
+        assertTrue(rewound)
+    }
+
+    @Test
+    fun `live speed retargets do not rewind revealed progress`() {
+        var phase = 0.41f
+        var previousRevealed = 1.0 - phase.toDouble()
+        for (duration in 5000L downTo 2600L step 13L) {
+            val play = DrawViewMath.animationPlayTimeMs(phase, duration)
+            val revealed = play.toDouble() / duration
+            assertTrue(
+                "revealed $revealed must not be less than $previousRevealed at duration $duration",
+                revealed + 1e-12 >= previousRevealed,
+            )
+            phase = (1.0 - revealed).toFloat()
+            previousRevealed = 1.0 - phase.toDouble()
+        }
+    }
+
+    @Test
+    fun `play time rounds up fractional milliseconds instead of dropping them`() {
+        // 1/3 revealed of 5000ms is 1666.6…; truncating would seek to 1666 and crawl back.
+        assertEquals(1667L, DrawViewMath.animationPlayTimeMs(currentPhase = 2f / 3f, animationDurationMs = 5000L))
+        assertEquals(3333L, DrawViewMath.remainingAnimationDurationMs(currentPhase = 2f / 3f, animationDurationMs = 5000L))
+    }
+
+    @Test
     fun `remaining animation duration clamps out of range phases`() {
         assertEquals(5000L, DrawViewMath.remainingAnimationDurationMs(currentPhase = 2f, animationDurationMs = 5000L))
         assertEquals(0L, DrawViewMath.remainingAnimationDurationMs(currentPhase = -0.5f, animationDurationMs = 5000L))

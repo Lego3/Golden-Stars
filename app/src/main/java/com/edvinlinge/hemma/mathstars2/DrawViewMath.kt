@@ -1,5 +1,7 @@
 package com.edvinlinge.hemma.mathstars2
 
+import kotlin.math.ceil
+
 /**
  * Screen-space pan/zoom math for [DrawView], free of Android types so it can be covered by fast
  * JVM unit tests. Pinch and double-tap zoom keep the drawing under the focus point fixed.
@@ -46,12 +48,22 @@ internal object DrawViewMath {
     }
 
     /** Remaining reveal animation time when resuming from [currentPhase]. */
-    fun remainingAnimationDurationMs(currentPhase: Float, animationDurationMs: Long): Long =
-        (coercedPhase(currentPhase) * animationDurationMs).toLong()
+    fun remainingAnimationDurationMs(currentPhase: Float, animationDurationMs: Long): Long {
+        if (animationDurationMs <= 0L) return 0L
+        return animationDurationMs - animationPlayTimeMs(currentPhase, animationDurationMs)
+    }
 
-    /** Elapsed time into a linear 1→0 reveal that is currently at [currentPhase]. */
-    fun animationPlayTimeMs(currentPhase: Float, animationDurationMs: Long): Long =
-        ((1f - coercedPhase(currentPhase)) * animationDurationMs).toLong()
+    /**
+     * Elapsed time into a linear 1→0 reveal that is currently at [currentPhase].
+     *
+     * Play time is a whole millisecond, so the conversion rounds **up**. Truncating would
+     * shrink the revealed length on every speed-slider tick and crawl the stroke backwards.
+     */
+    fun animationPlayTimeMs(currentPhase: Float, animationDurationMs: Long): Long {
+        if (animationDurationMs <= 0L) return 0L
+        val revealed = (1.0 - coercedPhase(currentPhase).toDouble()).coerceIn(0.0, 1.0)
+        return ceil(revealed * animationDurationMs).toLong().coerceIn(0L, animationDurationMs)
+    }
 
     /**
      * True when a speed change should restart the in-progress reveal from the current
