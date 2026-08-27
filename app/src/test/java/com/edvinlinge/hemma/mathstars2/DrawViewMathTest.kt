@@ -212,24 +212,71 @@ class DrawViewMathTest {
     }
 
     @Test
-    fun `live speed retargets do not rewind revealed progress`() {
+    fun `ceiling play time from phase crawls revealed progress forward`() {
         var phase = 0.41f
         var previousRevealed = 1.0 - phase.toDouble()
+        var crawledForward = false
         for (duration in 5000L downTo 2600L step 13L) {
-            val play = DrawViewMath.animationPlayTimeMs(phase, duration)
+            val play = kotlin.math.ceil(
+                (1.0 - DrawViewMath.coercedPhase(phase).toDouble()) * duration,
+            ).toLong()
             val revealed = play.toDouble() / duration
-            assertTrue(
-                "revealed $revealed must not be less than $previousRevealed at duration $duration",
-                revealed + 1e-12 >= previousRevealed,
-            )
+            if (revealed > previousRevealed + 1e-12) crawledForward = true
             phase = (1.0 - revealed).toFloat()
             previousRevealed = 1.0 - phase.toDouble()
+        }
+        assertTrue(crawledForward)
+    }
+
+    @Test
+    fun `retargeting without elapsed play time keeps the revealed fraction unchanged`() {
+        var progress = DrawViewMath.revealProgressFromPhase(phase = 0.41f, durationMs = 5000L)
+        val baseRevealed = progress.revealed
+        for (duration in 5000L downTo 2600L step 13L) {
+            progress = DrawViewMath.retargetRevealProgress(
+                progress,
+                currentPlayTimeMs = progress.lastPlayTimeMs,
+                newDurationMs = duration,
+            )
+            assertEquals(
+                "revealed must stay $baseRevealed at duration $duration, was ${progress.revealed}",
+                baseRevealed,
+                progress.revealed,
+                0.0,
+            )
         }
     }
 
     @Test
-    fun `play time rounds up fractional milliseconds instead of dropping them`() {
-        // 1/3 revealed of 5000ms is 1666.6…; truncating would seek to 1666 and crawl back.
+    fun `elapsed play time advances revealed fraction at the old duration then keeps it`() {
+        val start = DrawViewMath.revealProgressFromPhase(phase = 1f, durationMs = 5000L)
+        val retargeted = DrawViewMath.retargetRevealProgress(
+            start,
+            currentPlayTimeMs = 1000L,
+            newDurationMs = 2500L,
+        )
+        assertEquals(0.2, retargeted.revealed, 0.0)
+        assertEquals(500L, retargeted.lastPlayTimeMs)
+        assertEquals(2500L, retargeted.durationMs)
+
+        val again = DrawViewMath.retargetRevealProgress(
+            retargeted,
+            currentPlayTimeMs = retargeted.lastPlayTimeMs,
+            newDurationMs = 8000L,
+        )
+        assertEquals(0.2, again.revealed, 0.0)
+        assertEquals(1600L, again.lastPlayTimeMs)
+    }
+
+    @Test
+    fun `play time rounds fractional milliseconds to nearest instead of always up`() {
+        // 1/7 revealed of 5000ms is 714.285…; ceil would seek to 715 and crawl forward.
+        assertEquals(714L, DrawViewMath.playTimeMs(revealed = 1.0 / 7.0, durationMs = 5000L))
+        assertEquals(
+            714L,
+            DrawViewMath.animationPlayTimeMs(currentPhase = 6f / 7f, animationDurationMs = 5000L),
+        )
+        // 1/3 revealed of 5000ms is 1666.6… and still rounds to 1667.
         assertEquals(1667L, DrawViewMath.animationPlayTimeMs(currentPhase = 2f / 3f, animationDurationMs = 5000L))
         assertEquals(3333L, DrawViewMath.remainingAnimationDurationMs(currentPhase = 2f / 3f, animationDurationMs = 5000L))
     }

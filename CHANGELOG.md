@@ -14,9 +14,9 @@ Git tags (`v1.1.0`, `v1.2.0`, `v1.3.0`, …).
 
 ### Fixed
 
-- Dragging the speed slider no longer crawls an in-progress drawing backwards.
-  Play time now rounds up to a whole millisecond so each seek cannot shrink the
-  already-revealed stroke.
+- Dragging the speed slider no longer crawls an in-progress drawing backwards or
+  forwards. Live seeks keep a stored revealed fraction and only convert it to
+  whole milliseconds for the animator, so rounding error does not accumulate.
 
 ## [1.3.0] - 2026-08-25
 
