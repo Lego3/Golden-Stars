@@ -88,6 +88,13 @@ internal object MandelbrotTiles {
         val prefetch: List<TileKey>,
     )
 
+    /** Keys to render next, with whether they are preview tiles or off-screen prefetch. */
+    data class WorkSelection(
+        val keys: List<TileKey>,
+        val preview: Boolean,
+        val prefetch: Boolean,
+    )
+
     /** How many on-screen tiles from a queued set have finished, of how many were queued. */
     data class VisibleTileProgress(val finished: Int, val queued: Int)
 
@@ -436,6 +443,71 @@ internal object MandelbrotTiles {
             if (key.tileY > y1) y1 = key.tileY
         }
         return TileRange(x0, x1, y0, y1)
+    }
+
+    /**
+     * A contiguous visible range can render as one bbox; scattered keys need per-tile passes.
+     * Matches the dense/sparse split in [com.edvinlinge.hemma.mathstars2.MandelbrotView].
+     */
+    fun isDenseTileBatch(keys: List<TileKey>): Boolean {
+        val bbox = bboxOf(keys) ?: return false
+        return bbox.tileCount <= keys.size * 2L
+    }
+
+    /** Copies a square from a row-major [source] grid into [dest]. */
+    fun copySubgrid(
+        source: ByteArray,
+        sourceWidth: Int,
+        srcX: Int,
+        srcY: Int,
+        size: Int,
+        dest: ByteArray,
+    ) {
+        var dst = 0
+        for (y in 0 until size) {
+            val srcRow = (srcY + y) * sourceWidth + srcX
+            source.copyInto(dest, dst, srcRow, srcRow + size)
+            dst += size
+        }
+    }
+
+    /**
+     * Picks the next render batch from a [renderPlan]: visible full-res while idle, previews
+     * during gestures when the viewport still has holes, then homogeneous prefetch when memory
+     * allows.
+     */
+    fun selectNextWork(
+        plan: RenderPlan,
+        isInteracting: Boolean,
+        viewportCovered: Boolean,
+        memoryBytes: Long,
+        maxMemoryBytes: Long,
+    ): WorkSelection? {
+        if (isInteracting) {
+            if (plan.visiblePreview.isNotEmpty() && !viewportCovered) {
+                return WorkSelection(
+                    keys = plan.visiblePreview.take(MAX_VISIBLE_BATCH),
+                    preview = true,
+                    prefetch = false,
+                )
+            }
+            return null
+        }
+        if (plan.visibleFull.isNotEmpty()) {
+            return WorkSelection(
+                keys = plan.visibleFull.take(MAX_VISIBLE_BATCH),
+                preview = false,
+                prefetch = false,
+            )
+        }
+        if (plan.prefetch.isNotEmpty() && memoryBytes < maxMemoryBytes) {
+            val first = plan.prefetch.first()
+            val batch = plan.prefetch.takeWhile {
+                it.zoomStep == first.zoomStep && it.tilePixelSize == first.tilePixelSize
+            }.take(MAX_PREFETCH_BATCH)
+            return WorkSelection(keys = batch, preview = false, prefetch = true)
+        }
+        return null
     }
 
     /**

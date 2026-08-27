@@ -1,7 +1,9 @@
 package com.edvinlinge.hemma.mathstars2
 
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -788,6 +790,199 @@ class MandelbrotTilesTest {
                 viewMinEdge = 600,
             ) { it in threeChildren },
         )
+    }
+
+    @Test
+    fun `dense tile batch covers most of its bounding box`() {
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
+        val denseKeys = MandelbrotTiles.keysForRange(range, 0, 256, 600, preview = false)
+        assertTrue(MandelbrotTiles.isDenseTileBatch(denseKeys))
+
+        val sparseKeys = listOf(
+            MandelbrotTiles.TileKey(0, 0, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 2, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 0, 2, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 2, 2, 256, 600, false),
+        )
+        assertFalse(MandelbrotTiles.isDenseTileBatch(sparseKeys))
+
+        val boundaryKeys = listOf(
+            MandelbrotTiles.TileKey(0, 0, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 1, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 0, 1, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 1, 1, 256, 600, false),
+        )
+        assertTrue(MandelbrotTiles.isDenseTileBatch(boundaryKeys))
+        assertTrue(MandelbrotTiles.isDenseTileBatch(emptyList()).not())
+    }
+
+    @Test
+    fun `copy subgrid extracts each tile from a rendered bbox buffer`() {
+        val size = 2
+        val sourceWidth = 4
+        val source = ByteArray(16) { it.toByte() }
+        val topLeft = ByteArray(4)
+        val bottomRight = ByteArray(4)
+        MandelbrotTiles.copySubgrid(source, sourceWidth, srcX = 0, srcY = 0, size = size, dest = topLeft)
+        MandelbrotTiles.copySubgrid(source, sourceWidth, srcX = 2, srcY = 2, size = size, dest = bottomRight)
+        assertArrayEquals(byteArrayOf(0, 1, 4, 5), topLeft)
+        assertArrayEquals(byteArrayOf(10, 11, 14, 15), bottomRight)
+    }
+
+    @Test
+    fun `select next work prioritizes visible full tiles when idle`() {
+        val visible = listOf(
+            MandelbrotTiles.TileKey(0, 0, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 1, 0, 256, 600, false),
+        )
+        val plan = MandelbrotTiles.RenderPlan(
+            visibleFull = visible,
+            visiblePreview = listOf(visible[0].copy(preview = true)),
+            prefetch = listOf(MandelbrotTiles.TileKey(1, 0, 0, 256, 600, false)),
+        )
+        val work = MandelbrotTiles.selectNextWork(
+            plan = plan,
+            isInteracting = false,
+            viewportCovered = false,
+            memoryBytes = 0L,
+            maxMemoryBytes = 64L * 1024L * 1024L,
+        )
+        assertEquals(
+            MandelbrotTiles.WorkSelection(keys = visible, preview = false, prefetch = false),
+            work,
+        )
+    }
+
+    @Test
+    fun `select next work serves preview tiles during gestures when the viewport is uncovered`() {
+        val preview = listOf(
+            MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = true),
+        )
+        val plan = MandelbrotTiles.RenderPlan(
+            visibleFull = emptyList(),
+            visiblePreview = preview,
+            prefetch = emptyList(),
+        )
+        val work = MandelbrotTiles.selectNextWork(
+            plan = plan,
+            isInteracting = true,
+            viewportCovered = false,
+            memoryBytes = 0L,
+            maxMemoryBytes = 64L * 1024L * 1024L,
+        )
+        assertEquals(
+            MandelbrotTiles.WorkSelection(keys = preview, preview = true, prefetch = false),
+            work,
+        )
+    }
+
+    @Test
+    fun `select next work stays idle during gestures when the viewport is already covered`() {
+        val plan = MandelbrotTiles.RenderPlan(
+            visibleFull = emptyList(),
+            visiblePreview = listOf(MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = true)),
+            prefetch = emptyList(),
+        )
+        assertNull(
+            MandelbrotTiles.selectNextWork(
+                plan = plan,
+                isInteracting = true,
+                viewportCovered = true,
+                memoryBytes = 0L,
+                maxMemoryBytes = 64L * 1024L * 1024L,
+            ),
+        )
+    }
+
+    @Test
+    fun `select next work prefetches homogeneous neighbours only when memory allows`() {
+        val prefetch = listOf(
+            MandelbrotTiles.TileKey(1, 0, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(1, 1, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(1, 2, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(1, 3, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(1, 4, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 5, 0, 256, 600, false),
+        )
+        val plan = MandelbrotTiles.RenderPlan(
+            visibleFull = emptyList(),
+            visiblePreview = emptyList(),
+            prefetch = prefetch,
+        )
+        val work = MandelbrotTiles.selectNextWork(
+            plan = plan,
+            isInteracting = false,
+            viewportCovered = true,
+            memoryBytes = 0L,
+            maxMemoryBytes = 64L * 1024L * 1024L,
+        )
+        assertEquals(
+            MandelbrotTiles.WorkSelection(
+                keys = prefetch.take(4),
+                preview = false,
+                prefetch = true,
+            ),
+            work,
+        )
+        assertNull(
+            MandelbrotTiles.selectNextWork(
+                plan = plan,
+                isInteracting = false,
+                viewportCovered = true,
+                memoryBytes = 64L * 1024L * 1024L,
+                maxMemoryBytes = 64L * 1024L * 1024L,
+            ),
+        )
+    }
+
+    @Test
+    fun `render plan prefetches zoom in before zoom out when pinching in`() {
+        val plan = MandelbrotTiles.renderPlan(
+            zoom = 1.0,
+            offsetX = -0.5,
+            offsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+            tilePixelSize = 256,
+            panSignX = 0,
+            panSignY = 0,
+            zoomSign = 1,
+            focusX = -0.5,
+            focusY = 0.0,
+            minZoom = 0.5,
+            maxZoom = 1.0e13,
+            isCached = { false },
+        )
+        val firstZoomIn = plan.prefetch.indexOfFirst { it.zoomStep == 1 }
+        val firstZoomOut = plan.prefetch.indexOfFirst { it.zoomStep == -1 }
+        assertTrue(firstZoomIn >= 0)
+        assertTrue(firstZoomOut >= 0)
+        assertTrue(firstZoomIn < firstZoomOut)
+    }
+
+    @Test
+    fun `render plan prefetches zoom out before zoom in when pinching out`() {
+        val plan = MandelbrotTiles.renderPlan(
+            zoom = 1.0,
+            offsetX = -0.5,
+            offsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+            tilePixelSize = 256,
+            panSignX = 0,
+            panSignY = 0,
+            zoomSign = -1,
+            focusX = -0.5,
+            focusY = 0.0,
+            minZoom = 0.5,
+            maxZoom = 1.0e13,
+            isCached = { false },
+        )
+        val firstZoomIn = plan.prefetch.indexOfFirst { it.zoomStep == 1 }
+        val firstZoomOut = plan.prefetch.indexOfFirst { it.zoomStep == -1 }
+        assertTrue(firstZoomIn >= 0)
+        assertTrue(firstZoomOut >= 0)
+        assertTrue(firstZoomOut < firstZoomIn)
     }
 
     private fun renderPlanWithEmptyGesture(cached: Set<MandelbrotTiles.TileKey>): MandelbrotTiles.RenderPlan =

@@ -308,31 +308,14 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             maxZoom = MAX_ZOOM,
             isCached = { tileCache.contains(it) },
         )
-        if (isInteracting) {
-            if (plan.visiblePreview.isNotEmpty() && !visibleViewportCovered()) {
-                return WorkItem(
-                    plan.visiblePreview.take(MandelbrotTiles.MAX_VISIBLE_BATCH),
-                    preview = true,
-                    prefetch = false,
-                )
-            }
-            return null
-        }
-        if (plan.visibleFull.isNotEmpty()) {
-            return WorkItem(
-                plan.visibleFull.take(MandelbrotTiles.MAX_VISIBLE_BATCH),
-                preview = false,
-                prefetch = false,
-            )
-        }
-        if (plan.prefetch.isNotEmpty() && tileCache.memoryBytes < tileCache.maxMemoryBytes) {
-            val first = plan.prefetch.first()
-            val batch = plan.prefetch.takeWhile {
-                it.zoomStep == first.zoomStep && it.tilePixelSize == first.tilePixelSize
-            }.take(MandelbrotTiles.MAX_PREFETCH_BATCH)
-            return WorkItem(batch, preview = false, prefetch = true)
-        }
-        return null
+        val selection = MandelbrotTiles.selectNextWork(
+            plan = plan,
+            isInteracting = isInteracting,
+            viewportCovered = visibleViewportCovered(),
+            memoryBytes = tileCache.memoryBytes,
+            maxMemoryBytes = tileCache.maxMemoryBytes,
+        )
+        return selection?.let { WorkItem(it.keys, it.preview, it.prefetch) }
     }
 
     private suspend fun renderWork(item: WorkItem) {
@@ -372,7 +355,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     private suspend fun computeTileGroup(keys: List<MandelbrotTiles.TileKey>, preview: Boolean) {
         if (keys.isEmpty()) return
         val bbox = MandelbrotTiles.bboxOf(keys) ?: return
-        val dense = bbox.tileCount <= keys.size * 2L
+        val dense = MandelbrotTiles.isDenseTileBatch(keys)
         if (dense) {
             computeBBox(
                 range = bbox,
@@ -524,7 +507,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                     continue
                 }
                 val tilePixels = ByteArray(outSize * outSize)
-                copySubgrid(
+                MandelbrotTiles.copySubgrid(
                     source = pixels,
                     sourceWidth = renderWidth,
                     srcX = col * outSize,
@@ -612,22 +595,6 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                 val iteration = MandelbrotMath.escapeIterations(cr, ci, maxIterations)
                 pixels[index++] = FractalColoring.escapeAlpha(iteration, maxIterations).toByte()
             }
-        }
-    }
-
-    private fun copySubgrid(
-        source: ByteArray,
-        sourceWidth: Int,
-        srcX: Int,
-        srcY: Int,
-        size: Int,
-        dest: ByteArray,
-    ) {
-        var dst = 0
-        for (y in 0 until size) {
-            val srcRow = (srcY + y) * sourceWidth + srcX
-            source.copyInto(dest, dst, srcRow, srcRow + size)
-            dst += size
         }
     }
 
