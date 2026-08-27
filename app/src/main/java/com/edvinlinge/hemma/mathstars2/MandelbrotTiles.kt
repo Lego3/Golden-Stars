@@ -94,6 +94,18 @@ internal object MandelbrotTiles {
     fun viewMinEdge(viewWidth: Int, viewHeight: Int): Int =
         minOf(viewWidth, viewHeight).coerceAtLeast(1)
 
+    /**
+     * True when the live view still matches the dimensions an in-flight tile render sampled.
+     * [TileKey.viewMinEdge] and tile sampling both derive from these sizes, so a mismatch would
+     * store pixels under keys that imply a different world grid.
+     */
+    fun viewGeometryMatches(
+        renderViewWidth: Int,
+        renderViewHeight: Int,
+        viewWidth: Int,
+        viewHeight: Int,
+    ): Boolean = renderViewWidth == viewWidth && renderViewHeight == viewHeight
+
     fun tilePixelSize(viewWidth: Int, viewHeight: Int): Int =
         if (viewMinEdge(viewWidth, viewHeight) >= LARGE_TILE_MIN_EDGE) {
             LARGE_TILE_PIXELS

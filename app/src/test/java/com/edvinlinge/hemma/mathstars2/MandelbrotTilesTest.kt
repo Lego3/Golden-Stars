@@ -33,6 +33,20 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `view geometry matches only when width and height are unchanged`() {
+        assertTrue(MandelbrotTiles.viewGeometryMatches(800, 600, 800, 600))
+        assertFalse(MandelbrotTiles.viewGeometryMatches(800, 600, 600, 800))
+        assertFalse(MandelbrotTiles.viewGeometryMatches(800, 600, 900, 600))
+    }
+
+    @Test
+    fun `tile world size changes when view min edge changes`() {
+        val narrow = MandelbrotTiles.tileWorldSize(0, 256, 500, 800)
+        val wider = MandelbrotTiles.tileWorldSize(0, 256, 700, 800)
+        assertTrue(narrow > wider)
+    }
+
+    @Test
     fun `parent and child indices stay aligned for negative tiles`() {
         assertEquals(-1L, MandelbrotTiles.parentTileX(-1L))
         assertEquals(-1L, MandelbrotTiles.parentTileX(-2L))

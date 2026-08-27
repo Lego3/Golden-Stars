@@ -211,6 +211,8 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w <= 0 || h <= 0) return
+        workEpoch++
+        workJob?.cancel()
         recycleBitmaps()
         requestFullRender()
     }
@@ -407,6 +409,8 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                     tilePixelSize = key.tilePixelSize,
                     preview = preview,
                     pixels = pixels,
+                    renderViewWidth = viewWidth,
+                    renderViewHeight = viewHeight,
                 )
                 updateRenderingState()
             }
@@ -437,7 +441,15 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         }
         currentCoroutineContext().ensureActive()
         if (pixels.isEmpty()) return
-        installRenderedRange(range, zoomStep, tilePixelSize, preview, pixels)
+        installRenderedRange(
+            range = range,
+            zoomStep = zoomStep,
+            tilePixelSize = tilePixelSize,
+            preview = preview,
+            pixels = pixels,
+            renderViewWidth = viewWidth,
+            renderViewHeight = viewHeight,
+        )
         invalidate()
         updateRenderingState()
     }
@@ -487,10 +499,22 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         tilePixelSize: Int,
         preview: Boolean,
         pixels: ByteArray,
+        renderViewWidth: Int,
+        renderViewHeight: Int,
     ) {
         val viewWidth = width
         val viewHeight = height
         if (viewWidth <= 0 || viewHeight <= 0) return
+        if (
+            !MandelbrotTiles.viewGeometryMatches(
+                renderViewWidth = renderViewWidth,
+                renderViewHeight = renderViewHeight,
+                viewWidth = viewWidth,
+                viewHeight = viewHeight,
+            )
+        ) {
+            return
+        }
         val downscale = if (preview) MandelbrotTiles.PREVIEW_DOWNSCALE else 1
         val outSize = if (preview) {
             (tilePixelSize / downscale).coerceAtLeast(1)
