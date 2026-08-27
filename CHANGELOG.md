@@ -12,6 +12,12 @@ Git tags (`v1.1.0`, `v1.2.0`, `v1.3.0`, …).
   immediately from the current stroke, instead of applying the new rate only on
   the next replay.
 
+### Fixed
+
+- Dragging the speed slider no longer crawls an in-progress drawing backwards.
+  Play time now rounds up to a whole millisecond so each seek cannot shrink the
+  already-revealed stroke.
+
 ## [1.3.0] - 2026-08-25
 
 Two new explorers join Golden Stars and Mandelbrot: a Spirograph that traces

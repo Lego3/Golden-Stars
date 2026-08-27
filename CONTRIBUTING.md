@@ -80,8 +80,8 @@ views so it stays fast to test.
 closed `Path`, then animate reveal with `PathMeasure` and `ValueAnimator`. Phase `1` is
 fully hidden, `0` is complete. Speed maps to duration via `DrawViewMath`; at high speed
 the figure draws instantly. Changing speed during a reveal seeks the
-running animator from the current phase with `animationPlayTimeMs`, so the
-pen keeps going at the new rate instead of cancelling and restarting.
+running animator from the current phase with `animationPlayTimeMs` (whole
+milliseconds rounded up, so a slider drag cannot shrink the revealed stroke).
 Both views save `currentPhase` and viewport across configuration changes. Because
 `onSizeChanged` can start a fresh reveal before `onRestoreInstanceState`
 runs, `DrawViewMath.revealRestoreAction` decides whether to show the
