@@ -120,12 +120,68 @@ internal object MandelbrotTiles {
             SMALL_TILE_PIXELS
         }
 
-    fun pixelSize(key: TileKey): Int =
-        if (key.preview) {
-            (key.tilePixelSize / PREVIEW_DOWNSCALE).coerceAtLeast(1)
+    fun renderedOutputSize(tilePixelSize: Int, preview: Boolean): Int =
+        if (preview) {
+            (tilePixelSize / PREVIEW_DOWNSCALE).coerceAtLeast(1)
         } else {
-            key.tilePixelSize
+            tilePixelSize
         }
+
+    fun pixelSize(key: TileKey): Int = renderedOutputSize(key.tilePixelSize, key.preview)
+
+    fun renderedRangeDimensions(
+        range: TileRange,
+        tilePixelSize: Int,
+        preview: Boolean,
+    ): Pair<Int, Int> {
+        val outSize = renderedOutputSize(tilePixelSize, preview)
+        val tilesX = (range.x1 - range.x0 + 1L).toInt().coerceAtLeast(1)
+        val tilesY = (range.y1 - range.y0 + 1L).toInt().coerceAtLeast(1)
+        return tilesX * outSize to tilesY * outSize
+    }
+
+    fun renderedRangePixelCount(
+        range: TileRange,
+        tilePixelSize: Int,
+        preview: Boolean,
+    ): Int {
+        val (width, height) = renderedRangeDimensions(range, tilePixelSize, preview)
+        return width * height
+    }
+
+    fun hasEnoughPixelsForRange(
+        range: TileRange,
+        tilePixelSize: Int,
+        preview: Boolean,
+        pixels: ByteArray,
+    ): Boolean = pixels.size >= renderedRangePixelCount(range, tilePixelSize, preview)
+
+    /** True when [pixels] is a square payload sized for [key]. */
+    fun acceptsTilePixelPayload(key: TileKey, pixels: ByteArray): Boolean {
+        val size = pixelSize(key)
+        return pixels.size == size * size
+    }
+
+    /**
+     * Guards tile install after an async render: the live view must still match the sampled
+     * geometry and the pixel buffer must cover the full requested tile range.
+     */
+    fun shouldInstallRenderedRange(
+        renderViewWidth: Int,
+        renderViewHeight: Int,
+        viewWidth: Int,
+        viewHeight: Int,
+        range: TileRange,
+        tilePixelSize: Int,
+        preview: Boolean,
+        pixels: ByteArray,
+    ): Boolean {
+        if (viewWidth <= 0 || viewHeight <= 0) return false
+        if (!viewGeometryMatches(renderViewWidth, renderViewHeight, viewWidth, viewHeight)) {
+            return false
+        }
+        return hasEnoughPixelsForRange(range, tilePixelSize, preview, pixels)
+    }
 
     /**
      * Nearest power-of-two zoom, matching the double-tap factor so a 2× jump lands on a cached

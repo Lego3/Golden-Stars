@@ -42,6 +42,102 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `rendered range pixel count scales with tile count and preview downscale`() {
+        val single = MandelbrotTiles.TileRange(0, 0, 0, 0)
+        val pair = MandelbrotTiles.TileRange(0, 1, 0, 0)
+        assertEquals(256 * 256, MandelbrotTiles.renderedRangePixelCount(single, 256, preview = false))
+        assertEquals(64 * 64, MandelbrotTiles.renderedRangePixelCount(single, 256, preview = true))
+        assertEquals(256 * 256 * 2, MandelbrotTiles.renderedRangePixelCount(pair, 256, preview = false))
+    }
+
+    @Test
+    fun `truncated render buffers are rejected before tile install`() {
+        val range = MandelbrotTiles.TileRange(0, 1, 0, 0)
+        val expected = MandelbrotTiles.renderedRangePixelCount(range, 256, preview = false)
+        val truncated = ByteArray(expected - 1)
+        assertFalse(
+            MandelbrotTiles.hasEnoughPixelsForRange(range, 256, preview = false, pixels = truncated),
+        )
+        assertFalse(
+            MandelbrotTiles.shouldInstallRenderedRange(
+                renderViewWidth = 800,
+                renderViewHeight = 600,
+                viewWidth = 800,
+                viewHeight = 600,
+                range = range,
+                tilePixelSize = 256,
+                preview = false,
+                pixels = truncated,
+            ),
+        )
+    }
+
+    @Test
+    fun `geometry mismatch rejects install even with a valid pixel buffer`() {
+        val range = MandelbrotTiles.TileRange(0, 0, 0, 0)
+        val pixels = ByteArray(MandelbrotTiles.renderedRangePixelCount(range, 256, preview = false))
+        assertFalse(
+            MandelbrotTiles.shouldInstallRenderedRange(
+                renderViewWidth = 800,
+                renderViewHeight = 600,
+                viewWidth = 900,
+                viewHeight = 600,
+                range = range,
+                tilePixelSize = 256,
+                preview = false,
+                pixels = pixels,
+            ),
+        )
+        assertFalse(
+            MandelbrotTiles.shouldInstallRenderedRange(
+                renderViewWidth = 800,
+                renderViewHeight = 600,
+                viewWidth = 0,
+                viewHeight = 600,
+                range = range,
+                tilePixelSize = 256,
+                preview = false,
+                pixels = pixels,
+            ),
+        )
+    }
+
+    @Test
+    fun `valid geometry and buffer allow rendered range install`() {
+        val range = MandelbrotTiles.TileRange(0, 0, 0, 0)
+        val pixels = ByteArray(MandelbrotTiles.renderedRangePixelCount(range, 256, preview = false))
+        assertTrue(
+            MandelbrotTiles.shouldInstallRenderedRange(
+                renderViewWidth = 800,
+                renderViewHeight = 600,
+                viewWidth = 800,
+                viewHeight = 600,
+                range = range,
+                tilePixelSize = 256,
+                preview = false,
+                pixels = pixels,
+            ),
+        )
+    }
+
+    @Test
+    fun `accepts tile pixel payload only for exact square size`() {
+        val full = MandelbrotTiles.TileKey(
+            zoomStep = 0,
+            tileX = 0,
+            tileY = 0,
+            tilePixelSize = 256,
+            viewMinEdge = 600,
+            preview = false,
+        )
+        val preview = full.copy(preview = true)
+        assertTrue(MandelbrotTiles.acceptsTilePixelPayload(full, ByteArray(256 * 256)))
+        assertFalse(MandelbrotTiles.acceptsTilePixelPayload(full, ByteArray(256 * 255)))
+        assertTrue(MandelbrotTiles.acceptsTilePixelPayload(preview, ByteArray(64 * 64)))
+        assertFalse(MandelbrotTiles.acceptsTilePixelPayload(preview, ByteArray(256 * 256)))
+    }
+
+    @Test
     fun `tile world size changes when view min edge changes`() {
         val narrow = MandelbrotTiles.tileWorldSize(0, 256, 500, 800)
         val wider = MandelbrotTiles.tileWorldSize(0, 256, 700, 800)
