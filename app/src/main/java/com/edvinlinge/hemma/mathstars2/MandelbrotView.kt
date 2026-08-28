@@ -327,9 +327,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                 continue
             }
             val fromDisk = withContext(Dispatchers.IO) { tileCache.loadFromDisk(key) }
-            if (fromDisk != null && fromDisk.pixels.size == MandelbrotTiles.pixelSize(key) *
-                MandelbrotTiles.pixelSize(key)
-            ) {
+            if (fromDisk != null && MandelbrotTiles.acceptsTilePixelPayload(key, fromDisk.pixels)) {
                 tileCache.put(key, fromDisk.pixels, fromDisk.preview, visibleCacheKeys())
                 invalidate()
                 updateRenderingState()
@@ -447,17 +445,13 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         parallelRows: Boolean,
     ): ByteArray {
         if (viewWidth <= 0 || viewHeight <= 0) return ByteArray(0)
-        val downscale = if (preview) MandelbrotTiles.PREVIEW_DOWNSCALE else 1
-        val tilesX = (range.x1 - range.x0 + 1L).toInt().coerceAtLeast(1)
-        val tilesY = (range.y1 - range.y0 + 1L).toInt().coerceAtLeast(1)
-        val outSize = if (preview) {
-            (tilePixelSize / downscale).coerceAtLeast(1)
-        } else {
-            tilePixelSize
-        }
-        val renderWidth = tilesX * outSize
-        val renderHeight = tilesY * outSize
+        val (renderWidth, renderHeight) = MandelbrotTiles.renderedRangeDimensions(
+            range = range,
+            tilePixelSize = tilePixelSize,
+            preview = preview,
+        )
         val world = MandelbrotTiles.tileWorldSize(zoomStep, tilePixelSize, viewWidth, viewHeight)
+        val downscale = if (preview) MandelbrotTiles.PREVIEW_DOWNSCALE else 1
         val sampleStep = (world / tilePixelSize) * downscale
         val xMin = range.x0 * world
         val yMin = range.y0 * world
@@ -487,28 +481,22 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     ) {
         val viewWidth = width
         val viewHeight = height
-        if (viewWidth <= 0 || viewHeight <= 0) return
         if (
-            !MandelbrotTiles.viewGeometryMatches(
+            !MandelbrotTiles.shouldInstallRenderedRange(
                 renderViewWidth = renderViewWidth,
                 renderViewHeight = renderViewHeight,
                 viewWidth = viewWidth,
                 viewHeight = viewHeight,
+                range = range,
+                tilePixelSize = tilePixelSize,
+                preview = preview,
+                pixels = pixels,
             )
         ) {
             return
         }
-        val downscale = if (preview) MandelbrotTiles.PREVIEW_DOWNSCALE else 1
-        val outSize = if (preview) {
-            (tilePixelSize / downscale).coerceAtLeast(1)
-        } else {
-            tilePixelSize
-        }
-        val tilesX = (range.x1 - range.x0 + 1L).toInt().coerceAtLeast(1)
-        val renderWidth = tilesX * outSize
-        if (pixels.size < renderWidth * ((range.y1 - range.y0 + 1L).toInt().coerceAtLeast(1) * outSize)) {
-            return
-        }
+        val outSize = MandelbrotTiles.renderedOutputSize(tilePixelSize, preview)
+        val (renderWidth, _) = MandelbrotTiles.renderedRangeDimensions(range, tilePixelSize, preview)
         val minEdge = MandelbrotTiles.viewMinEdge(viewWidth, viewHeight)
         var ty = range.y0
         var row = 0
@@ -630,8 +618,8 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     }
 
     private fun installBitmap(key: MandelbrotTiles.TileKey, pixels: ByteArray) {
+        if (!MandelbrotTiles.acceptsTilePixelPayload(key, pixels)) return
         val size = MandelbrotTiles.pixelSize(key)
-        if (pixels.size != size * size) return
         val existing = bitmaps[key]
         val bmp = if (existing != null && !existing.isRecycled && existing.width == size && existing.height == size) {
             existing
