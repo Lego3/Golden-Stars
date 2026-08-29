@@ -35,6 +35,32 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `view min edge uses the shorter dimension and never drops below one`() {
+        assertEquals(600, MandelbrotTiles.viewMinEdge(800, 600))
+        assertEquals(400, MandelbrotTiles.viewMinEdge(400, 800))
+        assertEquals(1, MandelbrotTiles.viewMinEdge(0, 0))
+    }
+
+    @Test
+    fun `tile install skips when full resolution already covers the slot`() {
+        val full = MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = false)
+        val preview = full.copy(preview = true)
+        val cached = setOf(full)
+        assertTrue(MandelbrotTiles.shouldSkipTileCacheInstall(preview) { it in cached })
+        assertTrue(MandelbrotTiles.shouldSkipTileCacheInstall(full) { it in cached })
+    }
+
+    @Test
+    fun `tile install skips duplicate full writes but still accepts preview when only preview exists`() {
+        val full = MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = false)
+        val preview = full.copy(preview = true)
+        val previewOnly = setOf(preview)
+        assertFalse(MandelbrotTiles.shouldSkipTileCacheInstall(preview) { it in previewOnly })
+        assertFalse(MandelbrotTiles.shouldSkipTileCacheInstall(full) { it in previewOnly })
+        assertTrue(MandelbrotTiles.shouldSkipTileCacheInstall(full) { it == full })
+    }
+
+    @Test
     fun `view geometry matches only when width and height are unchanged`() {
         assertTrue(MandelbrotTiles.viewGeometryMatches(800, 600, 800, 600))
         assertFalse(MandelbrotTiles.viewGeometryMatches(800, 600, 600, 800))

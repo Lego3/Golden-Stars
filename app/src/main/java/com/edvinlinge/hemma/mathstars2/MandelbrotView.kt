@@ -512,8 +512,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
                     viewMinEdge = minEdge,
                     preview = preview,
                 )
-                val fullKey = key.copy(preview = false)
-                if (tileCache.contains(fullKey) || (!preview && tileCache.contains(key))) {
+                if (MandelbrotTiles.shouldSkipTileCacheInstall(key) { tileCache.contains(it) }) {
                     col++
                     tx++
                     continue

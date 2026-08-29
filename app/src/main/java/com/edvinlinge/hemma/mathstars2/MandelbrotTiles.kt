@@ -184,6 +184,15 @@ internal object MandelbrotTiles {
     }
 
     /**
+     * True when an async tile install should skip writing [key]: a full-resolution entry already
+     * covers this slot, or the same full tile was installed while the render was in flight.
+     */
+    fun shouldSkipTileCacheInstall(key: TileKey, isCached: (TileKey) -> Boolean): Boolean {
+        val fullKey = key.copy(preview = false)
+        return isCached(fullKey) || (!key.preview && isCached(key))
+    }
+
+    /**
      * Nearest power-of-two zoom, matching the double-tap factor so a 2× jump lands on a cached
      * step when prefetch has kept up.
      */
