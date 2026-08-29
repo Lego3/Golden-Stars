@@ -162,7 +162,7 @@ internal class MandelbrotTileCache(
         val now = currentTimeMs()
         for ((name, accessed) in lastAccessMs) {
             val touched = lastTouchMs[name] ?: 0L
-            if (accessed - touched < TOUCH_MIN_INTERVAL_MS) continue
+            if (!shouldFlushDiskAccessTime(accessed, touched, TOUCH_MIN_INTERVAL_MS)) continue
             val file = File(dir, name)
             if (file.isFile) touchFile(file, accessed.coerceAtMost(now))
         }
@@ -210,6 +210,13 @@ internal class MandelbrotTileCache(
     companion object {
         private const val MAGIC = 0x4D425432 // "MBT2" greyscale alpha map
         private const val MAX_PIXELS = 512 * 512 * 16
-        private const val TOUCH_MIN_INTERVAL_MS = 30_000L
+        const val TOUCH_MIN_INTERVAL_MS = 30_000L
+
+        /** True when enough time has passed since the file was last touched on disk. */
+        fun shouldFlushDiskAccessTime(
+            accessedMs: Long,
+            lastTouchedMs: Long,
+            minIntervalMs: Long = TOUCH_MIN_INTERVAL_MS,
+        ): Boolean = accessedMs - lastTouchedMs >= minIntervalMs
     }
 }

@@ -310,6 +310,16 @@ class MandelbrotTileCacheTest {
         }
     }
 
+    @Test
+    fun `disk access flush waits until the touch interval has elapsed`() {
+        val interval = MandelbrotTileCache.TOUCH_MIN_INTERVAL_MS
+        assertFalse(MandelbrotTileCache.shouldFlushDiskAccessTime(10_000L, 0L, interval))
+        assertFalse(MandelbrotTileCache.shouldFlushDiskAccessTime(29_999L, 0L, interval))
+        assertTrue(MandelbrotTileCache.shouldFlushDiskAccessTime(30_000L, 0L, interval))
+        assertTrue(MandelbrotTileCache.shouldFlushDiskAccessTime(60_000L, 30_000L, interval))
+        assertFalse(MandelbrotTileCache.shouldFlushDiskAccessTime(59_999L, 30_000L, interval))
+    }
+
     private fun writeCompressedTile(
         file: File,
         magic: Int,
