@@ -278,6 +278,8 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         val renderOffsetY = offsetY
         val renderCReal = cReal
         val renderCImag = cImag
+        val renderViewWidth = viewWidth
+        val renderViewHeight = viewHeight
         val downscale = if (preview) PREVIEW_DOWNSCALE else 1
         val (renderWidth, renderHeight) = MandelbrotMath.renderDimensions(viewWidth, viewHeight, downscale)
         val maxIterations = MandelbrotMath.iterationsFor(renderZoom)
@@ -328,12 +330,15 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
                         renderCImag = renderCImag,
                         cReal = cReal,
                         cImag = cImag,
+                        renderViewWidth = renderViewWidth,
+                        renderViewHeight = renderViewHeight,
+                        viewWidth = width,
+                        viewHeight = height,
                     )
                 ) {
                     return@launch
                 }
                 val target = bitmap ?: return@launch
-                if (target.width != viewWidth || target.height != viewHeight) return@launch
 
                 if (preview) {
                     val scratch = previewScratchOf(renderWidth, renderHeight)
