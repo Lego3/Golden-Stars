@@ -80,6 +80,42 @@ class MandelbrotMathTest {
     }
 
     @Test
+    fun `period-2 bulb boundary rejects points outside the radius`() {
+        assertFalse(MandelbrotMath.inMainCardioidOrPeriod2Bulb(-1.26, 0.0))
+        assertTrue(MandelbrotMath.inMainCardioidOrPeriod2Bulb(-1.25, 0.0))
+        assertTrue(MandelbrotMath.inMainCardioidOrPeriod2Bulb(-1.0, 0.0))
+        assertFalse(MandelbrotMath.inMainCardioidOrPeriod2Bulb(-0.75, 0.26))
+        assertEquals(200, MandelbrotMath.escapeIterations(-1.0, 0.0, maxIterations = 200))
+        assertTrue(MandelbrotMath.escapeIterations(1.0, 0.0, maxIterations = 200) < 200)
+    }
+
+    @Test
+    fun `main cardioid boundary separates interior from nearby exterior`() {
+        assertTrue(MandelbrotMath.inMainCardioidOrPeriod2Bulb(0.24, 0.0))
+        assertFalse(MandelbrotMath.inMainCardioidOrPeriod2Bulb(0.26, 0.0))
+        assertTrue(MandelbrotMath.inMainCardioidOrPeriod2Bulb(-0.75, 0.0))
+        assertFalse(MandelbrotMath.inMainCardioidOrPeriod2Bulb(0.5, 0.5))
+        assertEquals(200, MandelbrotMath.escapeIterations(0.24, 0.0, maxIterations = 200))
+        assertTrue(MandelbrotMath.escapeIterations(0.26, 0.0, maxIterations = 200) < 200)
+    }
+
+    @Test
+    fun `interior classification keeps escape iterations at the budget`() {
+        val interior = listOf(
+            0.0 to 0.0,
+            0.25 to 0.0,
+            -1.0 to 0.0,
+            -0.75 to 0.0,
+        )
+        for ((cr, ci) in interior) {
+            assertTrue(MandelbrotMath.inMainCardioidOrPeriod2Bulb(cr, ci))
+            assertEquals(200, MandelbrotMath.escapeIterations(cr, ci, maxIterations = 200))
+        }
+        assertFalse(MandelbrotMath.inMainCardioidOrPeriod2Bulb(1.0, 0.0))
+        assertTrue(MandelbrotMath.escapeIterations(1.0, 0.0, maxIterations = 200) < 200)
+    }
+
+    @Test
     fun `render spinner shows while visible tiles are still sharpening`() {
         assertTrue(
             MandelbrotMath.showRenderSpinner(
