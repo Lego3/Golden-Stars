@@ -67,8 +67,9 @@ internal object JuliaMath {
 
     /**
      * True when an in-flight Julia render result should be written to the bitmap. Besides the
-     * viewport, the constant *c* must still match what the job was started with. Palette is a
-     * draw-time filter, so it is not part of this check.
+     * viewport, the constant *c* must still match what the job was started with, and the live
+     * view must still match the dimensions sampled when the render began. Palette is a draw-time
+     * filter, so it is not part of this check.
      */
     fun shouldApplyRenderResult(
         zoom: Double,
@@ -81,6 +82,10 @@ internal object JuliaMath {
         renderCImag: Double,
         cReal: Double,
         cImag: Double,
+        renderViewWidth: Int,
+        renderViewHeight: Int,
+        viewWidth: Int,
+        viewHeight: Int,
     ): Boolean =
         MandelbrotMath.renderTargetMatchesViewport(
             zoom = zoom,
@@ -91,7 +96,13 @@ internal object JuliaMath {
             renderOffsetY = renderOffsetY,
         ) &&
             renderCReal == cReal &&
-            renderCImag == cImag
+            renderCImag == cImag &&
+            MandelbrotTiles.viewGeometryMatches(
+                renderViewWidth = renderViewWidth,
+                renderViewHeight = renderViewHeight,
+                viewWidth = viewWidth,
+                viewHeight = viewHeight,
+            )
 
     /** Formats *c* as `a + bi` / `a - bi` with trailing zeros stripped. */
     fun formatConstant(real: Double, imag: Double): String {
