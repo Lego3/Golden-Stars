@@ -491,6 +491,44 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `visible tile queue drops stale keys after view geometry changes`() {
+        val oldGeometry = listOf(
+            MandelbrotTiles.TileKey(0, 0, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 1, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 2, 0, 256, 600, false),
+        )
+        val cached = mutableSetOf<MandelbrotTiles.TileKey>()
+        var tracked = MandelbrotTiles.mergeVisibleTileQueue(emptySet(), oldGeometry) { it in cached }
+        cached += oldGeometry[0]
+        cached += oldGeometry[1]
+        tracked = MandelbrotTiles.mergeVisibleTileQueue(tracked, oldGeometry) { it in cached }
+        assertEquals(
+            MandelbrotTiles.VisibleTileProgress(finished = 2, queued = 3),
+            MandelbrotTiles.visibleTileProgress(tracked) { it in cached },
+        )
+
+        val newGeometry = listOf(
+            MandelbrotTiles.TileKey(0, 0, 0, 512, 1080, false),
+            MandelbrotTiles.TileKey(0, 1, 0, 512, 1080, false),
+            MandelbrotTiles.TileKey(0, 2, 0, 512, 1080, false),
+        )
+        val merged = MandelbrotTiles.mergeVisibleTileQueue(tracked, newGeometry) { it in cached }
+        assertEquals(newGeometry.toSet(), merged)
+        assertEquals(
+            MandelbrotTiles.VisibleTileProgress(finished = 0, queued = 3),
+            MandelbrotTiles.visibleTileProgress(merged) { it in cached },
+        )
+    }
+
+    @Test
+    fun `visible tile queue ignores tracked keys that only match by tile coordinates`() {
+        val tracked = setOf(MandelbrotTiles.TileKey(0, 0, 0, 256, 600, false))
+        val resized = listOf(MandelbrotTiles.TileKey(0, 0, 0, 512, 1080, false))
+        val merged = MandelbrotTiles.mergeVisibleTileQueue(tracked, resized) { false }
+        assertEquals(resized.toSet(), merged)
+    }
+
+    @Test
     fun `visible tile progress is zero when nothing is queued`() {
         assertEquals(
             MandelbrotTiles.VisibleTileProgress(finished = 0, queued = 0),

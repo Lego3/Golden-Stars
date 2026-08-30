@@ -101,6 +101,10 @@ class JuliaMathTest {
                 renderCImag = rabbit.imag,
                 cReal = rabbit.real,
                 cImag = rabbit.imag,
+                renderViewWidth = 800,
+                renderViewHeight = 600,
+                viewWidth = 800,
+                viewHeight = 600,
             ),
         )
         assertFalse(
@@ -115,6 +119,10 @@ class JuliaMathTest {
                 renderCImag = rabbit.imag,
                 cReal = -0.75,
                 cImag = 0.0,
+                renderViewWidth = 800,
+                renderViewHeight = 600,
+                viewWidth = 800,
+                viewHeight = 600,
             ),
         )
         assertFalse(
@@ -129,6 +137,10 @@ class JuliaMathTest {
                 renderCImag = rabbit.imag,
                 cReal = rabbit.real,
                 cImag = rabbit.imag,
+                renderViewWidth = 800,
+                renderViewHeight = 600,
+                viewWidth = 800,
+                viewHeight = 600,
             ),
         )
         assertFalse(
@@ -143,6 +155,10 @@ class JuliaMathTest {
                 renderCImag = rabbit.imag,
                 cReal = rabbit.real,
                 cImag = rabbit.imag,
+                renderViewWidth = 800,
+                renderViewHeight = 600,
+                viewWidth = 800,
+                viewHeight = 600,
             ),
         )
         assertFalse(
@@ -157,6 +173,73 @@ class JuliaMathTest {
                 renderCImag = rabbit.imag,
                 cReal = rabbit.real,
                 cImag = rabbit.imag,
+                renderViewWidth = 800,
+                renderViewHeight = 600,
+                viewWidth = 800,
+                viewHeight = 600,
+            ),
+        )
+    }
+
+    @Test
+    fun `render result rejects when view geometry changed mid render`() {
+        val viewport = arrayOf(
+            2.0, -0.5, 0.1,
+            2.0, -0.5, 0.1,
+        )
+        val rabbit = JuliaMath.presetAt(0)
+        assertFalse(
+            JuliaMath.shouldApplyRenderResult(
+                zoom = viewport[0],
+                offsetX = viewport[1],
+                offsetY = viewport[2],
+                renderZoom = viewport[3],
+                renderOffsetX = viewport[4],
+                renderOffsetY = viewport[5],
+                renderCReal = rabbit.real,
+                renderCImag = rabbit.imag,
+                cReal = rabbit.real,
+                cImag = rabbit.imag,
+                renderViewWidth = 800,
+                renderViewHeight = 600,
+                viewWidth = 900,
+                viewHeight = 600,
+            ),
+        )
+        assertFalse(
+            JuliaMath.shouldApplyRenderResult(
+                zoom = viewport[0],
+                offsetX = viewport[1],
+                offsetY = viewport[2],
+                renderZoom = viewport[3],
+                renderOffsetX = viewport[4],
+                renderOffsetY = viewport[5],
+                renderCReal = rabbit.real,
+                renderCImag = rabbit.imag,
+                cReal = rabbit.real,
+                cImag = rabbit.imag,
+                renderViewWidth = 800,
+                renderViewHeight = 600,
+                viewWidth = 800,
+                viewHeight = 700,
+            ),
+        )
+        assertFalse(
+            JuliaMath.shouldApplyRenderResult(
+                zoom = viewport[0],
+                offsetX = viewport[1],
+                offsetY = viewport[2],
+                renderZoom = viewport[3],
+                renderOffsetX = viewport[4],
+                renderOffsetY = viewport[5],
+                renderCReal = rabbit.real,
+                renderCImag = rabbit.imag,
+                cReal = rabbit.real,
+                cImag = rabbit.imag,
+                renderViewWidth = 800,
+                renderViewHeight = 600,
+                viewWidth = 0,
+                viewHeight = 600,
             ),
         )
     }
