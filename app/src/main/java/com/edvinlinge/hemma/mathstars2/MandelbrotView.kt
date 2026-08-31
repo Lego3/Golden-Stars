@@ -254,13 +254,19 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     private fun ensureWorkScheduled(cancelPrefetch: Boolean = false) {
         val scope = renderScope ?: return
         if (width <= 0 || height <= 0) return
-        if (workJob?.isActive == true) {
-            if (cancelPrefetch && currentWorkIsPrefetch) {
+        when (
+            MandelbrotTiles.activeWorkAction(
+                workActive = workJob?.isActive == true,
+                cancelPrefetch = cancelPrefetch,
+                workIsPrefetch = currentWorkIsPrefetch,
+            )
+        ) {
+            MandelbrotTiles.ActiveWorkAction.Skip -> return
+            MandelbrotTiles.ActiveWorkAction.CancelPrefetchAndLaunch -> {
                 workEpoch++
                 workJob?.cancel()
-            } else {
-                return
             }
+            MandelbrotTiles.ActiveWorkAction.Launch -> Unit
         }
         val epoch = workEpoch
         workJob = scope.launch {
@@ -269,12 +275,16 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             } finally {
                 if (epoch == workEpoch) {
                     currentWorkIsPrefetch = false
-                    // A gesture can land in the window between nextWorkItem() returning null
-                    // and this job completing; without a reschedule that frame would stick.
-                    if (nextWorkItem() != null) {
-                        ensureWorkScheduled()
-                    } else {
-                        updateRenderingState(forceIdle = true)
+                    when (
+                        MandelbrotTiles.postWorkAction(
+                            epochMatches = true,
+                            hasPendingWork = nextWorkItem() != null,
+                        )
+                    ) {
+                        MandelbrotTiles.PostWorkAction.Reschedule -> ensureWorkScheduled()
+                        MandelbrotTiles.PostWorkAction.ForceIdle ->
+                            updateRenderingState(forceIdle = true)
+                        MandelbrotTiles.PostWorkAction.None -> Unit
                     }
                 }
             }
@@ -697,26 +707,26 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             queuedKeys = queuedVisibleKeys,
             isCached = { tileCache.contains(it) },
         )
-        val busy = !forceIdle && MandelbrotMath.showRenderSpinner(
+        val hud = MandelbrotTiles.spinnerHudState(
+            forceIdle = forceIdle,
             workActive = workJob?.isActive == true,
             workIsPrefetch = currentWorkIsPrefetch,
             visibleTilesComplete = visibleTilesComplete(),
+            progress = progress,
         )
-        if (!busy) {
+        if (hud.clearTrackedQueue) {
             queuedVisibleKeys = emptySet()
         }
-        val finished = if (busy) progress.finished else 0
-        val queued = if (busy) progress.queued else 0
-        if (busy == spinnerVisible &&
-            finished == lastProgressFinished &&
-            queued == lastProgressQueued
+        if (hud.visible == spinnerVisible &&
+            hud.finished == lastProgressFinished &&
+            hud.queued == lastProgressQueued
         ) {
             return
         }
-        spinnerVisible = busy
-        lastProgressFinished = finished
-        lastProgressQueued = queued
-        renderingStateCallback?.invoke(busy, finished, queued)
+        spinnerVisible = hud.visible
+        lastProgressFinished = hud.finished
+        lastProgressQueued = hud.queued
+        renderingStateCallback?.invoke(hud.visible, hud.finished, hud.queued)
     }
 
     private fun visibleFullKeys(): List<MandelbrotTiles.TileKey> {

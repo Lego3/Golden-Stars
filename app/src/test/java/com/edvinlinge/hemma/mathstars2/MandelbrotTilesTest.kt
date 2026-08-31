@@ -1159,6 +1159,125 @@ class MandelbrotTilesTest {
         assertTrue(firstZoomOut < firstZoomIn)
     }
 
+    @Test
+    fun `discrete zoom clamps extreme steps to avoid pow2 overflow`() {
+        val maxStep = 62
+        assertEquals((1L shl maxStep).toDouble(), MandelbrotTiles.discreteZoom(100), 0.0)
+        assertEquals(1.0 / (1L shl maxStep), MandelbrotTiles.discreteZoom(-100), 0.0)
+        assertTrue(MandelbrotTiles.discreteZoom(-100) > 0.0)
+        assertTrue(MandelbrotTiles.discreteZoom(100).isFinite())
+    }
+
+    @Test
+    fun `active work action cancels prefetch during gestures but not visible sharpening`() {
+        assertEquals(
+            MandelbrotTiles.ActiveWorkAction.Launch,
+            MandelbrotTiles.activeWorkAction(
+                workActive = false,
+                cancelPrefetch = true,
+                workIsPrefetch = true,
+            ),
+        )
+        assertEquals(
+            MandelbrotTiles.ActiveWorkAction.CancelPrefetchAndLaunch,
+            MandelbrotTiles.activeWorkAction(
+                workActive = true,
+                cancelPrefetch = true,
+                workIsPrefetch = true,
+            ),
+        )
+        assertEquals(
+            MandelbrotTiles.ActiveWorkAction.Skip,
+            MandelbrotTiles.activeWorkAction(
+                workActive = true,
+                cancelPrefetch = true,
+                workIsPrefetch = false,
+            ),
+        )
+        assertEquals(
+            MandelbrotTiles.ActiveWorkAction.Skip,
+            MandelbrotTiles.activeWorkAction(
+                workActive = true,
+                cancelPrefetch = false,
+                workIsPrefetch = true,
+            ),
+        )
+    }
+
+    @Test
+    fun `post work action reschedules when new work lands before the job exits`() {
+        assertEquals(
+            MandelbrotTiles.PostWorkAction.None,
+            MandelbrotTiles.postWorkAction(epochMatches = false, hasPendingWork = true),
+        )
+        assertEquals(
+            MandelbrotTiles.PostWorkAction.Reschedule,
+            MandelbrotTiles.postWorkAction(epochMatches = true, hasPendingWork = true),
+        )
+        assertEquals(
+            MandelbrotTiles.PostWorkAction.ForceIdle,
+            MandelbrotTiles.postWorkAction(epochMatches = true, hasPendingWork = false),
+        )
+    }
+
+    @Test
+    fun `spinner hud resets progress to zero when idle`() {
+        val progress = MandelbrotTiles.VisibleTileProgress(finished = 3, queued = 10)
+        val idle = MandelbrotTiles.spinnerHudState(
+            forceIdle = false,
+            workActive = false,
+            workIsPrefetch = false,
+            visibleTilesComplete = false,
+            progress = progress,
+        )
+        assertFalse(idle.visible)
+        assertEquals(0, idle.finished)
+        assertEquals(0, idle.queued)
+        assertTrue(idle.clearTrackedQueue)
+    }
+
+    @Test
+    fun `spinner hud passes through progress while visible sharpening runs`() {
+        val progress = MandelbrotTiles.VisibleTileProgress(finished = 2, queued = 5)
+        val busy = MandelbrotTiles.spinnerHudState(
+            forceIdle = false,
+            workActive = true,
+            workIsPrefetch = false,
+            visibleTilesComplete = false,
+            progress = progress,
+        )
+        assertTrue(busy.visible)
+        assertEquals(2, busy.finished)
+        assertEquals(5, busy.queued)
+        assertFalse(busy.clearTrackedQueue)
+    }
+
+    @Test
+    fun `spinner hud hides prefetch and forces idle when requested`() {
+        val progress = MandelbrotTiles.VisibleTileProgress(finished = 1, queued = 4)
+        val prefetch = MandelbrotTiles.spinnerHudState(
+            forceIdle = false,
+            workActive = true,
+            workIsPrefetch = true,
+            visibleTilesComplete = false,
+            progress = progress,
+        )
+        assertFalse(prefetch.visible)
+        assertEquals(0, prefetch.finished)
+        assertTrue(prefetch.clearTrackedQueue)
+
+        val forced = MandelbrotTiles.spinnerHudState(
+            forceIdle = true,
+            workActive = true,
+            workIsPrefetch = false,
+            visibleTilesComplete = false,
+            progress = progress,
+        )
+        assertFalse(forced.visible)
+        assertEquals(0, forced.finished)
+        assertTrue(forced.clearTrackedQueue)
+    }
+
     private fun renderPlanWithEmptyGesture(cached: Set<MandelbrotTiles.TileKey>): MandelbrotTiles.RenderPlan =
         MandelbrotTiles.renderPlan(
             zoom = 1.0,
