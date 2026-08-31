@@ -63,8 +63,9 @@ views so it stays fast to test.
 - **`StarMath`** — GCD-based star polygons: visited dot count, single-stroke detection,
   fill safety (`canFill` rejects digons that would vanish when filled), and vertex order.
 - **`DrawViewMath`** — Pan/zoom focus math, zoom clamping after configuration changes
-  (`coercedZoom`), reveal-animation timing (`RevealProgress` for live speed seeks), and
-  `revealRestoreAction` for resuming or skipping the path reveal after rotation.
+  (`coercedZoom`), reveal-animation timing (`RevealProgress` and
+  `shouldRetargetRevealSpeed` for live speed seeks), and `revealRestoreAction` for
+  resuming or skipping the path reveal after rotation.
 - **`SpirographMath`** — Hypotrochoid / epitrochoid sampling, period and lobe counts
   (reuses `StarMath.gcd`), and view fitting.
 - **`MandelbrotMath`** — Viewport sizing, zoom-clamped iteration counts, escape-time
@@ -79,11 +80,14 @@ views so it stays fast to test.
 **Path reveal (Golden Stars, Spirograph).** `DrawView` and `SpirographView` build a
 closed `Path`, then animate reveal with `PathMeasure` and `ValueAnimator`. Phase `1` is
 fully hidden, `0` is complete. Speed maps to duration via `DrawViewMath`; at high speed
-the figure draws instantly. Changing speed during a reveal seeks the
-running animator from a stored revealed fraction (`RevealProgress`); play
-time is rounded to a whole millisecond for the seek, but that rounding is
-not written back into the fraction, so a slider drag cannot crawl the stroke.
-Both views save `currentPhase` and viewport across configuration changes. Because
+the figure draws instantly. Changing speed during a reveal retargets the running
+animator from a stored revealed fraction (`RevealProgress`). `shouldRetargetRevealSpeed`
+skips finished, instant, or idle reveals. The animator pauses while duration and play
+time are updated, then resumes, so no frame is drawn at the old timing. Play time is
+rounded to a whole millisecond for the seek, but that rounding is not written back
+into the fraction, so a slider drag cannot crawl the stroke. Reveals use a linear
+interpolator so the remaining segment keeps constant speed after a retarget. Both
+views save `currentPhase` and viewport across configuration changes. Because
 `onSizeChanged` can start a fresh reveal before `onRestoreInstanceState`
 runs, `DrawViewMath.revealRestoreAction` decides whether to show the
 completed figure, skip (empty path), or resume from the saved phase.
