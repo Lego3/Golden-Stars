@@ -98,6 +98,28 @@ internal object MandelbrotTiles {
     /** How many on-screen tiles from a queued set have finished, of how many were queued. */
     data class VisibleTileProgress(val finished: Int, val queued: Int)
 
+    /** Whether an already-running work job should be left alone, cancelled, or absent. */
+    enum class ActiveWorkAction {
+        Launch,
+        CancelPrefetchAndLaunch,
+        Skip,
+    }
+
+    /** What to do after a work coroutine finishes. */
+    enum class PostWorkAction {
+        None,
+        Reschedule,
+        ForceIdle,
+    }
+
+    /** Spinner visibility and progress counts reported to the Activity. */
+    data class SpinnerHudState(
+        val visible: Boolean,
+        val finished: Int,
+        val queued: Int,
+        val clearTrackedQueue: Boolean,
+    )
+
     fun viewMinEdge(viewWidth: Int, viewHeight: Int): Int =
         minOf(viewWidth, viewHeight).coerceAtLeast(1)
 
@@ -572,6 +594,54 @@ internal object MandelbrotTiles {
             if (isCached(key)) finished++
         }
         return VisibleTileProgress(finished = finished, queued = queuedKeys.size)
+    }
+
+    /**
+     * When a gesture starts while prefetch is running, cancel prefetch so visible tiles take
+     * priority. Visible sharpening work must not be interrupted.
+     */
+    fun activeWorkAction(
+        workActive: Boolean,
+        cancelPrefetch: Boolean,
+        workIsPrefetch: Boolean,
+    ): ActiveWorkAction = when {
+        !workActive -> ActiveWorkAction.Launch
+        cancelPrefetch && workIsPrefetch -> ActiveWorkAction.CancelPrefetchAndLaunch
+        else -> ActiveWorkAction.Skip
+    }
+
+    /**
+     * A pan/zoom can enqueue new tile work after [selectNextWork] returned null but before the
+     * coroutine exits; reschedule instead of leaving the frame stuck.
+     */
+    fun postWorkAction(epochMatches: Boolean, hasPendingWork: Boolean): PostWorkAction = when {
+        !epochMatches -> PostWorkAction.None
+        hasPendingWork -> PostWorkAction.Reschedule
+        else -> PostWorkAction.ForceIdle
+    }
+
+    /**
+     * Combines the spinner predicate with HUD progress. When idle, counts reset to 0/0 so a
+     * finished prefetch does not leave a stale "3/10" label on screen.
+     */
+    fun spinnerHudState(
+        forceIdle: Boolean,
+        workActive: Boolean,
+        workIsPrefetch: Boolean,
+        visibleTilesComplete: Boolean,
+        progress: VisibleTileProgress,
+    ): SpinnerHudState {
+        val visible = !forceIdle && MandelbrotMath.showRenderSpinner(
+            workActive = workActive,
+            workIsPrefetch = workIsPrefetch,
+            visibleTilesComplete = visibleTilesComplete,
+        )
+        return SpinnerHudState(
+            visible = visible,
+            finished = if (visible) progress.finished else 0,
+            queued = if (visible) progress.queued else 0,
+            clearTrackedQueue = !visible,
+        )
     }
 
     /**
