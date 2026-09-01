@@ -45,7 +45,7 @@ that the Julia card does not overlap the label when scrolled to the end.
 | Component | Role |
 |-----------|------|
 | `SettingsBottomSheet` | Sliders and toggles for geometry, colour, speed, and style |
-| `InfoBottomSheet` | Short help text or HTML details (star / Spirograph GCD facts, Julia *c* membership) |
+| `InfoBottomSheet` | Shared Help / Details sheet; the host passes both title and message (`Help` for how-to copy, `Details` / *More info* for figure math). Plain text keeps newline paragraphs; HTML is used when the message contains tags |
 | `AppPreferences` | `SharedPreferences` wrapper; one settings blob per explorer |
 | `ScreenInsets` / `doOnScreenInsets` | Maps system bars and cutouts to layout-direction-aware start/end insets for floating overlays |
 | `ZoomFormat` | Human-readable zoom labels on all four explorer screens |
@@ -112,24 +112,35 @@ scales with zoom (`MandelbrotMath.iterationsFor`) and is capped to keep frames b
 
 `MandelbrotView` composites **tiles** instead of one full-view bitmap. Cached tiles live
 on power-of-two zoom steps (`MandelbrotTiles`), in an in-memory LRU plus an on-disk
-store (`MandelbrotTileCache`). Nearby zoom steps and parent tiles stand in, scaled,
+store (`MandelbrotTileCache`). Tile pixel size is 512 when the view's shorter edge is
+at least 900 px, otherwise 256. Nearby zoom steps and parent tiles stand in, scaled,
 while missing tiles render in the background. The loading circle appears while visible
-full-resolution tiles are still missing, including when a scaled parent or preview is
-already on screen, and shows how many of those tiles have finished. Prefetch of
-off-screen neighbours stays silent. Visible missing tiles render as one row-parallel
-pass (with cardioid/bulb interior early-out). Cached tiles store an 8-bit escape-time
-alpha map; `ColorMatrixColorFilter` applies the current `FractalPalette` at draw time,
-so a colour change does not invalidate the cache. Prefetch fills neighbours and the
-next 2× zoom after a gesture settles, a few tiles at a time. LRU eviction keeps the
-tiles the current frame still blits, including scaled parents. Disk eviction follows
-last *use*, including memory hits, so the default 1× view is not deleted just because
-it was written first.
+full-resolution tiles are still missing (`visibleTilesComplete`), including when a
+scaled parent or preview is already on screen, and shows how many of those tiles have
+finished. Prefetch of off-screen neighbours stays silent.
+
+`MandelbrotTiles.renderPlan` orders work toward the gesture focus, then prefetches in
+the pan direction, a one-tile ring, and the next 2× or ½× zoom step (whichever matches
+the current pinch). `selectNextWork` serves preview tiles during gestures only when
+holes remain (`visibleViewportCovered` is false); when idle it fills visible full-res
+tiles first, then homogeneous prefetch batches while memory allows. A contiguous visible
+batch renders as one bbox row-parallel pass when `isDenseTileBatch` is true; scattered
+keys render per tile in parallel. Completed renders are discarded when view width or
+height changed mid-flight (`viewGeometryMatches`), so tiles are not stored under keys
+that imply a different world grid. Cached tiles store an 8-bit escape-time alpha map;
+`ColorMatrixColorFilter` applies the current `FractalPalette` at draw time, so a colour
+change does not invalidate the cache. LRU eviction keeps the tiles the current frame
+still blits, including scaled parents. Disk eviction follows last *use*, including memory
+hits, so the default 1× view is not deleted just because it was written first.
 
 ### Settings and configuration changes
 
 `SettingsBottomSheet` publishes every change through the **Fragment Result API**
 (`setFragmentResult`), not through host callbacks. Callbacks assigned when the sheet opens
 are lost after a rotation, which previously made controls silently stop working.
+Geometry sliders (dots/skips, Spirograph radii) set `KEY_GEOMETRY_SETTLED` to `false`
+while the user is dragging and publish on release, so the host can rebuild the path
+without restarting the reveal on every step.
 
 Each host activity:
 
@@ -149,8 +160,8 @@ and save so stored values always match slider bounds.
 
 | Layer | Location | Examples |
 |-------|----------|----------|
-| Unit | `app/src/test/` | `StarMathTest`, `SpirographMathTest`, `JuliaMathTest`, `MandelbrotMathTest`, `FractalColoringTest`, `FractalPaletteTest`, `MandelbrotTilesTest`, `MandelbrotTileCacheTest`, `DrawViewMathTest`, `ScreenInsetsTest`, `HubLayoutTest` |
-| Instrumented | `app/src/androidTest/` | Settings round-trip, rotation survival, smoke launch per activity, hub scroll/version layout (`MainActivityTest`), debug applicationId and launcher title (`DebugBuildIdentityTest`) |
+| Unit | `app/src/test/` | `StarMathTest`, `StarDetailsTest`, `SpirographMathTest`, `SpirographDetailsTest`, `JuliaMathTest`, `MandelbrotMathTest`, `FractalColoringTest`, `FractalPaletteTest`, `MandelbrotTilesTest`, `MandelbrotTileCacheTest`, `DrawViewMathTest`, `InfoMessageTest`, `ScreenInsetsTest`, `HubLayoutTest`, `ZoomFormatTest` |
+| Instrumented | `app/src/androidTest/` | Settings round-trip, rotation survival, Help/Details sheet titles, smoke launch per activity, hub scroll/version layout (`MainActivityTest`), preferences (`AppPreferencesTest`), debug applicationId and launcher title (`DebugBuildIdentityTest`) |
 
 When adding behaviour, extend the matching `*Math` unit tests first. Reserve
 instrumented tests for Android integration (preferences, fragments, configuration
