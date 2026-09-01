@@ -34,7 +34,8 @@ sharper image catches up.
 set the fixed ring, rolling wheel, and pen distance. *Details* explains when the curve
 closes, using the same GCD arithmetic as the star figures.
 
-**Julia Sets:** Hold *c* fixed and iterate *z → z² + c* from every point in the plane.
+**Julia Sets:** Each point in the Mandelbrot set has its own Julia fractal for that
+value of *c*. Hold *c* fixed and iterate *z → z² + c* from every point in the plane.
 A slider steps through well-known constants (the Douady rabbit, San Marco, a Cantor
 dust, and more). Help explains whether that *c* sits inside the Mandelbrot set.
 
