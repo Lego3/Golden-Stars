@@ -269,6 +269,40 @@ class DrawViewMathTest {
     }
 
     @Test
+    fun `advance reveal progress scales elapsed play time by the active duration`() {
+        val start = RevealProgress(revealed = 0.2, lastPlayTimeMs = 500L, durationMs = 5000L)
+        val advanced = DrawViewMath.advanceRevealProgress(start, currentPlayTimeMs = 1500L)
+        assertEquals(0.4, advanced.revealed, 0.0)
+        assertEquals(1500L, advanced.lastPlayTimeMs)
+        assertEquals(5000L, advanced.durationMs)
+    }
+
+    @Test
+    fun `advance reveal progress clamps revealed at one and play time at duration`() {
+        val start = RevealProgress(revealed = 0.9, lastPlayTimeMs = 4500L, durationMs = 5000L)
+        val advanced = DrawViewMath.advanceRevealProgress(start, currentPlayTimeMs = 6000L)
+        assertEquals(1.0, advanced.revealed, 0.0)
+        assertEquals(5000L, advanced.lastPlayTimeMs)
+    }
+
+    @Test
+    fun `advance reveal progress ignores backward play time`() {
+        val start = RevealProgress(revealed = 0.5, lastPlayTimeMs = 2500L, durationMs = 5000L)
+        val advanced = DrawViewMath.advanceRevealProgress(start, currentPlayTimeMs = 1000L)
+        assertEquals(0.5, advanced.revealed, 0.0)
+        assertEquals(1000L, advanced.lastPlayTimeMs)
+    }
+
+    @Test
+    fun `advance reveal progress with zero duration only clamps revealed`() {
+        val start = RevealProgress(revealed = 1.5, lastPlayTimeMs = 0L, durationMs = 0L)
+        val advanced = DrawViewMath.advanceRevealProgress(start, currentPlayTimeMs = 1000L)
+        assertEquals(1.0, advanced.revealed, 0.0)
+        assertEquals(0L, advanced.lastPlayTimeMs)
+        assertEquals(0L, advanced.durationMs)
+    }
+
+    @Test
     fun `play time rounds fractional milliseconds to nearest instead of always up`() {
         // 1/7 revealed of 5000ms is 714.285…; ceil would seek to 715 and crawl forward.
         assertEquals(714L, DrawViewMath.playTimeMs(revealed = 1.0 / 7.0, durationMs = 5000L))

@@ -715,6 +715,43 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `diagonal pan expansion grows both axes without a uniform ring`() {
+        val base = MandelbrotTiles.TileRange(0, 2, 0, 1)
+        val diagonal = MandelbrotTiles.expandRange(base, panSignX = 1, panSignY = -1, extra = 1)
+        assertEquals(0L, diagonal.x0)
+        assertEquals(3L, diagonal.x1)
+        assertEquals(-1L, diagonal.y0)
+        assertEquals(1L, diagonal.y1)
+    }
+
+    @Test
+    fun `render plan prefetches along both pan axes during diagonal gestures`() {
+        val visibleRange = MandelbrotTiles.visibleTileRange(
+            -0.5, 0.0, 1.0, 800, 600, 0, 256,
+        )
+        val plan = MandelbrotTiles.renderPlan(
+            zoom = 1.0,
+            offsetX = -0.5,
+            offsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+            tilePixelSize = 256,
+            panSignX = 1,
+            panSignY = -1,
+            zoomSign = 0,
+            focusX = -0.5,
+            focusY = 0.0,
+            minZoom = 0.5,
+            maxZoom = 1.0e13,
+            isCached = { false },
+        )
+        val visible = plan.visibleFull.toSet()
+        assertTrue(plan.prefetch.none { it in visible })
+        assertTrue(plan.prefetch.any { it.tileX > visibleRange.x1 })
+        assertTrue(plan.prefetch.any { it.tileY < visibleRange.y0 })
+    }
+
+    @Test
     fun `sort toward focus puts the tile under the pointer first`() {
         val keys = listOf(
             MandelbrotTiles.TileKey(0, 4, 4, 256, 600, false),
