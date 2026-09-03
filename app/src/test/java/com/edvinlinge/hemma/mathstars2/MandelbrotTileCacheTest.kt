@@ -265,6 +265,45 @@ class MandelbrotTileCacheTest {
     }
 
     @Test
+    fun `putting the same key again updates memory byte accounting`() {
+        val cache = MandelbrotTileCache(maxMemoryBytes = 1024, diskDir = null, maxDiskBytes = 0)
+        val key = tileKey(0)
+        cache.put(key, ByteArray(100))
+        assertEquals(100L, cache.memoryBytes)
+        assertEquals(1, cache.memorySize)
+
+        cache.put(key, ByteArray(200))
+        assertEquals(200L, cache.memoryBytes)
+        assertEquals(1, cache.memorySize)
+        assertArrayEquals(ByteArray(200), cache.get(key)?.pixels)
+
+        cache.put(key, ByteArray(50))
+        assertEquals(50L, cache.memoryBytes)
+        assertEquals(1, cache.memorySize)
+        assertArrayEquals(ByteArray(50), cache.get(key)?.pixels)
+    }
+
+    @Test
+    fun `put overwrite triggers eviction with correct byte totals`() {
+        val cache = MandelbrotTileCache(maxMemoryBytes = 150, diskDir = null, maxDiskBytes = 0)
+        val evicted = mutableListOf<MandelbrotTiles.TileKey>()
+        cache.onEvicted = { evicted += it }
+
+        val first = tileKey(1)
+        val second = tileKey(2)
+        cache.put(first, ByteArray(100))
+        cache.put(second, ByteArray(100))
+        assertEquals(listOf(first), evicted)
+
+        evicted.clear()
+        cache.put(first, ByteArray(80))
+        assertEquals(listOf(second), evicted)
+        assertEquals(80L, cache.memoryBytes)
+        assertNotNull(cache.get(first))
+        assertNull(cache.get(second))
+    }
+
+    @Test
     fun `clear memory evicts every cached key through the callback`() {
         val cache = MandelbrotTileCache(maxMemoryBytes = 1024 * 1024, diskDir = null, maxDiskBytes = 0)
         val evicted = mutableListOf<MandelbrotTiles.TileKey>()
