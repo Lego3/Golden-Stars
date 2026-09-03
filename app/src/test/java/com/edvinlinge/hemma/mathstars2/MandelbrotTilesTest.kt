@@ -1041,6 +1041,29 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `select next work truncates visible full batches to the safety cap`() {
+        val visible = (0 until 80).map { id ->
+            MandelbrotTiles.TileKey(0, id.toLong(), 0, 256, 600, false)
+        }
+        val plan = MandelbrotTiles.RenderPlan(
+            visibleFull = visible,
+            visiblePreview = emptyList(),
+            prefetch = emptyList(),
+        )
+        val work = MandelbrotTiles.selectNextWork(
+            plan = plan,
+            isInteracting = false,
+            viewportCovered = false,
+            memoryBytes = 0L,
+            maxMemoryBytes = 64L * 1024L * 1024L,
+        )
+        assertEquals(MandelbrotTiles.MAX_VISIBLE_BATCH, work!!.keys.size)
+        assertEquals(visible.take(MandelbrotTiles.MAX_VISIBLE_BATCH), work.keys)
+        assertFalse(work.preview)
+        assertFalse(work.prefetch)
+    }
+
+    @Test
     fun `select next work prioritizes visible full tiles when idle`() {
         val visible = listOf(
             MandelbrotTiles.TileKey(0, 0, 0, 256, 600, false),
