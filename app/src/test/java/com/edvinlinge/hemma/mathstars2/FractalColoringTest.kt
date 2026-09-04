@@ -102,4 +102,29 @@ class FractalColoringTest {
     fun `color matrix has twenty entries`() {
         assertEquals(20, FractalColoring.colorMatrixValues(FractalPalette.BLUE).size)
     }
+
+    @Test
+    fun `hsv to rgb wraps hue across the circle`() {
+        val base = FractalColoring.hsvToRgb(10f, 0.7f, 1f)
+        assertEquals(base[0], FractalColoring.hsvToRgb(370f, 0.7f, 1f)[0], 1e-4f)
+        assertEquals(base[1], FractalColoring.hsvToRgb(370f, 0.7f, 1f)[1], 1e-4f)
+        assertEquals(base[2], FractalColoring.hsvToRgb(370f, 0.7f, 1f)[2], 1e-4f)
+        assertEquals(base[0], FractalColoring.hsvToRgb(-350f, 0.7f, 1f)[0], 1e-4f)
+    }
+
+    @Test
+    fun `hsv to rgb returns achromatic rgb when saturation is zero`() {
+        val rgb = FractalColoring.hsvToRgb(120f, 0f, 0.8f)
+        assertEquals(0.8f, rgb[0], 1e-4f)
+        assertEquals(0.8f, rgb[1], 1e-4f)
+        assertEquals(0.8f, rgb[2], 1e-4f)
+    }
+
+    @Test
+    fun `hsv to rgb hits sector boundaries without discontinuities`() {
+        val at60 = FractalColoring.hsvToRgb(60f, 1f, 1f)
+        val justBefore60 = FractalColoring.hsvToRgb(59.99f, 1f, 1f)
+        assertEquals(at60[0], justBefore60[0], 0.02f)
+        assertEquals(at60[1], justBefore60[1], 0.02f)
+    }
 }
