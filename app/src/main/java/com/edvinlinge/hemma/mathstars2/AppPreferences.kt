@@ -28,7 +28,7 @@ class AppPreferences private constructor(
         val speed: Float,
     )
 
-    fun loadStarSettings(): StarSettings = StarSettings(
+    fun loadStarSettings(): StarSettings = normalizedStarSettings(
         dots = prefs.getInt(KEY_STAR_DOTS, SettingsBottomSheet.DEFAULT_DOTS),
         skips = prefs.getInt(KEY_STAR_SKIPS, SettingsBottomSheet.DEFAULT_SKIPS),
         thickness = prefs.getFloat(KEY_STAR_THICKNESS, SettingsBottomSheet.DEFAULT_THICKNESS),
@@ -38,14 +38,41 @@ class AppPreferences private constructor(
     )
 
     fun saveStarSettings(settings: StarSettings) {
+        val normalized = normalizedStarSettings(
+            dots = settings.dots,
+            skips = settings.skips,
+            thickness = settings.thickness,
+            filled = settings.filled,
+            colorIndex = settings.colorIndex,
+            speed = settings.speed,
+        )
         prefs.edit {
-            putInt(KEY_STAR_DOTS, settings.dots)
-            putInt(KEY_STAR_SKIPS, settings.skips)
-            putFloat(KEY_STAR_THICKNESS, settings.thickness)
-            putBoolean(KEY_STAR_FILLED, settings.filled)
-            putInt(KEY_STAR_COLOR_INDEX, settings.colorIndex)
-            putFloat(KEY_STAR_SPEED, settings.speed)
+            putInt(KEY_STAR_DOTS, normalized.dots)
+            putInt(KEY_STAR_SKIPS, normalized.skips)
+            putFloat(KEY_STAR_THICKNESS, normalized.thickness)
+            putBoolean(KEY_STAR_FILLED, normalized.filled)
+            putInt(KEY_STAR_COLOR_INDEX, normalized.colorIndex)
+            putFloat(KEY_STAR_SPEED, normalized.speed)
         }
+    }
+
+    private fun normalizedStarSettings(
+        dots: Int,
+        skips: Int,
+        thickness: Float,
+        filled: Boolean,
+        colorIndex: Int,
+        speed: Float,
+    ): StarSettings {
+        val coercedDots = dots.coerceIn(MIN_STAR_DOTS, MAX_STAR_DOTS)
+        return StarSettings(
+            dots = coercedDots,
+            skips = StarMath.coercedSkips(coercedDots, skips),
+            thickness = thickness.coerceIn(MIN_STAR_THICKNESS, MAX_STAR_THICKNESS),
+            filled = filled,
+            colorIndex = colorIndex.coerceIn(0, MAX_STAR_COLOR_INDEX),
+            speed = speed.coerceIn(MIN_STAR_SPEED, MAX_STAR_SPEED),
+        )
     }
 
     fun loadMandelbrotColorIndex(): Int =
@@ -129,6 +156,20 @@ class AppPreferences private constructor(
         private const val KEY_JULIA_PRESET_INDEX = "julia_preset_index"
 
         private const val DEFAULT_STAR_SPEED = 1.0f
+
+        /** Matches the dots slider in [SettingsBottomSheet]. */
+        private const val MIN_STAR_DOTS = 5
+        private const val MAX_STAR_DOTS = 100
+
+        /** Matches the line-thickness slider in [SettingsBottomSheet]. */
+        private const val MIN_STAR_THICKNESS = 2f
+        private const val MAX_STAR_THICKNESS = 24f
+
+        /** Matches the speed slider on the star and Spirograph screens. */
+        private const val MIN_STAR_SPEED = 0.5f
+        private const val MAX_STAR_SPEED = 4.0f
+
+        private const val MAX_STAR_COLOR_INDEX = 3
 
         fun get(context: Context): AppPreferences =
             AppPreferences(context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE))
