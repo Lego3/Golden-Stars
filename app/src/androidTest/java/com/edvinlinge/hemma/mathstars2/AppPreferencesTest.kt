@@ -39,6 +39,41 @@ class AppPreferencesTest {
     }
 
     @Test
+    fun starSkipsOutsideSliderBoundsAreClampedOnLoad() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        context.getSharedPreferences(AppPreferences.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putInt("star_dots", 5)
+            .putInt("star_skips", 99)
+            .commit()
+
+        val loaded = preferences.loadStarSettings()
+        assertEquals(5, loaded.dots)
+        assertEquals(2, loaded.skips)
+    }
+
+    @Test
+    fun starSettingsOutsideSliderBoundsAreNormalizedOnSave() {
+        preferences.saveStarSettings(
+            AppPreferences.StarSettings(
+                dots = 200,
+                skips = 99,
+                thickness = 100f,
+                filled = true,
+                colorIndex = 9,
+                speed = 10f,
+            ),
+        )
+
+        val loaded = preferences.loadStarSettings()
+        assertEquals(100, loaded.dots)
+        assertEquals(50, loaded.skips)
+        assertEquals(24f, loaded.thickness, 0f)
+        assertEquals(3, loaded.colorIndex)
+        assertEquals(4f, loaded.speed, 0f)
+    }
+
+    @Test
     fun saveAndLoadMandelbrotColorIndex() {
         preferences.saveMandelbrotColorIndex(3)
         assertEquals(3, preferences.loadMandelbrotColorIndex())
