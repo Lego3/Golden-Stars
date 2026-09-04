@@ -69,7 +69,9 @@ views so it stays fast to test.
 - **`SpirographMath`** — Hypotrochoid / epitrochoid sampling, period and lobe counts
   (reuses `StarMath.gcd`), and view fitting.
 - **`MandelbrotMath`** — Viewport sizing, zoom-clamped iteration counts, escape-time
-  iteration, and the stale-bitmap transform used while renders catch up.
+  iteration with a fast path for the main cardioid and period-2 bulb
+  (`inMainCardioidOrPeriod2Bulb`), and the stale-bitmap transform used while renders
+  catch up.
 - **`JuliaMath`** — Preset constants of *c*, escape iteration from arbitrary *z₀*, and
   connected-set hints via the critical orbit (*z₀* = 0).
 
@@ -81,11 +83,13 @@ views so it stays fast to test.
 closed `Path`, then animate reveal with `PathMeasure` and `ValueAnimator`. Phase `1` is
 fully hidden, `0` is complete. Speed maps to duration via `DrawViewMath`; at high speed
 the figure draws instantly. Changing speed during a reveal retargets the running
-animator from a stored revealed fraction (`RevealProgress`). `shouldRetargetRevealSpeed`
-skips finished, instant, or idle reveals. The animator pauses while duration and play
-time are updated, then resumes, so no frame is drawn at the old timing. Play time is
-rounded to a whole millisecond for the seek, but that rounding is not written back
-into the fraction, so a slider drag cannot crawl the stroke. Reveals use a linear
+animator from a stored revealed fraction (`RevealProgress`). Between retargets,
+`advanceRevealProgress` keeps that fraction in sync with the animator's play time.
+`shouldRetargetRevealSpeed` skips finished, instant, or idle reveals. The animator
+pauses while duration and play time are updated, then resumes, so no frame is drawn
+at the old timing. Play time is rounded to a whole millisecond for the seek, but that
+rounding is not written back into the fraction, so a slider drag cannot crawl the
+stroke. Reveals use a linear
 interpolator so the remaining segment keeps constant speed after a retarget. Both
 views save `currentPhase` and viewport across configuration changes. Because
 `onSizeChanged` can start a fresh reveal before `onRestoreInstanceState`
@@ -103,10 +107,11 @@ scales with zoom (`MandelbrotMath.iterationsFor`) and is capped to keep frames b
 2. When idle, a **full** pass renders at view size (`requestFullRender`).
 3. Until the new bitmap arrives, the previous one is scaled and shifted using
    `MandelbrotMath.staleBitmapDrawTransform` so pan and pinch stay responsive.
-4. In-flight results are dropped when the viewport or Julia constant no
-   longer match (`shouldApplyRenderResult`), so a late preview cannot overwrite a
-   correct full-resolution frame. Palette is a draw-time colour filter over a
-   greyscale escape map, so changing colour does not rerender.
+4. In-flight results are dropped when the viewport, Julia constant, or view dimensions
+   no longer match what the job sampled (`JuliaMath.shouldApplyRenderResult`, including
+   `MandelbrotTiles.viewGeometryMatches`), so a late preview cannot overwrite a
+   correct full-resolution frame after rotation or resize. Palette is a draw-time
+   colour filter over a greyscale escape map, so changing colour does not rerender.
 5. Pixel buffers are written on a background dispatcher; `bufferJob` serializes access
    so a detached view never races with a new attach.
 
@@ -119,19 +124,29 @@ full-resolution tiles are still missing (`visibleTilesComplete`), including when
 scaled parent or preview is already on screen, and shows how many of those tiles have
 finished. Prefetch of off-screen neighbours stays silent.
 
-`MandelbrotTiles.renderPlan` orders work toward the gesture focus, then prefetches in
-the pan direction, a one-tile ring, and the next 2× or ½× zoom step (whichever matches
-the current pinch). `selectNextWork` serves preview tiles during gestures only when
-holes remain (`visibleViewportCovered` is false); when idle it fills visible full-res
-tiles first, then homogeneous prefetch batches while memory allows. A contiguous visible
-batch renders as one bbox row-parallel pass when `isDenseTileBatch` is true; scattered
-keys render per tile in parallel. Completed renders are discarded when view width or
-height changed mid-flight (`viewGeometryMatches`), so tiles are not stored under keys
-that imply a different world grid. Cached tiles store an 8-bit escape-time alpha map;
-`ColorMatrixColorFilter` applies the current `FractalPalette` at draw time, so a colour
-change does not invalidate the cache. LRU eviction keeps the tiles the current frame
-still blits, including scaled parents. Disk eviction follows last *use*, including memory
-hits, so the default 1× view is not deleted just because it was written first.
+`MandelbrotTiles.renderPlan` orders work toward the gesture focus, then prefetches a
+one-tile strip in the pan direction (both axes when panning diagonally), a one-tile
+ring around the viewport, and the next 2× or ½× zoom step (whichever matches the
+current pinch). Prefetch never queues tiles that are still visible on screen.
+`selectNextWork` serves preview tiles during gestures only when holes remain
+(`visibleViewportCovered` is false); when idle it fills visible full-res tiles first,
+then homogeneous prefetch batches while memory allows. A new gesture cancels in-flight
+prefetch (`activeWorkAction`) so visible sharpening takes priority; visible work is
+never interrupted. `mergeVisibleTileQueue` tracks which on-screen tiles still need
+full resolution; `spinnerHudState` drives the finished/queued label and clears counts
+when idle so a finished prefetch cannot leave a stale "3/10" on screen. A contiguous
+visible batch renders as one bbox row-parallel pass when `isDenseTileBatch` is true;
+scattered keys render per tile in parallel. Completed renders are discarded when view
+width or height changed mid-flight (`viewGeometryMatches`), and async installs also
+require a full pixel buffer and skip slots already covered by a full-res tile
+(`shouldInstallRenderedRange`, `shouldSkipTileCacheInstall`). Cached tiles store an
+8-bit escape-time alpha map; `ColorMatrixColorFilter` applies the current
+`FractalPalette` at draw time, so a colour change does not invalidate the cache. LRU
+eviction keeps the tiles the current frame still blits, including scaled parents.
+Disk eviction follows last *use*, including memory hits, so the default 1× view is not
+deleted just because it was written first. Last-use times are copied onto file metadata
+with a 30 s throttle (`MandelbrotTileCache.shouldFlushDiskAccessTime`) so gestures do
+not hammer the filesystem.
 
 ### Settings and configuration changes
 
