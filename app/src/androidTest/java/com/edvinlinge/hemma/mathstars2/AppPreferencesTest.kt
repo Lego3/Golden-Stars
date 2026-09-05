@@ -82,6 +82,46 @@ class AppPreferencesTest {
     }
 
     @Test
+    fun spirographSettingsOutsideSliderBoundsAreNormalizedOnSave() {
+        preferences.saveSpirographSettings(
+            AppPreferences.SpirographSettings(
+                fixedRadius = 80,
+                rollingRadius = 24,
+                penOffset = 18,
+                inside = false,
+                thickness = 100f,
+                colorIndex = 9,
+                speed = 10f,
+            ),
+        )
+
+        val loaded = preferences.loadSpirographSettings()
+        assertEquals(24f, loaded.thickness)
+        assertEquals(3, loaded.colorIndex)
+        assertEquals(4.0f, loaded.speed)
+    }
+
+    @Test
+    fun spirographSettingsOutsideSliderBoundsAreClampedOnLoad() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        context.getSharedPreferences(AppPreferences.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putInt("spiro_fixed", 80)
+            .putInt("spiro_rolling", 24)
+            .putInt("spiro_pen", 18)
+            .putBoolean("spiro_inside", false)
+            .putFloat("spiro_thickness", -5f)
+            .putInt("spiro_color_index", -1)
+            .putFloat("spiro_speed", 0.1f)
+            .commit()
+
+        val loaded = preferences.loadSpirographSettings()
+        assertEquals(2f, loaded.thickness)
+        assertEquals(0, loaded.colorIndex)
+        assertEquals(0.5f, loaded.speed)
+    }
+
+    @Test
     fun saveAndLoadJuliaSettings() {
         preferences.saveJuliaColorIndex(2)
         preferences.saveJuliaPresetIndex(5)
