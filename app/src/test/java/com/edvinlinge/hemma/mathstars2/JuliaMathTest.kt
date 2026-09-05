@@ -253,4 +253,24 @@ class JuliaMathTest {
         assertEquals("-0.391 - 0.587i", JuliaMath.formatConstant(-0.391, -0.587))
         assertEquals("0.355 + 0.355i", JuliaMath.formatConstant(0.355, 0.355))
     }
+
+    @Test
+    fun `format constant matches every preset label`() {
+        val expected = listOf(
+            "-0.123 + 0.745i",
+            "-0.75 + 0i",
+            "0 + 1i",
+            "-0.391 - 0.587i",
+            "-1 + 0i",
+            "-1.75 + 0i",
+            "-0.4 + 0.6i",
+            "0.355 + 0.355i",
+        )
+        JuliaMath.PRESETS.forEachIndexed { index, preset ->
+            assertEquals(
+                expected[index],
+                JuliaMath.formatConstant(preset.real, preset.imag),
+            )
+        }
+    }
 }
