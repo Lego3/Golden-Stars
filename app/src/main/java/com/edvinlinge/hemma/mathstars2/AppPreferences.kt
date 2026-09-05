@@ -55,40 +55,56 @@ class AppPreferences private constructor(
         prefs.edit { putInt(KEY_MANDELBROT_COLOR_INDEX, colorIndex) }
     }
 
-    fun loadSpirographSettings(): SpirographSettings {
-        val loaded = SpirographMath.normalized(
-            fixedRadius = prefs.getInt(KEY_SPIRO_FIXED, SpirographMath.DEFAULT_FIXED),
-            rollingRadius = prefs.getInt(KEY_SPIRO_ROLLING, SpirographMath.DEFAULT_ROLLING),
-            penOffset = prefs.getInt(KEY_SPIRO_PEN, SpirographMath.DEFAULT_PEN),
-            inside = prefs.getBoolean(KEY_SPIRO_INSIDE, SpirographMath.DEFAULT_INSIDE),
-        )
-        return SpirographSettings(
-            fixedRadius = loaded.fixedRadius,
-            rollingRadius = loaded.rollingRadius,
-            penOffset = loaded.penOffset,
-            inside = loaded.inside,
-            thickness = prefs.getFloat(KEY_SPIRO_THICKNESS, SettingsBottomSheet.DEFAULT_THICKNESS),
-            colorIndex = prefs.getInt(KEY_SPIRO_COLOR_INDEX, SettingsBottomSheet.DEFAULT_COLOR_INDEX),
-            speed = prefs.getFloat(KEY_SPIRO_SPEED, DEFAULT_STAR_SPEED),
-        )
-    }
+    fun loadSpirographSettings(): SpirographSettings = normalizedSpirographSettings(
+        fixedRadius = prefs.getInt(KEY_SPIRO_FIXED, SpirographMath.DEFAULT_FIXED),
+        rollingRadius = prefs.getInt(KEY_SPIRO_ROLLING, SpirographMath.DEFAULT_ROLLING),
+        penOffset = prefs.getInt(KEY_SPIRO_PEN, SpirographMath.DEFAULT_PEN),
+        inside = prefs.getBoolean(KEY_SPIRO_INSIDE, SpirographMath.DEFAULT_INSIDE),
+        thickness = prefs.getFloat(KEY_SPIRO_THICKNESS, SettingsBottomSheet.DEFAULT_THICKNESS),
+        colorIndex = prefs.getInt(KEY_SPIRO_COLOR_INDEX, SettingsBottomSheet.DEFAULT_COLOR_INDEX),
+        speed = prefs.getFloat(KEY_SPIRO_SPEED, DEFAULT_STAR_SPEED),
+    )
 
     fun saveSpirographSettings(settings: SpirographSettings) {
-        val normalized = SpirographMath.normalized(
-            settings.fixedRadius,
-            settings.rollingRadius,
-            settings.penOffset,
-            settings.inside,
+        val normalized = normalizedSpirographSettings(
+            fixedRadius = settings.fixedRadius,
+            rollingRadius = settings.rollingRadius,
+            penOffset = settings.penOffset,
+            inside = settings.inside,
+            thickness = settings.thickness,
+            colorIndex = settings.colorIndex,
+            speed = settings.speed,
         )
         prefs.edit {
             putInt(KEY_SPIRO_FIXED, normalized.fixedRadius)
             putInt(KEY_SPIRO_ROLLING, normalized.rollingRadius)
             putInt(KEY_SPIRO_PEN, normalized.penOffset)
             putBoolean(KEY_SPIRO_INSIDE, normalized.inside)
-            putFloat(KEY_SPIRO_THICKNESS, settings.thickness)
-            putInt(KEY_SPIRO_COLOR_INDEX, settings.colorIndex)
-            putFloat(KEY_SPIRO_SPEED, settings.speed)
+            putFloat(KEY_SPIRO_THICKNESS, normalized.thickness)
+            putInt(KEY_SPIRO_COLOR_INDEX, normalized.colorIndex)
+            putFloat(KEY_SPIRO_SPEED, normalized.speed)
         }
+    }
+
+    private fun normalizedSpirographSettings(
+        fixedRadius: Int,
+        rollingRadius: Int,
+        penOffset: Int,
+        inside: Boolean,
+        thickness: Float,
+        colorIndex: Int,
+        speed: Float,
+    ): SpirographSettings {
+        val geometry = SpirographMath.normalized(fixedRadius, rollingRadius, penOffset, inside)
+        return SpirographSettings(
+            fixedRadius = geometry.fixedRadius,
+            rollingRadius = geometry.rollingRadius,
+            penOffset = geometry.penOffset,
+            inside = geometry.inside,
+            thickness = thickness.coerceIn(MIN_LINE_THICKNESS, MAX_LINE_THICKNESS),
+            colorIndex = colorIndex.coerceIn(0, MAX_COLOR_INDEX),
+            speed = speed.coerceIn(MIN_SPEED, MAX_SPEED),
+        )
     }
 
     fun loadJuliaColorIndex(): Int =
@@ -129,6 +145,16 @@ class AppPreferences private constructor(
         private const val KEY_JULIA_PRESET_INDEX = "julia_preset_index"
 
         private const val DEFAULT_STAR_SPEED = 1.0f
+
+        /** Matches the line-thickness slider in [SettingsBottomSheet]. */
+        private const val MIN_LINE_THICKNESS = 2f
+        private const val MAX_LINE_THICKNESS = 24f
+
+        /** Matches the speed slider on the star and Spirograph screens. */
+        private const val MIN_SPEED = 0.5f
+        private const val MAX_SPEED = 4.0f
+
+        private const val MAX_COLOR_INDEX = 3
 
         fun get(context: Context): AppPreferences =
             AppPreferences(context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE))

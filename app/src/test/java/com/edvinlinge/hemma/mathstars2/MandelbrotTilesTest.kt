@@ -1337,4 +1337,51 @@ class MandelbrotTilesTest {
         val full = if (key.preview) key.copy(preview = false) else key
         return full in cached || key in cached
     }
+
+    @Test
+    fun `zoom step treats zero and negative zoom as the minimum positive value`() {
+        val zeroStep = MandelbrotTiles.zoomStep(0.0)
+        val negativeStep = MandelbrotTiles.zoomStep(-1.0)
+        val minValueStep = MandelbrotTiles.zoomStep(Double.MIN_VALUE)
+
+        assertEquals(minValueStep, zeroStep)
+        assertEquals(minValueStep, negativeStep)
+        assertTrue(zeroStep < -1000)
+    }
+
+    @Test
+    fun `discrete zoom stays finite for extreme zoom steps from zero zoom`() {
+        val step = MandelbrotTiles.zoomStep(0.0)
+        val discrete = MandelbrotTiles.discreteZoom(step)
+        assertTrue(discrete.isFinite())
+        assertTrue(discrete > 0.0)
+    }
+
+    @Test
+    fun `visible tile range returns empty when tile world size is zero`() {
+        val range = MandelbrotTiles.visibleTileRange(
+            offsetX = -0.5,
+            offsetY = 0.0,
+            zoom = 1.0,
+            viewWidth = 800,
+            viewHeight = 600,
+            zoomStep = 0,
+            tilePixelSize = 0,
+        )
+        assertEquals(MandelbrotTiles.TileRange(0, 0, 0, 0), range)
+    }
+
+    @Test
+    fun `visible full keys returns empty for zero view dimensions`() {
+        assertTrue(
+            MandelbrotTiles.visibleFullKeys(
+                zoom = 1.0,
+                offsetX = -0.5,
+                offsetY = 0.0,
+                viewWidth = 0,
+                viewHeight = 600,
+                tilePixelSize = 256,
+            ).isEmpty(),
+        )
+    }
 }
