@@ -766,7 +766,12 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             focusComplexX = offsetX
             focusComplexY = offsetY
             zoomCallback?.invoke(zoom)
+            // Match onSizeChanged: bumping the epoch alone leaves ensureWorkScheduled
+            // skipping while the pre-restore job still runs, and that job's finally block
+            // will not reschedule once the epoch no longer matches.
             workEpoch++
+            workJob?.cancel()
+            currentWorkIsPrefetch = false
             requestFullRender()
         } else {
             super.onRestoreInstanceState(state)
