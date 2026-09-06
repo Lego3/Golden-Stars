@@ -184,16 +184,26 @@ class SpirographActivity : AppCompatActivity() {
         val newInside = result.getBoolean(SettingsBottomSheet.KEY_INSIDE, inside)
         val normalized = SpirographMath.normalized(newFixed, newRolling, newPen, newInside)
 
-        if (normalized != SpirographMath.Params(fixedRadius, rollingRadius, penOffset, inside)) {
-            fixedRadius = normalized.fixedRadius
-            rollingRadius = normalized.rollingRadius
-            penOffset = normalized.penOffset
-            inside = normalized.inside
-            binding.spirographView.setGeometry(
-                fixedRadius, rollingRadius, penOffset, inside, animate = settled,
+        val geometryChanged =
+            normalized != SpirographMath.Params(fixedRadius, rollingRadius, penOffset, inside)
+        when (
+            val action = DrawViewMath.geometryDragAction(
+                geometryChanged = geometryChanged,
+                settled = settled,
+                wasSettled = geometrySettled,
             )
-        } else if (settled && !geometrySettled) {
-            binding.spirographView.replay()
+        ) {
+            is DrawViewMath.GeometryDragAction.Update -> {
+                fixedRadius = normalized.fixedRadius
+                rollingRadius = normalized.rollingRadius
+                penOffset = normalized.penOffset
+                inside = normalized.inside
+                binding.spirographView.setGeometry(
+                    fixedRadius, rollingRadius, penOffset, inside, animate = action.animate,
+                )
+            }
+            DrawViewMath.GeometryDragAction.Replay -> binding.spirographView.replay()
+            DrawViewMath.GeometryDragAction.None -> Unit
         }
         geometrySettled = settled
 

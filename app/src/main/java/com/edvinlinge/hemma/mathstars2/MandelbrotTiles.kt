@@ -685,6 +685,56 @@ internal object MandelbrotTiles {
         else -> PostWorkAction.ForceIdle
     }
 
+    data class TileKeyRenderClassification(
+        val hydratedFromDisk: Map<TileKey, ByteArray>,
+        val toCompute: List<TileKey>,
+        val skippedCached: Int,
+    )
+
+    /**
+     * Mirrors [com.edvinlinge.hemma.mathstars2.MandelbrotView.renderWork]: skip keys already in
+     * cache (including a full-res sibling), accept valid disk payloads, and return the rest for
+     * CPU render.
+     */
+    fun classifyKeysForRender(
+        keys: List<TileKey>,
+        isCached: (TileKey) -> Boolean,
+        diskPixels: (TileKey) -> ByteArray?,
+    ): TileKeyRenderClassification {
+        val hydrated = LinkedHashMap<TileKey, ByteArray>(keys.size)
+        val compute = ArrayList<TileKey>(keys.size)
+        var skipped = 0
+        for (key in keys) {
+            if (isCached(key) || isCached(key.copy(preview = false))) {
+                skipped++
+                continue
+            }
+            val pixels = diskPixels(key)
+            if (pixels != null && acceptsTilePixelPayload(key, pixels)) {
+                hydrated[key] = pixels
+                continue
+            }
+            compute += key
+        }
+        return TileKeyRenderClassification(
+            hydratedFromDisk = hydrated,
+            toCompute = compute,
+            skippedCached = skipped,
+        )
+    }
+
+    /**
+     * After [workEpoch] is bumped on viewport restore, [ensureWorkScheduled] with
+     * cancelPrefetch=true skips when visible sharpening is still active. The stale job's finally
+     * block will not reschedule, leaving tiles stuck until the user pans.
+     */
+    fun viewportRestoreWouldSkipScheduling(workActive: Boolean, workIsPrefetch: Boolean): Boolean =
+        workActive && activeWorkAction(
+            workActive = true,
+            cancelPrefetch = true,
+            workIsPrefetch = workIsPrefetch,
+        ) == ActiveWorkAction.Skip
+
     /**
      * Combines the spinner predicate with HUD progress. When idle, counts reset to 0/0 so a
      * finished prefetch does not leave a stale "3/10" label on screen.
