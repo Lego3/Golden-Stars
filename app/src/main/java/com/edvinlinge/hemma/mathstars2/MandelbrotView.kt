@@ -331,20 +331,23 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     }
 
     private suspend fun renderWork(item: WorkItem) {
-        val missing = ArrayList<MandelbrotTiles.TileKey>(item.keys.size)
+        val diskPayloads = LinkedHashMap<MandelbrotTiles.TileKey, ByteArray>(item.keys.size)
         for (key in item.keys) {
-            if (tileCache.contains(key) || tileCache.contains(key.copy(preview = false))) {
-                continue
-            }
+            if (tileCache.contains(key) || tileCache.contains(key.copy(preview = false))) continue
             val fromDisk = withContext(Dispatchers.IO) { tileCache.loadFromDisk(key) }
-            if (fromDisk != null && MandelbrotTiles.acceptsTilePixelPayload(key, fromDisk.pixels)) {
-                tileCache.put(key, fromDisk.pixels, fromDisk.preview, visibleCacheKeys())
-                invalidate()
-                updateRenderingState()
-                continue
-            }
-            missing += key
+            if (fromDisk != null) diskPayloads[key] = fromDisk.pixels
         }
+        val classification = MandelbrotTiles.classifyKeysForRender(
+            keys = item.keys,
+            isCached = { tileCache.contains(it) },
+            diskPixels = { diskPayloads[it] },
+        )
+        for ((key, pixels) in classification.hydratedFromDisk) {
+            tileCache.put(key, pixels, key.preview, visibleCacheKeys())
+            invalidate()
+            updateRenderingState()
+        }
+        val missing = classification.toCompute
         if (missing.isEmpty()) {
             invalidate()
             updateRenderingState()
@@ -766,7 +769,12 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             focusComplexX = offsetX
             focusComplexY = offsetY
             zoomCallback?.invoke(zoom)
+            // Match onSizeChanged: bumping the epoch alone leaves ensureWorkScheduled
+            // skipping while the pre-restore job still runs, and that job's finally block
+            // will not reschedule once the epoch no longer matches.
             workEpoch++
+            workJob?.cancel()
+            currentWorkIsPrefetch = false
             requestFullRender()
         } else {
             super.onRestoreInstanceState(state)

@@ -1315,6 +1315,76 @@ class MandelbrotTilesTest {
         assertTrue(forced.clearTrackedQueue)
     }
 
+    @Test
+    fun `viewport restore skips scheduling while visible sharpening is still active`() {
+        assertTrue(
+            MandelbrotTiles.viewportRestoreWouldSkipScheduling(
+                workActive = true,
+                workIsPrefetch = false,
+            ),
+        )
+        assertFalse(
+            MandelbrotTiles.viewportRestoreWouldSkipScheduling(
+                workActive = true,
+                workIsPrefetch = true,
+            ),
+        )
+        assertFalse(
+            MandelbrotTiles.viewportRestoreWouldSkipScheduling(
+                workActive = false,
+                workIsPrefetch = false,
+            ),
+        )
+    }
+
+    @Test
+    fun `classify keys for render skips cached tiles and full resolution siblings`() {
+        val full = MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = false)
+        val preview = full.copy(preview = true)
+        val missing = MandelbrotTiles.TileKey(1, 0, 0, 256, 600, preview = false)
+        val cached = setOf(full)
+
+        val skipsFullSibling = MandelbrotTiles.classifyKeysForRender(
+            keys = listOf(preview),
+            isCached = { it in cached },
+            diskPixels = { null },
+        )
+        assertEquals(1, skipsFullSibling.skippedCached)
+        assertTrue(skipsFullSibling.hydratedFromDisk.isEmpty())
+        assertTrue(skipsFullSibling.toCompute.isEmpty())
+
+        val needsCompute = MandelbrotTiles.classifyKeysForRender(
+            keys = listOf(missing),
+            isCached = { it in cached },
+            diskPixels = { null },
+        )
+        assertEquals(0, needsCompute.skippedCached)
+        assertEquals(listOf(missing), needsCompute.toCompute)
+    }
+
+    @Test
+    fun `classify keys for render hydrates valid disk payloads and rejects corrupt ones`() {
+        val full = MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = false)
+        val preview = full.copy(preview = true)
+        val valid = ByteArray(256 * 256)
+        val truncated = ByteArray(256 * 255)
+
+        val hydrated = MandelbrotTiles.classifyKeysForRender(
+            keys = listOf(full, preview),
+            isCached = { false },
+            diskPixels = { key ->
+                when (key) {
+                    full -> valid
+                    preview -> truncated
+                    else -> null
+                }
+            },
+        )
+        assertEquals(0, hydrated.skippedCached)
+        assertEquals(mapOf(full to valid), hydrated.hydratedFromDisk)
+        assertEquals(listOf(preview), hydrated.toCompute)
+    }
+
     private fun renderPlanWithEmptyGesture(cached: Set<MandelbrotTiles.TileKey>): MandelbrotTiles.RenderPlan =
         MandelbrotTiles.renderPlan(
             zoom = 1.0,
