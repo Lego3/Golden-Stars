@@ -410,4 +410,48 @@ class DrawViewMathTest {
             DrawViewMath.revealRestoreAction(currentPhase = 2f, instantRender = false, pathLength = 100f),
         )
     }
+
+    @Test
+    fun `geometry drag previews immediately while slider moves and replays when finger lifts`() {
+        assertEquals(
+            DrawViewMath.GeometryDragAction.Update(animate = false),
+            DrawViewMath.geometryDragAction(
+                geometryChanged = true,
+                settled = false,
+                wasSettled = true,
+            ),
+        )
+        assertEquals(
+            DrawViewMath.GeometryDragAction.Update(animate = true),
+            DrawViewMath.geometryDragAction(
+                geometryChanged = true,
+                settled = true,
+                wasSettled = false,
+            ),
+        )
+        assertEquals(
+            DrawViewMath.GeometryDragAction.Replay,
+            DrawViewMath.geometryDragAction(
+                geometryChanged = false,
+                settled = true,
+                wasSettled = false,
+            ),
+        )
+        assertEquals(
+            DrawViewMath.GeometryDragAction.None,
+            DrawViewMath.geometryDragAction(
+                geometryChanged = false,
+                settled = false,
+                wasSettled = false,
+            ),
+        )
+        assertEquals(
+            DrawViewMath.GeometryDragAction.None,
+            DrawViewMath.geometryDragAction(
+                geometryChanged = false,
+                settled = true,
+                wasSettled = true,
+            ),
+        )
+    }
 }

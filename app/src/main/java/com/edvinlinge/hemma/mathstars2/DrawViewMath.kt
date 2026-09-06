@@ -156,6 +156,27 @@ internal object DrawViewMath {
         else -> RevealRestoreAction.RESUME
     }
 
+    /** What to do when geometry sliders move in the settings sheet. */
+    internal sealed class GeometryDragAction {
+        data class Update(val animate: Boolean) : GeometryDragAction()
+        data object Replay : GeometryDragAction()
+        data object None : GeometryDragAction()
+    }
+
+    /**
+     * While a slider is dragged, geometry updates preview immediately without animation; when the
+     * finger lifts with unchanged geometry, replay the saved reveal once.
+     */
+    fun geometryDragAction(
+        geometryChanged: Boolean,
+        settled: Boolean,
+        wasSettled: Boolean,
+    ): GeometryDragAction = when {
+        geometryChanged -> GeometryDragAction.Update(animate = settled)
+        settled && !wasSettled -> GeometryDragAction.Replay
+        else -> GeometryDragAction.None
+    }
+
     /**
      * Adjusts pan offsets after a zoom change so the content under ([focusX], [focusY]) stays
      * fixed on screen.

@@ -178,14 +178,20 @@ class DrawActivity : AppCompatActivity() {
 
         val newDots = result.getInt(SettingsBottomSheet.KEY_DOTS, dots)
         val newSkips = result.getInt(SettingsBottomSheet.KEY_SKIPS, skips)
-        if (newDots != dots || newSkips != skips) {
-            dots = newDots
-            skips = newSkips
-            // Dragging a slider shows each shape immediately; the reveal animation is saved for
-            // when the finger lifts, instead of restarting on every step of the drag.
-            binding.drawView.setGeometry(dots, skips, animate = settled)
-        } else if (settled && !geometrySettled) {
-            binding.drawView.replay()
+        when (
+            val action = DrawViewMath.geometryDragAction(
+                geometryChanged = newDots != dots || newSkips != skips,
+                settled = settled,
+                wasSettled = geometrySettled,
+            )
+        ) {
+            is DrawViewMath.GeometryDragAction.Update -> {
+                dots = newDots
+                skips = newSkips
+                binding.drawView.setGeometry(dots, skips, animate = action.animate)
+            }
+            DrawViewMath.GeometryDragAction.Replay -> binding.drawView.replay()
+            DrawViewMath.GeometryDragAction.None -> Unit
         }
         geometrySettled = settled
 
