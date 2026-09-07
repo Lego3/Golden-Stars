@@ -1041,6 +1041,29 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `select next work truncates preview batches during gestures to the safety cap`() {
+        val preview = (0 until 80).map { id ->
+            MandelbrotTiles.TileKey(0, id.toLong(), 0, 256, 600, preview = true)
+        }
+        val plan = MandelbrotTiles.RenderPlan(
+            visibleFull = emptyList(),
+            visiblePreview = preview,
+            prefetch = emptyList(),
+        )
+        val work = MandelbrotTiles.selectNextWork(
+            plan = plan,
+            isInteracting = true,
+            viewportCovered = false,
+            memoryBytes = 0L,
+            maxMemoryBytes = 64L * 1024L * 1024L,
+        )
+        assertEquals(MandelbrotTiles.MAX_VISIBLE_BATCH, work!!.keys.size)
+        assertEquals(preview.take(MandelbrotTiles.MAX_VISIBLE_BATCH), work.keys)
+        assertTrue(work.preview)
+        assertFalse(work.prefetch)
+    }
+
+    @Test
     fun `select next work prioritizes visible full tiles when idle`() {
         val visible = listOf(
             MandelbrotTiles.TileKey(0, 0, 0, 256, 600, false),

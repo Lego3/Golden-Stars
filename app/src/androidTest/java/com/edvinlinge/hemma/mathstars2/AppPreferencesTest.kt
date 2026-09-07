@@ -45,6 +45,22 @@ class AppPreferencesTest {
     }
 
     @Test
+    fun mandelbrotColorIndexOutsideThePaletteListIsClamped() {
+        preferences.saveMandelbrotColorIndex(99)
+        assertEquals(FractalPalette.entries.lastIndex, preferences.loadMandelbrotColorIndex())
+    }
+
+    @Test
+    fun corruptMandelbrotColorIndexIsClampedOnLoad() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        context.getSharedPreferences(AppPreferences.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putInt("mandelbrot_color_index", -1)
+            .commit()
+        assertEquals(0, AppPreferences.get(context).loadMandelbrotColorIndex())
+    }
+
+    @Test
     fun saveAndLoadSpirographSettings() {
         val settings = AppPreferences.SpirographSettings(
             fixedRadius = 80,
@@ -88,6 +104,12 @@ class AppPreferencesTest {
 
         assertEquals(2, preferences.loadJuliaColorIndex())
         assertEquals(5, preferences.loadJuliaPresetIndex())
+    }
+
+    @Test
+    fun juliaColorIndexOutsideThePaletteListIsClamped() {
+        preferences.saveJuliaColorIndex(-5)
+        assertEquals(0, preferences.loadJuliaColorIndex())
     }
 
     @Test
