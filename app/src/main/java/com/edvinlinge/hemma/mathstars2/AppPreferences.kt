@@ -75,11 +75,14 @@ class AppPreferences private constructor(
         )
     }
 
-    fun loadMandelbrotColorIndex(): Int =
-        prefs.getInt(KEY_MANDELBROT_COLOR_INDEX, SettingsBottomSheet.DEFAULT_COLOR_INDEX)
+    fun loadMandelbrotColorIndex(): Int = normalizedFractalColorIndex(
+        prefs.getInt(KEY_MANDELBROT_COLOR_INDEX, SettingsBottomSheet.DEFAULT_COLOR_INDEX),
+    )
 
     fun saveMandelbrotColorIndex(colorIndex: Int) {
-        prefs.edit { putInt(KEY_MANDELBROT_COLOR_INDEX, colorIndex) }
+        prefs.edit {
+            putInt(KEY_MANDELBROT_COLOR_INDEX, normalizedFractalColorIndex(colorIndex))
+        }
     }
 
     fun loadSpirographSettings(): SpirographSettings = normalizedSpirographSettings(
@@ -134,11 +137,14 @@ class AppPreferences private constructor(
         )
     }
 
-    fun loadJuliaColorIndex(): Int =
-        prefs.getInt(KEY_JULIA_COLOR_INDEX, SettingsBottomSheet.DEFAULT_COLOR_INDEX)
+    fun loadJuliaColorIndex(): Int = normalizedFractalColorIndex(
+        prefs.getInt(KEY_JULIA_COLOR_INDEX, SettingsBottomSheet.DEFAULT_COLOR_INDEX),
+    )
 
     fun saveJuliaColorIndex(colorIndex: Int) {
-        prefs.edit { putInt(KEY_JULIA_COLOR_INDEX, colorIndex) }
+        prefs.edit {
+            putInt(KEY_JULIA_COLOR_INDEX, normalizedFractalColorIndex(colorIndex))
+        }
     }
 
     fun loadJuliaPresetIndex(): Int =
@@ -149,6 +155,9 @@ class AppPreferences private constructor(
     fun saveJuliaPresetIndex(presetIndex: Int) {
         prefs.edit { putInt(KEY_JULIA_PRESET_INDEX, JuliaMath.coercedPresetIndex(presetIndex)) }
     }
+
+    private fun normalizedFractalColorIndex(colorIndex: Int): Int =
+        colorIndex.coerceIn(0, FractalPalette.entries.lastIndex)
 
     companion object {
         /** SharedPreferences file included in Android backup rules. */
