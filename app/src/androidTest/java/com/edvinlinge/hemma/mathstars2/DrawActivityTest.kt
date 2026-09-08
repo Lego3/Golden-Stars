@@ -55,6 +55,30 @@ class DrawActivityTest {
     }
 
     @Test
+    fun coercesInvalidLaunchExtras() {
+        launchResumedActivity<DrawActivity> {
+            putExtra(DrawActivity.EXTRA_DOTS, 5)
+            putExtra(DrawActivity.EXTRA_SKIPS, 99)
+        }.use {
+            onView(withId(R.id.drawView)).check(
+                matches(withContentDescription(containsString("5 dots, moving 2 at a time"))),
+            )
+        }
+    }
+
+    @Test
+    fun coercesOutOfRangeDotsFromLaunchExtras() {
+        launchResumedActivity<DrawActivity> {
+            putExtra(DrawActivity.EXTRA_DOTS, 3)
+            putExtra(DrawActivity.EXTRA_SKIPS, 2)
+        }.use {
+            onView(withId(R.id.drawView)).check(
+                matches(withContentDescription(containsString("5 dots, moving 2 at a time"))),
+            )
+        }
+    }
+
+    @Test
     fun opensSettingsSheet() {
         launchResumedActivity<DrawActivity>().use {
             onView(withId(R.id.settingsButton)).perform(click())

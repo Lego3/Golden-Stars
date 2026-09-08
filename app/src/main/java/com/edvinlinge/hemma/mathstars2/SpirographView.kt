@@ -251,18 +251,17 @@ class SpirographView(context: Context, attrs: AttributeSet?) : View(context, att
      * whole millisecond cannot accumulate while the speed slider is dragged.
      */
     private fun retargetRunningReveal() {
-        if (!DrawViewMath.shouldRetargetRevealSpeed(isRevealing, instantRender, currentPhase)) {
-            return
-        }
         val running = animator ?: return
         if (!running.isRunning) return
-        val progress = revealProgress
-            ?: DrawViewMath.revealProgressFromPhase(currentPhase, running.duration)
-        val retargeted = DrawViewMath.retargetRevealProgress(
-            progress,
+        val retargeted = DrawViewMath.planRevealSpeedRetarget(
+            isRevealing = isRevealing,
+            instantRender = instantRender,
+            currentPhase = currentPhase,
+            storedProgress = revealProgress,
             currentPlayTimeMs = running.currentPlayTime,
+            currentDurationMs = running.duration,
             newDurationMs = animationDuration,
-        )
+        ) ?: return
         revealProgress = retargeted
         running.pause()
         running.duration = animationDuration

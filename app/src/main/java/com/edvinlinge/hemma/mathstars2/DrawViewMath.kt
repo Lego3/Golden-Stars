@@ -133,6 +133,47 @@ internal object DrawViewMath {
     }
 
     /**
+     * Computes the seek target for a live speed change. The caller must pause the animator
+     * before applying [RevealProgress.durationMs] and [RevealProgress.lastPlayTimeMs], or one
+     * frame can render at the old play time under the new duration and flash toward complete.
+     */
+    fun planRevealSpeedRetarget(
+        isRevealing: Boolean,
+        instantRender: Boolean,
+        currentPhase: Float,
+        storedProgress: RevealProgress?,
+        currentPlayTimeMs: Long,
+        currentDurationMs: Long,
+        newDurationMs: Long,
+    ): RevealProgress? {
+        if (!shouldRetargetRevealSpeed(isRevealing, instantRender, currentPhase)) return null
+        val progress = storedProgress ?: revealProgressFromPhase(currentPhase, currentDurationMs)
+        return retargetRevealProgress(progress, currentPlayTimeMs, newDurationMs)
+    }
+
+    /** Revealed fraction at [playTimeMs] for a linear 1→0 reveal of length [durationMs]. */
+    fun revealedFractionAtPlayTime(playTimeMs: Long, durationMs: Long): Double {
+        if (durationMs <= 0L) return 0.0
+        return (playTimeMs.coerceIn(0L, durationMs).toDouble() / durationMs.toDouble())
+            .coerceIn(0.0, 1.0)
+    }
+
+    /**
+     * True when applying [newDurationMs] before updating play time would overshoot the current
+     * revealed fraction — the flash [DrawView.retargetRunningReveal] avoids by pausing first.
+     */
+    fun durationChangeWouldFlashReveal(
+        playTimeMs: Long,
+        oldDurationMs: Long,
+        newDurationMs: Long,
+    ): Boolean {
+        if (oldDurationMs <= 0L || newDurationMs <= 0L || oldDurationMs == newDurationMs) return false
+        val current = revealedFractionAtPlayTime(playTimeMs, oldDurationMs)
+        val ifDurationFirst = revealedFractionAtPlayTime(playTimeMs, newDurationMs)
+        return ifDurationFirst > current + 1e-9 || ifDurationFirst < current - 1e-9
+    }
+
+    /**
      * True when a speed change should seek the in-progress reveal from stored
      * progress, so the new duration applies immediately instead of on the next replay.
      */
