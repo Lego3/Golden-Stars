@@ -122,8 +122,9 @@ See [AGENTS.md](AGENTS.md) for the Cloud-only demo workflow.
 
 ## Continuous integration
 
-GitHub Actions (`.github/workflows/android-ci.yml`) runs on every pull request to
-`master`. Required checks always report; jobs fast-pass in seconds when a PR does not
+GitHub Actions (`.github/workflows/android-ci.yml`) runs on every pull request,
+including stacked cars whose base is the previous layer rather than `master`.
+Required checks always report; jobs fast-pass in seconds when a PR does not
 touch Android-related paths. Pushes to `master` still use path filters to skip
 unnecessary builds.
 

@@ -15,8 +15,13 @@ on:
   # Always run on pull requests so required status checks are reported even when
   # this workflow file's path filters would otherwise skip the run. Individual
   # jobs decide internally whether to build or pass quickly.
+  #
+  # Do not filter `pull_request` by base branch. GitHub stacked PRs keep their
+  # actual base as the previous layer. The documented "treat as targeting the
+  # stack trunk" trigger does not currently start this workflow, so a
+  # `branches: [master]` filter leaves the required "Build, lint & unit test"
+  # check pending forever on every car except the bottom one.
   pull_request:
-    branches: ["master"]
   workflow_dispatch:
 
 # Cancel superseded runs on the same branch/PR to save CI minutes.
