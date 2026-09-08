@@ -103,8 +103,12 @@ class DrawActivity : AppCompatActivity() {
 
     private fun restoreSettings(savedInstanceState: Bundle?) {
         if (savedInstanceState != null) {
-            dots = savedInstanceState.getInt(SettingsBottomSheet.KEY_DOTS, dots)
-            skips = savedInstanceState.getInt(SettingsBottomSheet.KEY_SKIPS, skips)
+            val restored = StarMath.normalizedGeometry(
+                dots = savedInstanceState.getInt(SettingsBottomSheet.KEY_DOTS, dots),
+                skips = savedInstanceState.getInt(SettingsBottomSheet.KEY_SKIPS, skips),
+            )
+            dots = restored.dots
+            skips = restored.skips
             thickness = savedInstanceState.getFloat(SettingsBottomSheet.KEY_THICKNESS, thickness)
             filled = savedInstanceState.getBoolean(SettingsBottomSheet.KEY_FILLED, filled)
             colorIndex = savedInstanceState.getInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
@@ -113,8 +117,12 @@ class DrawActivity : AppCompatActivity() {
         }
 
         if (intent.hasExtra(EXTRA_DOTS) || intent.hasExtra(EXTRA_SKIPS)) {
-            dots = intent.getIntExtra(EXTRA_DOTS, dots)
-            skips = intent.getIntExtra(EXTRA_SKIPS, skips)
+            val restored = StarMath.normalizedGeometry(
+                dots = intent.getIntExtra(EXTRA_DOTS, dots),
+                skips = intent.getIntExtra(EXTRA_SKIPS, skips),
+            )
+            dots = restored.dots
+            skips = restored.skips
             return
         }
 

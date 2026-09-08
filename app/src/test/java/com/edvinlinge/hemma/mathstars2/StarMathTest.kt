@@ -185,6 +185,14 @@ class StarMathTest {
     }
 
     @Test
+    fun `normalized geometry clamps dots and skips for restore paths`() {
+        assertEquals(StarMath.Geometry(dots = 5, skips = 2), StarMath.normalizedGeometry(dots = 3, skips = 2))
+        assertEquals(StarMath.Geometry(dots = 100, skips = 50), StarMath.normalizedGeometry(dots = 200, skips = 60))
+        assertEquals(StarMath.Geometry(dots = 5, skips = 2), StarMath.normalizedGeometry(dots = 5, skips = 99))
+        assertEquals(StarMath.Geometry(dots = 7, skips = 3), StarMath.normalizedGeometry(dots = 7, skips = 5))
+    }
+
+    @Test
     fun `coerced skips stay within slider bounds when dot count shrinks`() {
         assertEquals(2, StarMath.coercedSkips(dots = 5, skips = 2))
         assertEquals(3, StarMath.coercedSkips(dots = 7, skips = 5))

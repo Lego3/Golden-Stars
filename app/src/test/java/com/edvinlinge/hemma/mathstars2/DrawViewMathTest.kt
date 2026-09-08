@@ -410,4 +410,57 @@ class DrawViewMathTest {
             DrawViewMath.revealRestoreAction(currentPhase = 2f, instantRender = false, pathLength = 100f),
         )
     }
+
+    @Test
+    fun `plan reveal speed retarget preserves stored progress and seeks new duration`() {
+        val stored = RevealProgress(revealed = 0.4, lastPlayTimeMs = 2000L, durationMs = 5000L)
+        val retargeted = DrawViewMath.planRevealSpeedRetarget(
+            isRevealing = true,
+            instantRender = false,
+            currentPhase = 0.5f,
+            storedProgress = stored,
+            currentPlayTimeMs = 2100L,
+            currentDurationMs = 5000L,
+            newDurationMs = 2500L,
+        )!!
+        assertEquals(0.42, retargeted.revealed, 1e-9)
+        assertEquals(2500L, retargeted.durationMs)
+        assertEquals(1050L, retargeted.lastPlayTimeMs)
+    }
+
+    @Test
+    fun `plan reveal speed retarget is skipped when reveal is finished or instant`() {
+        assertNull(
+            DrawViewMath.planRevealSpeedRetarget(
+                isRevealing = true,
+                instantRender = false,
+                currentPhase = 0f,
+                storedProgress = null,
+                currentPlayTimeMs = 0L,
+                currentDurationMs = 5000L,
+                newDurationMs = 2500L,
+            ),
+        )
+        assertNull(
+            DrawViewMath.planRevealSpeedRetarget(
+                isRevealing = true,
+                instantRender = true,
+                currentPhase = 0.5f,
+                storedProgress = null,
+                currentPlayTimeMs = 2500L,
+                currentDurationMs = 5000L,
+                newDurationMs = 2500L,
+            ),
+        )
+    }
+
+    @Test
+    fun `changing duration before play time sync would flash the reveal toward complete`() {
+        val playTime = 2500L
+        val oldDuration = 5000L
+        val newDuration = 2500L
+        assertTrue(DrawViewMath.durationChangeWouldFlashReveal(playTime, oldDuration, newDuration))
+        assertEquals(0.5, DrawViewMath.revealedFractionAtPlayTime(playTime, oldDuration), 1e-9)
+        assertEquals(1.0, DrawViewMath.revealedFractionAtPlayTime(playTime, newDuration), 1e-9)
+    }
 }

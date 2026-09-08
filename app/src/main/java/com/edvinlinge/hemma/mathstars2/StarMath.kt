@@ -7,6 +7,21 @@ package com.edvinlinge.hemma.mathstars2
  */
 internal object StarMath {
 
+    /** Matches [SettingsBottomSheet] dots slider bounds. */
+    const val MIN_DOTS = 5
+    const val MAX_DOTS = 100
+
+    data class Geometry(val dots: Int, val skips: Int)
+
+    /**
+     * Clamps star geometry to slider bounds. Used when restoring from saved state or launch
+     * extras, which bypass [AppPreferences] normalization.
+     */
+    fun normalizedGeometry(dots: Int, skips: Int): Geometry {
+        val coercedDots = dots.coerceIn(MIN_DOTS, MAX_DOTS)
+        return Geometry(coercedDots, coercedSkips(coercedDots, skips))
+    }
+
     /** Number of distinct dots reached by repeatedly stepping [skips] dots around [dots]. */
     fun visitedDotCount(dots: Int, skips: Int): Int {
         if (dots <= 0) return 0
