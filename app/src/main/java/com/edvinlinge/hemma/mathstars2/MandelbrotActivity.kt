@@ -31,7 +31,7 @@ class MandelbrotActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         preferences = AppPreferences.get(this)
-        colorIndex = savedInstanceState?.getInt(SettingsBottomSheet.KEY_COLOR_INDEX)
+        colorIndex = savedInstanceState?.getInt(SettingsBottomSheet.KEY_COLOR_INDEX)?.let(::normalizedFractalColorIndex)
             ?: preferences.loadMandelbrotColorIndex()
 
         binding.mandelbrotView.setColorPalette(fractalPaletteFor(colorIndex))
