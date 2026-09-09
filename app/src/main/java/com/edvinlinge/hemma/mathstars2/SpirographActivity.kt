@@ -108,9 +108,14 @@ class SpirographActivity : AppCompatActivity() {
             rollingRadius = savedInstanceState.getInt(SettingsBottomSheet.KEY_ROLLING_RADIUS, rollingRadius)
             penOffset = savedInstanceState.getInt(SettingsBottomSheet.KEY_PEN_OFFSET, penOffset)
             inside = savedInstanceState.getBoolean(SettingsBottomSheet.KEY_INSIDE, inside)
-            thickness = savedInstanceState.getFloat(SettingsBottomSheet.KEY_THICKNESS, thickness)
-            colorIndex = savedInstanceState.getInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
-            speed = savedInstanceState.getFloat(STATE_SPEED, speed)
+            val display = StarMath.normalizedDisplaySettings(
+                thickness = savedInstanceState.getFloat(SettingsBottomSheet.KEY_THICKNESS, thickness),
+                colorIndex = savedInstanceState.getInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex),
+                speed = savedInstanceState.getFloat(STATE_SPEED, speed),
+            )
+            thickness = display.thickness
+            colorIndex = display.colorIndex
+            speed = display.speed
             val restored = SpirographMath.normalized(fixedRadius, rollingRadius, penOffset, inside)
             fixedRadius = restored.fixedRadius
             rollingRadius = restored.rollingRadius

@@ -65,13 +65,14 @@ class AppPreferences private constructor(
         speed: Float,
     ): StarSettings {
         val coercedDots = dots.coerceIn(MIN_STAR_DOTS, MAX_STAR_DOTS)
+        val display = StarMath.normalizedDisplaySettings(thickness, colorIndex, speed)
         return StarSettings(
             dots = coercedDots,
             skips = StarMath.coercedSkips(coercedDots, skips),
-            thickness = thickness.coerceIn(MIN_STAR_THICKNESS, MAX_STAR_THICKNESS),
+            thickness = display.thickness,
             filled = filled,
-            colorIndex = colorIndex.coerceIn(0, MAX_STAR_COLOR_INDEX),
-            speed = speed.coerceIn(MIN_STAR_SPEED, MAX_STAR_SPEED),
+            colorIndex = display.colorIndex,
+            speed = display.speed,
         )
     }
 
@@ -126,14 +127,15 @@ class AppPreferences private constructor(
         speed: Float,
     ): SpirographSettings {
         val geometry = SpirographMath.normalized(fixedRadius, rollingRadius, penOffset, inside)
+        val display = StarMath.normalizedDisplaySettings(thickness, colorIndex, speed)
         return SpirographSettings(
             fixedRadius = geometry.fixedRadius,
             rollingRadius = geometry.rollingRadius,
             penOffset = geometry.penOffset,
             inside = geometry.inside,
-            thickness = thickness.coerceIn(MIN_STAR_THICKNESS, MAX_STAR_THICKNESS),
-            colorIndex = colorIndex.coerceIn(0, MAX_STAR_COLOR_INDEX),
-            speed = speed.coerceIn(MIN_STAR_SPEED, MAX_STAR_SPEED),
+            thickness = display.thickness,
+            colorIndex = display.colorIndex,
+            speed = display.speed,
         )
     }
 
@@ -155,9 +157,6 @@ class AppPreferences private constructor(
     fun saveJuliaPresetIndex(presetIndex: Int) {
         prefs.edit { putInt(KEY_JULIA_PRESET_INDEX, JuliaMath.coercedPresetIndex(presetIndex)) }
     }
-
-    private fun normalizedFractalColorIndex(colorIndex: Int): Int =
-        colorIndex.coerceIn(0, FractalPalette.entries.lastIndex)
 
     companion object {
         /** SharedPreferences file included in Android backup rules. */
@@ -183,18 +182,8 @@ class AppPreferences private constructor(
         private const val DEFAULT_STAR_SPEED = 1.0f
 
         /** Matches the dots slider in [SettingsBottomSheet]. */
-        private const val MIN_STAR_DOTS = 5
-        private const val MAX_STAR_DOTS = 100
-
-        /** Matches the line-thickness slider in [SettingsBottomSheet]. */
-        private const val MIN_STAR_THICKNESS = 2f
-        private const val MAX_STAR_THICKNESS = 24f
-
-        /** Matches the speed slider on the star and Spirograph screens. */
-        private const val MIN_STAR_SPEED = 0.5f
-        private const val MAX_STAR_SPEED = 4.0f
-
-        private const val MAX_STAR_COLOR_INDEX = 3
+        private const val MIN_STAR_DOTS = StarMath.MIN_DOTS
+        private const val MAX_STAR_DOTS = StarMath.MAX_DOTS
 
         fun get(context: Context): AppPreferences =
             AppPreferences(context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE))

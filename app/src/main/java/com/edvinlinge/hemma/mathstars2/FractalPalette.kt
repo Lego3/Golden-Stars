@@ -15,9 +15,13 @@ enum class FractalPalette {
     GREEN,
 }
 
+/** Clamps a saved colour index to the swatch range shared by star, Spirograph, and fractal screens. */
+internal fun normalizedFractalColorIndex(colorIndex: Int): Int =
+    colorIndex.coerceIn(FractalPalette.entries.indices)
+
 /** Swatch order matches [SettingsBottomSheet] colour chips and saved preference indices. */
 internal fun fractalPaletteFor(colorIndex: Int): FractalPalette =
-    FractalPalette.entries[colorIndex.coerceIn(FractalPalette.entries.indices)]
+    FractalPalette.entries[normalizedFractalColorIndex(colorIndex)]
 
 /**
  * Palette-independent escape encoding and the colour-matrix that tints that map on screen.

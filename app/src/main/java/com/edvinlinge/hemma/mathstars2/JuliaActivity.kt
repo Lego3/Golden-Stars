@@ -33,7 +33,9 @@ class JuliaActivity : AppCompatActivity() {
 
         preferences = AppPreferences.get(this)
         if (savedInstanceState != null) {
-            colorIndex = savedInstanceState.getInt(SettingsBottomSheet.KEY_COLOR_INDEX)
+            colorIndex = normalizedFractalColorIndex(
+                savedInstanceState.getInt(SettingsBottomSheet.KEY_COLOR_INDEX),
+            )
             presetIndex = JuliaMath.coercedPresetIndex(
                 savedInstanceState.getInt(STATE_PRESET_INDEX),
             )
