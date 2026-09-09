@@ -59,6 +59,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
      */
     private var renderScope: CoroutineScope? = null
     private var workJob: Job? = null
+    private var scheduledWorkEpoch = 0L
     private var currentWorkIsPrefetch = false
     private var workEpoch = 0L
 
@@ -251,12 +252,19 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         ensureWorkScheduled(cancelPrefetch = true)
     }
 
+    private fun workJobCountsAsActive(): Boolean =
+        MandelbrotTiles.workJobCountsAsActive(
+            jobActive = workJob?.isActive == true,
+            jobEpoch = scheduledWorkEpoch,
+            currentEpoch = workEpoch,
+        )
+
     private fun ensureWorkScheduled(cancelPrefetch: Boolean = false) {
         val scope = renderScope ?: return
         if (width <= 0 || height <= 0) return
         when (
             MandelbrotTiles.activeWorkAction(
-                workActive = workJob?.isActive == true,
+                workActive = workJobCountsAsActive(),
                 cancelPrefetch = cancelPrefetch,
                 workIsPrefetch = currentWorkIsPrefetch,
             )
@@ -269,6 +277,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             MandelbrotTiles.ActiveWorkAction.Launch -> Unit
         }
         val epoch = workEpoch
+        scheduledWorkEpoch = epoch
         workJob = scope.launch {
             try {
                 processQueue(epoch)
@@ -712,7 +721,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         )
         val hud = MandelbrotTiles.spinnerHudState(
             forceIdle = forceIdle,
-            workActive = workJob?.isActive == true,
+            workActive = workJobCountsAsActive(),
             workIsPrefetch = currentWorkIsPrefetch,
             visibleTilesComplete = visibleTilesComplete(),
             progress = progress,
@@ -824,6 +833,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         workEpoch++
         workJob?.cancel()
         workJob = null
+        scheduledWorkEpoch = 0L
         renderScope?.cancel()
         renderScope = null
         currentWorkIsPrefetch = false
