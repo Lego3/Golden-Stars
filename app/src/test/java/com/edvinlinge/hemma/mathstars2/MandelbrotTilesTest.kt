@@ -1362,23 +1362,55 @@ class MandelbrotTilesTest {
     }
 
     @Test
-    fun `viewport restore skips scheduling while visible sharpening is still active`() {
+    fun `viewport restore skips scheduling only for same epoch visible sharpening`() {
         assertTrue(
             MandelbrotTiles.viewportRestoreWouldSkipScheduling(
                 workActive = true,
                 workIsPrefetch = false,
+                scheduledWorkEpoch = 3L,
+                currentWorkEpoch = 3L,
+            ),
+        )
+        assertFalse(
+            MandelbrotTiles.viewportRestoreWouldSkipScheduling(
+                workActive = true,
+                workIsPrefetch = false,
+                scheduledWorkEpoch = 2L,
+                currentWorkEpoch = 3L,
             ),
         )
         assertFalse(
             MandelbrotTiles.viewportRestoreWouldSkipScheduling(
                 workActive = true,
                 workIsPrefetch = true,
+                scheduledWorkEpoch = 3L,
+                currentWorkEpoch = 3L,
             ),
         )
         assertFalse(
             MandelbrotTiles.viewportRestoreWouldSkipScheduling(
                 workActive = false,
                 workIsPrefetch = false,
+                scheduledWorkEpoch = 3L,
+                currentWorkEpoch = 3L,
+            ),
+        )
+    }
+
+    @Test
+    fun `stale work job epoch does not count as active`() {
+        assertFalse(
+            MandelbrotTiles.workJobCountsAsActive(
+                jobActive = true,
+                jobEpoch = 1L,
+                currentEpoch = 2L,
+            ),
+        )
+        assertTrue(
+            MandelbrotTiles.workJobCountsAsActive(
+                jobActive = true,
+                jobEpoch = 2L,
+                currentEpoch = 2L,
             ),
         )
     }
