@@ -185,6 +185,22 @@ class StarMathTest {
     }
 
     @Test
+    fun `normalized display settings clamp thickness color and speed for restore paths`() {
+        assertEquals(
+            StarMath.DisplaySettings(thickness = 2f, colorIndex = 0, speed = 0.5f),
+            StarMath.normalizedDisplaySettings(thickness = -5f, colorIndex = -1, speed = 0f),
+        )
+        assertEquals(
+            StarMath.DisplaySettings(thickness = 24f, colorIndex = 3, speed = 4f),
+            StarMath.normalizedDisplaySettings(thickness = 99f, colorIndex = 99, speed = 10f),
+        )
+        assertEquals(
+            StarMath.DisplaySettings(thickness = 8f, colorIndex = 2, speed = 1f),
+            StarMath.normalizedDisplaySettings(thickness = 8f, colorIndex = 2, speed = 1f),
+        )
+    }
+
+    @Test
     fun `normalized geometry clamps dots and skips for restore paths`() {
         assertEquals(StarMath.Geometry(dots = 5, skips = 2), StarMath.normalizedGeometry(dots = 3, skips = 2))
         assertEquals(StarMath.Geometry(dots = 100, skips = 50), StarMath.normalizedGeometry(dots = 200, skips = 60))

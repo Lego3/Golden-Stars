@@ -14,6 +14,15 @@ class FractalPaletteTest {
     }
 
     @Test
+    fun `normalized fractal color index clamps to swatch bounds`() {
+        assertEquals(0, normalizedFractalColorIndex(-1))
+        assertEquals(0, normalizedFractalColorIndex(-99))
+        assertEquals(3, normalizedFractalColorIndex(4))
+        assertEquals(3, normalizedFractalColorIndex(99))
+        assertEquals(2, normalizedFractalColorIndex(2))
+    }
+
+    @Test
     fun `out of range palette indices clamp instead of crashing`() {
         assertEquals(FractalPalette.GOLDEN, fractalPaletteFor(-1))
         assertEquals(FractalPalette.GOLDEN, fractalPaletteFor(-99))

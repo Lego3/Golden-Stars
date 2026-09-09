@@ -11,7 +11,20 @@ internal object StarMath {
     const val MIN_DOTS = 5
     const val MAX_DOTS = 100
 
+    /** Matches the line-thickness slider in [SettingsBottomSheet]. */
+    const val MIN_THICKNESS = 2f
+    const val MAX_THICKNESS = 24f
+
+    /** Matches the speed slider on the star and Spirograph screens. */
+    const val MIN_SPEED = 0.5f
+    const val MAX_SPEED = 4.0f
+
+    /** Matches [SettingsBottomSheet] colour swatch indices. */
+    const val MAX_COLOR_INDEX = 3
+
     data class Geometry(val dots: Int, val skips: Int)
+
+    data class DisplaySettings(val thickness: Float, val colorIndex: Int, val speed: Float)
 
     /**
      * Clamps star geometry to slider bounds. Used when restoring from saved state or launch
@@ -21,6 +34,20 @@ internal object StarMath {
         val coercedDots = dots.coerceIn(MIN_DOTS, MAX_DOTS)
         return Geometry(coercedDots, coercedSkips(coercedDots, skips))
     }
+
+    /**
+     * Clamps thickness, colour, and speed to slider bounds. Used when restoring from saved state,
+     * which bypasses [AppPreferences] normalization.
+     */
+    fun normalizedDisplaySettings(
+        thickness: Float,
+        colorIndex: Int,
+        speed: Float,
+    ): DisplaySettings = DisplaySettings(
+        thickness = thickness.coerceIn(MIN_THICKNESS, MAX_THICKNESS),
+        colorIndex = colorIndex.coerceIn(0, MAX_COLOR_INDEX),
+        speed = speed.coerceIn(MIN_SPEED, MAX_SPEED),
+    )
 
     /** Number of distinct dots reached by repeatedly stepping [skips] dots around [dots]. */
     fun visitedDotCount(dots: Int, skips: Int): Int {

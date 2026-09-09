@@ -109,10 +109,15 @@ class DrawActivity : AppCompatActivity() {
             )
             dots = restored.dots
             skips = restored.skips
-            thickness = savedInstanceState.getFloat(SettingsBottomSheet.KEY_THICKNESS, thickness)
             filled = savedInstanceState.getBoolean(SettingsBottomSheet.KEY_FILLED, filled)
-            colorIndex = savedInstanceState.getInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex)
-            speed = savedInstanceState.getFloat(STATE_SPEED, speed)
+            val display = StarMath.normalizedDisplaySettings(
+                thickness = savedInstanceState.getFloat(SettingsBottomSheet.KEY_THICKNESS, thickness),
+                colorIndex = savedInstanceState.getInt(SettingsBottomSheet.KEY_COLOR_INDEX, colorIndex),
+                speed = savedInstanceState.getFloat(STATE_SPEED, speed),
+            )
+            thickness = display.thickness
+            colorIndex = display.colorIndex
+            speed = display.speed
             return
         }
 
