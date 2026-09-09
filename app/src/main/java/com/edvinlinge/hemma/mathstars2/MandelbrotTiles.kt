@@ -724,12 +724,27 @@ internal object MandelbrotTiles {
     }
 
     /**
-     * After [workEpoch] is bumped on viewport restore, [ensureWorkScheduled] with
-     * cancelPrefetch=true skips when visible sharpening is still active. The stale job's finally
-     * block will not reschedule, leaving tiles stuck until the user pans.
+     * True when an in-flight coroutine should block [ensureWorkScheduled]. Jobs from a prior
+     * [workEpoch] (for example after rotation) may still report active until cancellation
+     * completes asynchronously; those must not suppress a fresh launch.
      */
-    fun viewportRestoreWouldSkipScheduling(workActive: Boolean, workIsPrefetch: Boolean): Boolean =
-        workActive && activeWorkAction(
+    fun workJobCountsAsActive(
+        jobActive: Boolean,
+        jobEpoch: Long,
+        currentEpoch: Long,
+    ): Boolean = jobActive && jobEpoch == currentEpoch
+
+    /**
+     * Whether [ensureWorkScheduled] with cancelPrefetch=true would return early without
+     * launching. Same-epoch visible sharpening blocks; a stale epoch after restore does not.
+     */
+    fun viewportRestoreWouldSkipScheduling(
+        workActive: Boolean,
+        workIsPrefetch: Boolean,
+        scheduledWorkEpoch: Long,
+        currentWorkEpoch: Long,
+    ): Boolean = workJobCountsAsActive(workActive, scheduledWorkEpoch, currentWorkEpoch) &&
+        activeWorkAction(
             workActive = true,
             cancelPrefetch = true,
             workIsPrefetch = workIsPrefetch,
