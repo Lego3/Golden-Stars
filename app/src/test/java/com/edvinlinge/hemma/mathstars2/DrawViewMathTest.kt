@@ -507,4 +507,35 @@ class DrawViewMathTest {
         assertEquals(0.5, DrawViewMath.revealedFractionAtPlayTime(playTime, oldDuration), 1e-9)
         assertEquals(1.0, DrawViewMath.revealedFractionAtPlayTime(playTime, newDuration), 1e-9)
     }
+
+    @Test
+    fun `duration change would flash reveal toward incomplete when duration increases`() {
+        val playTime = 2500L
+        val oldDuration = 2500L
+        val newDuration = 5000L
+        assertTrue(DrawViewMath.durationChangeWouldFlashReveal(playTime, oldDuration, newDuration))
+        assertEquals(1.0, DrawViewMath.revealedFractionAtPlayTime(playTime, oldDuration), 1e-9)
+        assertEquals(0.5, DrawViewMath.revealedFractionAtPlayTime(playTime, newDuration), 1e-9)
+    }
+
+    @Test
+    fun `duration change flash guard ignores equal invalid and zero durations`() {
+        assertFalse(DrawViewMath.durationChangeWouldFlashReveal(2500L, 5000L, 5000L))
+        assertFalse(DrawViewMath.durationChangeWouldFlashReveal(2500L, 0L, 2500L))
+        assertFalse(DrawViewMath.durationChangeWouldFlashReveal(2500L, 5000L, 0L))
+    }
+
+    @Test
+    fun `revealed fraction clamps play time and handles zero duration`() {
+        assertEquals(0.0, DrawViewMath.revealedFractionAtPlayTime(0L, 5000L), 1e-9)
+        assertEquals(1.0, DrawViewMath.revealedFractionAtPlayTime(5000L, 5000L), 1e-9)
+        assertEquals(1.0, DrawViewMath.revealedFractionAtPlayTime(9000L, 5000L), 1e-9)
+        assertEquals(0.0, DrawViewMath.revealedFractionAtPlayTime(2500L, 0L), 1e-9)
+    }
+
+    @Test
+    fun `duration change does not flash when play time maps to the same fraction`() {
+        assertFalse(DrawViewMath.durationChangeWouldFlashReveal(0L, 5000L, 2500L))
+        assertFalse(DrawViewMath.durationChangeWouldFlashReveal(6000L, 5000L, 2500L))
+    }
 }
