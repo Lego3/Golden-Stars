@@ -61,11 +61,13 @@ tests under `app/src/test/`. Keep new geometry or iteration logic here rather th
 views so it stays fast to test.
 
 - **`StarMath`** — GCD-based star polygons: visited dot count, single-stroke detection,
-  fill safety (`canFill` rejects digons that would vanish when filled), and vertex order.
+  fill safety (`canFill` rejects digons that would vanish when filled), vertex order, and
+  `normalizedGeometry` to clamp dots/skips when restoring from `savedInstanceState` or
+  launch extras (paths that bypass `AppPreferences` normalization).
 - **`DrawViewMath`** — Pan/zoom focus math, zoom clamping after configuration changes
-  (`coercedZoom`), reveal-animation timing (`RevealProgress` and
-  `shouldRetargetRevealSpeed` for live speed seeks), and `revealRestoreAction` for
-  resuming or skipping the path reveal after rotation.
+  (`coercedZoom`), reveal-animation timing (`RevealProgress`,
+  `planRevealSpeedRetarget`, and `shouldRetargetRevealSpeed` for live speed seeks), and
+  `revealRestoreAction` for resuming or skipping the path reveal after rotation.
 - **`SpirographMath`** — Hypotrochoid / epitrochoid sampling, period and lobe counts
   (reuses `StarMath.gcd`), and view fitting.
 - **`MandelbrotMath`** — Viewport sizing, zoom-clamped iteration counts, escape-time
@@ -83,13 +85,14 @@ views so it stays fast to test.
 closed `Path`, then animate reveal with `PathMeasure` and `ValueAnimator`. Phase `1` is
 fully hidden, `0` is complete. Speed maps to duration via `DrawViewMath`; at high speed
 the figure draws instantly. Changing speed during a reveal retargets the running
-animator from a stored revealed fraction (`RevealProgress`). Between retargets,
-`advanceRevealProgress` keeps that fraction in sync with the animator's play time.
-`shouldRetargetRevealSpeed` skips finished, instant, or idle reveals. The animator
-pauses while duration and play time are updated, then resumes, so no frame is drawn
-at the old timing. Play time is rounded to a whole millisecond for the seek, but that
-rounding is not written back into the fraction, so a slider drag cannot crawl the
-stroke. Reveals use a linear
+animator from a stored revealed fraction (`RevealProgress`). `planRevealSpeedRetarget`
+computes the seek target; between retargets, `advanceRevealProgress` keeps that
+fraction in sync with the animator's play time. `shouldRetargetRevealSpeed` skips
+finished, instant, or idle reveals. The caller must pause the animator before applying
+the new duration and play time (`durationChangeWouldFlashReveal` guards against one
+frame at the old play time under the new duration). Play time is rounded to a whole
+millisecond for the seek, but that rounding is not written back into the fraction, so
+a slider drag cannot crawl the stroke. Reveals use a linear
 interpolator so the remaining segment keeps constant speed after a retarget. Both
 views save `currentPhase` and viewport across configuration changes. Because
 `onSizeChanged` can start a fresh reveal before `onRestoreInstanceState`
@@ -132,11 +135,13 @@ current pinch). Prefetch never queues tiles that are still visible on screen.
 (`visibleViewportCovered` is false); when idle it fills visible full-res tiles first,
 then homogeneous prefetch batches while memory allows. A new gesture cancels in-flight
 prefetch (`activeWorkAction`) so visible sharpening takes priority; visible work is
-never interrupted. `mergeVisibleTileQueue` tracks which on-screen tiles still need
-full resolution; `spinnerHudState` drives the finished/queued label and clears counts
-when idle so a finished prefetch cannot leave a stale "3/10" on screen. A contiguous
-visible batch renders as one bbox row-parallel pass when `isDenseTileBatch` is true;
-scattered keys render per tile in parallel. Completed renders are discarded when view
+never interrupted. Visible and preview batches are capped at 64 tiles
+(`MAX_VISIBLE_BATCH`) so a large viewport cannot monopolize the worker. `mergeVisibleTileQueue`
+tracks which on-screen tiles still need full resolution; `spinnerHudState` drives the
+finished/queued label and clears counts when idle so a finished prefetch cannot leave a
+stale "3/10" on screen. A contiguous visible batch renders as one bbox row-parallel pass
+when `isDenseTileBatch` is true; scattered keys render per tile in parallel. Completed
+renders are discarded when view
 width or height changed mid-flight (`viewGeometryMatches`), and async installs also
 require a full pixel buffer and skip slots already covered by a full-res tile
 (`shouldInstallRenderedRange`, `shouldSkipTileCacheInstall`). Cached tiles store an
@@ -148,14 +153,22 @@ deleted just because it was written first. Last-use times are copied onto file m
 with a 30 s throttle (`MandelbrotTileCache.shouldFlushDiskAccessTime`) so gestures do
 not hammer the filesystem.
 
+On viewport restore (`onRestoreInstanceState`), `MandelbrotView` bumps `workEpoch` and
+cancels the in-flight `workJob`, matching `onSizeChanged`. Bumping the epoch alone left
+`ensureWorkScheduled` skipping while the pre-restore coroutine still ran; that job's
+`finally` block would not reschedule once the epoch no longer matched, leaving tiles
+stuck at the wrong zoom until the user panned.
+
 ### Settings and configuration changes
 
 `SettingsBottomSheet` publishes every change through the **Fragment Result API**
 (`setFragmentResult`), not through host callbacks. Callbacks assigned when the sheet opens
 are lost after a rotation, which previously made controls silently stop working.
 Geometry sliders (dots/skips, Spirograph radii) set `KEY_GEOMETRY_SETTLED` to `false`
-while the user is dragging and publish on release, so the host can rebuild the path
-without restarting the reveal on every step.
+while the user is dragging and publish on release. Golden Stars and Spirograph hosts
+use `DrawViewMath.geometryDragAction` to preview geometry while dragging (no reveal
+restart), replay the saved animation when the finger lifts without a change, or skip
+when nothing moved.
 
 Each host activity:
 
@@ -168,8 +181,11 @@ restored zoom through `MandelbrotMath.coercedZoom` (Mandelbrot, Julia) or
 `DrawViewMath.coercedZoom` (Golden Stars, Spirograph) so an out-of-range value from an
 older build cannot break gestures after rotation.
 
-`AppPreferences` normalizes Spirograph radii through `SpirographMath.normalized` on load
-and save so stored values always match slider bounds.
+`AppPreferences` normalizes on load and save so stored values always match slider
+bounds: star dots/skips via `StarMath.coercedSkips`, Spirograph radii via
+`SpirographMath.normalized`, and Mandelbrot/Julia colour indices via
+`normalizedFractalColorIndex`. Saved-state and launch-intent restore paths still call
+the matching `*Math` helpers directly when they bypass preferences.
 
 ### Testing map
 
