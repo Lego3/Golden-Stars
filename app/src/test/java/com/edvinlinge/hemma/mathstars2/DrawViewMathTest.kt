@@ -538,4 +538,41 @@ class DrawViewMathTest {
         assertFalse(DrawViewMath.durationChangeWouldFlashReveal(0L, 5000L, 2500L))
         assertFalse(DrawViewMath.durationChangeWouldFlashReveal(6000L, 5000L, 2500L))
     }
+
+    @Test
+    fun `reveal progress from phase clamps out of range phases before restore`() {
+        val complete = DrawViewMath.revealProgressFromPhase(phase = -0.5f, durationMs = 5000L)
+        assertEquals(1.0, complete.revealed, 0.0)
+        assertEquals(5000L, complete.lastPlayTimeMs)
+        assertEquals(5000L, complete.durationMs)
+
+        val hidden = DrawViewMath.revealProgressFromPhase(phase = 2f, durationMs = 5000L)
+        assertEquals(0.0, hidden.revealed, 0.0)
+        assertEquals(0L, hidden.lastPlayTimeMs)
+    }
+
+    @Test
+    fun `reveal progress from phase maps mid animation restore to consistent play time`() {
+        val progress = DrawViewMath.revealProgressFromPhase(phase = 0.5f, durationMs = 5000L)
+        assertEquals(0.5, progress.revealed, 0.0)
+        assertEquals(2500L, progress.lastPlayTimeMs)
+        assertEquals(
+            progress.lastPlayTimeMs,
+            DrawViewMath.playTimeMs(progress.revealed, progress.durationMs),
+        )
+    }
+
+    @Test
+    fun `reveal progress from phase treats non positive duration as zero length`() {
+        val progress = DrawViewMath.revealProgressFromPhase(phase = 0.5f, durationMs = -100L)
+        assertEquals(0.5, progress.revealed, 0.0)
+        assertEquals(0L, progress.durationMs)
+        assertEquals(0L, progress.lastPlayTimeMs)
+    }
+
+    @Test
+    fun `play time clamps out of range revealed fractions`() {
+        assertEquals(0L, DrawViewMath.playTimeMs(revealed = -0.25, durationMs = 5000L))
+        assertEquals(5000L, DrawViewMath.playTimeMs(revealed = 1.25, durationMs = 5000L))
+    }
 }
