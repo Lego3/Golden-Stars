@@ -77,6 +77,58 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `rendered output size downscales previews and keeps full tiles unchanged`() {
+        assertEquals(256, MandelbrotTiles.renderedOutputSize(256, preview = false))
+        assertEquals(512, MandelbrotTiles.renderedOutputSize(512, preview = false))
+        assertEquals(64, MandelbrotTiles.renderedOutputSize(256, preview = true))
+        assertEquals(128, MandelbrotTiles.renderedOutputSize(512, preview = true))
+        assertEquals(1, MandelbrotTiles.renderedOutputSize(3, preview = true))
+    }
+
+    @Test
+    fun `rendered range dimensions multiply tile count by output size`() {
+        val single = MandelbrotTiles.TileRange(0, 0, 0, 0)
+        val horizontalPair = MandelbrotTiles.TileRange(0, 1, 0, 0)
+        val verticalTriple = MandelbrotTiles.TileRange(0, 0, 0, 2)
+        val grid = MandelbrotTiles.TileRange(0, 1, 0, 1)
+
+        assertEquals(256 to 256, MandelbrotTiles.renderedRangeDimensions(single, 256, preview = false))
+        assertEquals(512 to 256, MandelbrotTiles.renderedRangeDimensions(horizontalPair, 256, preview = false))
+        assertEquals(256 to 768, MandelbrotTiles.renderedRangeDimensions(verticalTriple, 256, preview = false))
+        assertEquals(512 to 512, MandelbrotTiles.renderedRangeDimensions(grid, 256, preview = false))
+        assertEquals(64 to 64, MandelbrotTiles.renderedRangeDimensions(single, 256, preview = true))
+        assertEquals(128 to 64, MandelbrotTiles.renderedRangeDimensions(horizontalPair, 256, preview = true))
+    }
+
+    @Test
+    fun `rendered range dimensions stay aligned for multi tile install slicing`() {
+        val range = MandelbrotTiles.TileRange(0, 1, 0, 1)
+        val tilePixelSize = 256
+        val outSize = MandelbrotTiles.renderedOutputSize(tilePixelSize, preview = false)
+        val (width, height) = MandelbrotTiles.renderedRangeDimensions(range, tilePixelSize, preview = false)
+
+        assertEquals(0, width % outSize)
+        assertEquals(0, height % outSize)
+        assertEquals(width * height, MandelbrotTiles.renderedRangePixelCount(range, tilePixelSize, preview = false))
+        assertTrue(
+            MandelbrotTiles.hasEnoughPixelsForRange(
+                range,
+                tilePixelSize,
+                preview = false,
+                pixels = ByteArray(width * height),
+            ),
+        )
+        assertFalse(
+            MandelbrotTiles.hasEnoughPixelsForRange(
+                range,
+                tilePixelSize,
+                preview = false,
+                pixels = ByteArray(width * height - 1),
+            ),
+        )
+    }
+
+    @Test
     fun `truncated render buffers are rejected before tile install`() {
         val range = MandelbrotTiles.TileRange(0, 1, 0, 0)
         val expected = MandelbrotTiles.renderedRangePixelCount(range, 256, preview = false)
