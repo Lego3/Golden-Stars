@@ -330,6 +330,30 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `coverage samples return exact pixel counts at the target zoom step`() {
+        val full = MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = false)
+        val preview = full.copy(preview = true)
+        assertEquals(256, MandelbrotTiles.coverageSamples(full, targetStep = 0))
+        assertEquals(64, MandelbrotTiles.coverageSamples(preview, targetStep = 0))
+    }
+
+    @Test
+    fun `coverage samples shrink ancestor tiles and expand child tiles by zoom level delta`() {
+        val ancestor = MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = false)
+        val child = MandelbrotTiles.TileKey(2, 0, 0, 256, 600, preview = false)
+        assertEquals(128, MandelbrotTiles.coverageSamples(ancestor, targetStep = 1))
+        assertEquals(512, MandelbrotTiles.coverageSamples(child, targetStep = 1))
+    }
+
+    @Test
+    fun `coverage samples cap bit shifts so extreme zoom deltas cannot overflow`() {
+        val ancestor = MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = false)
+        val deepChild = MandelbrotTiles.TileKey(20, 0, 0, 256, 600, preview = false)
+        assertEquals(0, MandelbrotTiles.coverageSamples(ancestor, targetStep = 35))
+        assertEquals(256 shl 12, MandelbrotTiles.coverageSamples(deepChild, targetStep = 1))
+    }
+
+    @Test
     fun `a parent full tile outranks a same-step preview because it contributes more pixels`() {
         val targetStep = 2
         val preview = MandelbrotTiles.TileKey(2, 0, 0, 256, 600, preview = true)
