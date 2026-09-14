@@ -220,7 +220,10 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w <= 0 || h <= 0) return
 
-        // Deliberately not recycled: a render that has not unwound yet may still reference it.
+        renderGeneration++
+        renderJob?.cancel()
+        renderJob = null
+        recycleBitmaps()
         bitmap = createBitmap(w, h, Bitmap.Config.ARGB_8888)
         hasRenderedOnce = false
         requestFullRender()
@@ -418,7 +421,28 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     private fun previewScratchOf(width: Int, height: Int): Bitmap {
         val cached = previewScratch
         if (cached != null && cached.width == width && cached.height == height) return cached
+        previewScratch?.let { if (!it.isRecycled) it.recycle() }
         return createBitmap(width, height, Bitmap.Config.ARGB_8888).also { previewScratch = it }
+    }
+
+    private fun recycleBitmaps() {
+        bitmap?.let { if (!it.isRecycled) it.recycle() }
+        bitmap = null
+        previewScratch?.let { if (!it.isRecycled) it.recycle() }
+        previewScratch = null
+    }
+
+    private fun ensureViewBitmap() {
+        if (width <= 0 || height <= 0) return
+        val existing = bitmap
+        if (existing != null && !existing.isRecycled &&
+            existing.width == width && existing.height == height
+        ) {
+            return
+        }
+        recycleBitmaps()
+        bitmap = createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        hasRenderedOnce = false
     }
 
     // The palette and c are owned by JuliaActivity, which reapplies them before this state is
@@ -478,6 +502,7 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         renderScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+        ensureViewBitmap()
         // A constant or viewport change may have happened while detached, and a cancelled
         // render may never have populated the bitmap. Always refresh when an existing view is reattached.
         requestFullRender()
@@ -491,6 +516,7 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         renderJob = null
         renderScope?.cancel()
         renderScope = null
+        recycleBitmaps()
         renderingStateCallback?.invoke(false)
         super.onDetachedFromWindow()
     }
