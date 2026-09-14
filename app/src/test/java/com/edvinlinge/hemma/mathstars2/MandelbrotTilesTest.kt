@@ -1117,6 +1117,110 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `copy subgrid slices horizontal neighbour tiles like install rendered range`() {
+        val range = MandelbrotTiles.TileRange(0, 1, 0, 0)
+        val outSize = MandelbrotTiles.renderedOutputSize(tilePixelSize = 256, preview = false)
+        val (renderWidth, renderHeight) = MandelbrotTiles.renderedRangeDimensions(range, 256, preview = false)
+        assertEquals(outSize * 2, renderWidth)
+        assertEquals(outSize, renderHeight)
+
+        val source = ByteArray(renderWidth * renderHeight) { it.toByte() }
+        val left = ByteArray(outSize * outSize)
+        val right = ByteArray(outSize * outSize)
+        MandelbrotTiles.copySubgrid(source, renderWidth, srcX = 0, srcY = 0, size = outSize, dest = left)
+        MandelbrotTiles.copySubgrid(source, renderWidth, srcX = outSize, srcY = 0, size = outSize, dest = right)
+
+        for (row in 0 until outSize) {
+            val leftSrcRow = row * renderWidth
+            assertArrayEquals(
+                source.copyOfRange(leftSrcRow, leftSrcRow + outSize),
+                left.copyOfRange(row * outSize, row * outSize + outSize),
+            )
+            val rightSrcRow = row * renderWidth + outSize
+            assertArrayEquals(
+                source.copyOfRange(rightSrcRow, rightSrcRow + outSize),
+                right.copyOfRange(row * outSize, row * outSize + outSize),
+            )
+        }
+    }
+
+    @Test
+    fun `copy subgrid slices vertical neighbour tiles like install rendered range`() {
+        val range = MandelbrotTiles.TileRange(0, 0, 0, 2)
+        val outSize = MandelbrotTiles.renderedOutputSize(tilePixelSize = 256, preview = false)
+        val (renderWidth, renderHeight) = MandelbrotTiles.renderedRangeDimensions(range, 256, preview = false)
+        assertEquals(outSize, renderWidth)
+        assertEquals(outSize * 3, renderHeight)
+
+        val source = ByteArray(renderWidth * renderHeight) { (it + 1).toByte() }
+        val rows = Array(3) { ByteArray(outSize * outSize) }
+        for (row in 0..2) {
+            MandelbrotTiles.copySubgrid(
+                source,
+                renderWidth,
+                srcX = 0,
+                srcY = row * outSize,
+                size = outSize,
+                dest = rows[row],
+            )
+            val srcRow = row * outSize * renderWidth
+            assertArrayEquals(source.copyOfRange(srcRow, srcRow + outSize * outSize), rows[row])
+        }
+    }
+
+    @Test
+    fun `copy subgrid round trips a two by two tile grid like install rendered range`() {
+        val range = MandelbrotTiles.TileRange(0, 1, 0, 1)
+        val outSize = MandelbrotTiles.renderedOutputSize(tilePixelSize = 256, preview = false)
+        val (renderWidth, renderHeight) = MandelbrotTiles.renderedRangeDimensions(range, 256, preview = false)
+        val source = ByteArray(renderWidth * renderHeight) { it.toByte() }
+
+        val tiles = Array(4) { ByteArray(outSize * outSize) }
+        var tileIndex = 0
+        var row = 0
+        var ty = range.y0
+        while (ty <= range.y1) {
+            var col = 0
+            var tx = range.x0
+            while (tx <= range.x1) {
+                MandelbrotTiles.copySubgrid(
+                    source,
+                    renderWidth,
+                    srcX = col * outSize,
+                    srcY = row * outSize,
+                    size = outSize,
+                    dest = tiles[tileIndex++],
+                )
+                col++
+                tx++
+            }
+            row++
+            ty++
+        }
+
+        val reassembled = ByteArray(source.size)
+        tileIndex = 0
+        row = 0
+        ty = range.y0
+        while (ty <= range.y1) {
+            var col = 0
+            var tx = range.x0
+            while (tx <= range.x1) {
+                val tile = tiles[tileIndex++]
+                for (y in 0 until outSize) {
+                    val destRow = (row * outSize + y) * renderWidth + col * outSize
+                    tile.copyInto(reassembled, destRow, y * outSize, y * outSize + outSize)
+                }
+                col++
+                tx++
+            }
+            row++
+            ty++
+        }
+        assertArrayEquals(source, reassembled)
+    }
+
+    @Test
     fun `select next work truncates visible full batches to the safety cap`() {
         val visible = (0 until 80).map { id ->
             MandelbrotTiles.TileKey(0, id.toLong(), 0, 256, 600, false)
