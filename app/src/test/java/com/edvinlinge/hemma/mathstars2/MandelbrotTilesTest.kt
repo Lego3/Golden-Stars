@@ -766,6 +766,97 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `protectable keys keep preview variants for visible tiles and ancestors`() {
+        val zoom = 2.0
+        val tilePx = 256
+        val minEdge = 600
+        val keys = MandelbrotTiles.protectableKeys(
+            zoom = zoom,
+            offsetX = -0.5,
+            offsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+            tilePixelSize = tilePx,
+        )
+        val step = MandelbrotTiles.zoomStep(zoom)
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, zoom, 800, 600, step, tilePx)
+        range.forEach { x, y ->
+            val exactFull = MandelbrotTiles.TileKey(step, x, y, tilePx, minEdge, preview = false)
+            val parentFull = MandelbrotTiles.TileKey(
+                step - 1,
+                MandelbrotTiles.parentTileX(x),
+                MandelbrotTiles.parentTileY(y),
+                tilePx,
+                minEdge,
+                preview = false,
+            )
+            assertTrue(exactFull.copy(preview = true) in keys)
+            assertTrue(parentFull.copy(preview = true) in keys)
+        }
+    }
+
+    @Test
+    fun `protectable keys include all child quadrants at the next zoom level`() {
+        val zoom = 2.0
+        val tilePx = 256
+        val minEdge = 600
+        val keys = MandelbrotTiles.protectableKeys(
+            zoom = zoom,
+            offsetX = -0.5,
+            offsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+            tilePixelSize = tilePx,
+        )
+        val step = MandelbrotTiles.zoomStep(zoom)
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, zoom, 800, 600, step, tilePx)
+        range.forEach { x, y ->
+            for (ly in 0..1) {
+                for (lx in 0..1) {
+                    val childFull = MandelbrotTiles.TileKey(
+                        step + 1,
+                        MandelbrotTiles.childTileX(x, lx),
+                        MandelbrotTiles.childTileY(y, ly),
+                        tilePx,
+                        minEdge,
+                        preview = false,
+                    )
+                    assertTrue(childFull in keys)
+                    assertTrue(childFull.copy(preview = true) in keys)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `protectable keys walk multiple ancestor levels for LRU eviction`() {
+        val zoom = 2.0
+        val tilePx = 256
+        val minEdge = 600
+        val keys = MandelbrotTiles.protectableKeys(
+            zoom = zoom,
+            offsetX = -0.5,
+            offsetY = 0.0,
+            viewWidth = 800,
+            viewHeight = 600,
+            tilePixelSize = tilePx,
+        )
+        val step = MandelbrotTiles.zoomStep(zoom)
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, zoom, 800, 600, step, tilePx)
+        range.forEach { x, y ->
+            var ax = x
+            var ay = y
+            for (level in 0..2) {
+                val full = MandelbrotTiles.TileKey(step - level, ax, ay, tilePx, minEdge, preview = false)
+                assertTrue(full in keys)
+                assertTrue(full.copy(preview = true) in keys)
+                ax = MandelbrotTiles.parentTileX(ax)
+                ay = MandelbrotTiles.parentTileY(ay)
+            }
+        }
+    }
+
+    @Test
     fun `a full visible range is a dense bbox so it can render in one pass`() {
         val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
         val keys = MandelbrotTiles.keysForRange(range, 0, 256, 600, preview = false)
