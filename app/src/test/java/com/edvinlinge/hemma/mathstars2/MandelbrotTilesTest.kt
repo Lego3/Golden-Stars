@@ -1759,6 +1759,25 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `visible tile range stays bounded when zoom is zero or negative`() {
+        for (zoom in listOf(0.0, -1.0)) {
+            val step = MandelbrotTiles.zoomStep(zoom)
+            val range = MandelbrotTiles.visibleTileRange(
+                offsetX = -0.5,
+                offsetY = 0.0,
+                zoom = zoom,
+                viewWidth = 800,
+                viewHeight = 600,
+                zoomStep = step,
+                tilePixelSize = 256,
+            )
+            assertTrue(range.tileCount in 1L..24L)
+            assertTrue(range.x0 <= range.x1)
+            assertTrue(range.y0 <= range.y1)
+        }
+    }
+
+    @Test
     fun `visible full keys returns empty for zero view dimensions`() {
         assertTrue(
             MandelbrotTiles.visibleFullKeys(
