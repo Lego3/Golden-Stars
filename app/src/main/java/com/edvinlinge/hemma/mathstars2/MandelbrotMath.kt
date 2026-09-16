@@ -15,6 +15,8 @@ internal object MandelbrotMath {
     const val MAX_ITERATIONS = 1500
     const val ESCAPE_RADIUS_SQUARED = 4.0
     private const val PERIOD2_BULB_RADIUS_SQUARED = 0.0625
+    /** Matches [MandelbrotTiles.discreteZoom] floor so division stays finite. */
+    private const val MIN_ZOOM_LEVEL = 1.0 / (1L shl 62)
 
     /**
      * Size of one pixel in the complex plane. Derived from the shorter view edge so pixels stay
@@ -28,7 +30,8 @@ internal object MandelbrotMath {
         zoom.coerceIn(minZoom, maxZoom)
 
     fun unitsPerPixel(zoomLevel: Double, viewWidth: Int, viewHeight: Int): Double =
-        (VIEWPORT_SPAN / zoomLevel) / minOf(viewWidth, viewHeight).coerceAtLeast(1)
+        (VIEWPORT_SPAN / zoomLevel.coerceAtLeast(MIN_ZOOM_LEVEL)) /
+            minOf(viewWidth, viewHeight).coerceAtLeast(1)
 
     /**
      * Deeper zoom needs more iterations to keep the boundary detailed, but the count is capped so

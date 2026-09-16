@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.abs
 
 class MandelbrotMathTest {
 
@@ -26,6 +27,47 @@ class MandelbrotMathTest {
     @Test
     fun `units per pixel handles zero-sized views without dividing by zero`() {
         assertEquals(MandelbrotMath.VIEWPORT_SPAN, MandelbrotMath.unitsPerPixel(1.0, 0, 0), 1e-12)
+    }
+
+    @Test
+    fun `units per pixel stays finite and positive for zero and negative zoom`() {
+        val viewWidth = 800
+        val viewHeight = 600
+        val atZero = MandelbrotMath.unitsPerPixel(zoomLevel = 0.0, viewWidth, viewHeight)
+        val atNegative = MandelbrotMath.unitsPerPixel(zoomLevel = -1.0, viewWidth, viewHeight)
+        val safeZoom = 1.0 / (1L shl 62)
+
+        assertTrue(atZero.isFinite())
+        assertTrue(atNegative.isFinite())
+        assertTrue(atZero > 0.0)
+        assertTrue(atNegative > 0.0)
+        assertEquals(
+            MandelbrotMath.unitsPerPixel(safeZoom, viewWidth, viewHeight),
+            atZero,
+            1e-12,
+        )
+        assertEquals(
+            MandelbrotMath.unitsPerPixel(safeZoom, viewWidth, viewHeight),
+            atNegative,
+            1e-12,
+        )
+    }
+
+    @Test
+    fun `complex plane mapping stays finite when zoom is zero or negative`() {
+        val viewWidth = 800
+        val viewHeight = 600
+        val offsetX = -0.5
+        val offsetY = 0.1
+
+        for (zoom in listOf(0.0, -2.0)) {
+            val x = MandelbrotMath.complexXAtScreen(400f, offsetX, zoom, viewWidth, viewHeight)
+            val y = MandelbrotMath.complexYAtScreen(300f, offsetY, zoom, viewWidth, viewHeight)
+            assertTrue(x.isFinite())
+            assertTrue(y.isFinite())
+            assertEquals(offsetX, x, abs(offsetX) * 1e-6 + 1e-12)
+            assertEquals(offsetY, y, abs(offsetY) * 1e-6 + 1e-12)
+        }
     }
 
     @Test
