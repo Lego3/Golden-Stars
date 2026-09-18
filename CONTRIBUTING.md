@@ -116,7 +116,12 @@ scales with zoom (`MandelbrotMath.iterationsFor`) and is capped to keep frames b
    correct full-resolution frame after rotation or resize. Palette is a draw-time
    colour filter over a greyscale escape map, so changing colour does not rerender.
 5. Pixel buffers are written on a background dispatcher; `bufferJob` serializes access
-   so a detached view never races with a new attach.
+   so a detached view never races with a new attach. Each render captures a
+   `renderGeneration`; stale jobs bail out before touching `bitmap` or callbacks.
+6. `onSizeChanged` and `onDetachedFromWindow` cancel in-flight renders, bump
+   `renderGeneration`, and recycle the view bitmap plus preview scratch (same pattern
+   as `MandelbrotView`). Reattach runs `ensureViewBitmap` and `requestFullRender` so
+   a viewport or constant change while detached never leaves a blank or recycled buffer.
 
 `MandelbrotView` composites **tiles** instead of one full-view bitmap. Cached tiles live
 on power-of-two zoom steps (`MandelbrotTiles`), in an in-memory LRU plus an on-disk
@@ -154,10 +159,14 @@ with a 30 s throttle (`MandelbrotTileCache.shouldFlushDiskAccessTime`) so gestur
 not hammer the filesystem.
 
 On viewport restore (`onRestoreInstanceState`), `MandelbrotView` bumps `workEpoch` and
-cancels the in-flight `workJob`, matching `onSizeChanged`. Bumping the epoch alone left
-`ensureWorkScheduled` skipping while the pre-restore coroutine still ran; that job's
-`finally` block would not reschedule once the epoch no longer matched, leaving tiles
-stuck at the wrong zoom until the user panned.
+cancels the in-flight `workJob`, matching `onSizeChanged`. `ensureWorkScheduled` only
+treats a job as blocking when `workJobCountsAsActive` sees the same epoch in
+`scheduledWorkEpoch` and `workEpoch`; without that guard, cancellation is asynchronous
+and the stale job looked like in-flight visible sharpening, so scheduling was skipped
+and its `finally` block did not reschedule, leaving tiles stuck at the wrong zoom until
+the user panned. `onSizeChanged` and `onDetachedFromWindow` also recycle in-memory tile
+bitmaps; reattach always calls `requestFullRender` so cached tiles from a prior visit do
+not mask a viewport change that happened while detached.
 
 ### Settings and configuration changes
 
