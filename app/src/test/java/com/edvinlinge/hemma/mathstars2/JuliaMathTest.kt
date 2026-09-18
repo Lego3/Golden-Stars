@@ -245,6 +245,85 @@ class JuliaMathTest {
     }
 
     @Test
+    fun `stale render generation does not apply results or clear rendering state`() {
+        assertTrue(JuliaMath.renderGenerationStillValid(jobGeneration = 2L, currentGeneration = 2L))
+        assertFalse(JuliaMath.renderGenerationStillValid(jobGeneration = 1L, currentGeneration = 2L))
+        assertFalse(JuliaMath.renderGenerationStillValid(jobGeneration = 2L, currentGeneration = 3L))
+    }
+
+    @Test
+    fun `view bitmap recreate follows resize detach and recycle guards`() {
+        assertFalse(
+            JuliaMath.needsViewBitmapRecreate(
+                hasBitmap = true,
+                bitmapRecycled = false,
+                bitmapWidth = 800,
+                bitmapHeight = 600,
+                viewWidth = 800,
+                viewHeight = 600,
+            ),
+        )
+        assertTrue(
+            JuliaMath.needsViewBitmapRecreate(
+                hasBitmap = false,
+                bitmapRecycled = false,
+                bitmapWidth = 0,
+                bitmapHeight = 0,
+                viewWidth = 800,
+                viewHeight = 600,
+            ),
+        )
+        assertTrue(
+            JuliaMath.needsViewBitmapRecreate(
+                hasBitmap = true,
+                bitmapRecycled = true,
+                bitmapWidth = 800,
+                bitmapHeight = 600,
+                viewWidth = 800,
+                viewHeight = 600,
+            ),
+        )
+        assertTrue(
+            JuliaMath.needsViewBitmapRecreate(
+                hasBitmap = true,
+                bitmapRecycled = false,
+                bitmapWidth = 800,
+                bitmapHeight = 600,
+                viewWidth = 900,
+                viewHeight = 600,
+            ),
+        )
+        assertTrue(
+            JuliaMath.needsViewBitmapRecreate(
+                hasBitmap = true,
+                bitmapRecycled = false,
+                bitmapWidth = 800,
+                bitmapHeight = 600,
+                viewWidth = 800,
+                viewHeight = 700,
+            ),
+        )
+        assertFalse(
+            JuliaMath.needsViewBitmapRecreate(
+                hasBitmap = false,
+                bitmapRecycled = false,
+                bitmapWidth = 0,
+                bitmapHeight = 0,
+                viewWidth = 0,
+                viewHeight = 600,
+            ),
+        )
+    }
+
+    @Test
+    fun `preview scratch replace tracks downscaled render dimensions`() {
+        assertFalse(JuliaMath.needsPreviewScratchReplace(200, 150, 200, 150))
+        assertTrue(JuliaMath.needsPreviewScratchReplace(null, null, 200, 150))
+        assertTrue(JuliaMath.needsPreviewScratchReplace(200, 150, 256, 150))
+        assertTrue(JuliaMath.needsPreviewScratchReplace(200, 150, 200, 200))
+    }
+
+    @Test
     fun `format constant uses a plus or minus before the imaginary part`() {
         assertEquals("-0.123 + 0.745i", JuliaMath.formatConstant(-0.123, 0.745))
         assertEquals("0 + 1i", JuliaMath.formatConstant(0.0, 1.0))

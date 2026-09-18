@@ -320,7 +320,7 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
                     )
                 }
 
-                if (generation != renderGeneration) return@launch
+                if (!JuliaMath.renderGenerationStillValid(generation, renderGeneration)) return@launch
                 if (
                     !JuliaMath.shouldApplyRenderResult(
                         zoom = zoom,
@@ -365,7 +365,7 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
                 hasRenderedOnce = true
                 invalidate()
             } finally {
-                if (generation == renderGeneration) {
+                if (JuliaMath.renderGenerationStillValid(generation, renderGeneration)) {
                     renderingStateCallback?.invoke(false)
                 }
             }
@@ -420,7 +420,9 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
     private fun previewScratchOf(width: Int, height: Int): Bitmap {
         val cached = previewScratch
-        if (cached != null && cached.width == width && cached.height == height) return cached
+        if (!JuliaMath.needsPreviewScratchReplace(cached?.width, cached?.height, width, height)) {
+            return cached!!
+        }
         previewScratch?.let { if (!it.isRecycled) it.recycle() }
         return createBitmap(width, height, Bitmap.Config.ARGB_8888).also { previewScratch = it }
     }
@@ -433,10 +435,15 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     }
 
     private fun ensureViewBitmap() {
-        if (width <= 0 || height <= 0) return
         val existing = bitmap
-        if (existing != null && !existing.isRecycled &&
-            existing.width == width && existing.height == height
+        if (!JuliaMath.needsViewBitmapRecreate(
+                hasBitmap = existing != null,
+                bitmapRecycled = existing?.isRecycled == true,
+                bitmapWidth = existing?.width ?: 0,
+                bitmapHeight = existing?.height ?: 0,
+                viewWidth = width,
+                viewHeight = height,
+            )
         ) {
             return
         }

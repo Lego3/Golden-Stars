@@ -104,6 +104,40 @@ internal object JuliaMath {
                 viewHeight = viewHeight,
             )
 
+    /**
+     * True when an in-flight render job's generation still matches the live counter. Jobs from a
+     * prior generation (for example after resize or detach) must not write pixels or clear the
+     * rendering-state callback.
+     */
+    fun renderGenerationStillValid(jobGeneration: Long, currentGeneration: Long): Boolean =
+        jobGeneration == currentGeneration
+
+    /**
+     * True when the view-sized bitmap must be recreated on attach or resize. A recycled bitmap or
+     * a size mismatch means stale coroutines could touch freed memory if the buffer were reused.
+     */
+    fun needsViewBitmapRecreate(
+        hasBitmap: Boolean,
+        bitmapRecycled: Boolean,
+        bitmapWidth: Int,
+        bitmapHeight: Int,
+        viewWidth: Int,
+        viewHeight: Int,
+    ): Boolean {
+        if (viewWidth <= 0 || viewHeight <= 0) return false
+        if (!hasBitmap || bitmapRecycled) return true
+        return bitmapWidth != viewWidth || bitmapHeight != viewHeight
+    }
+
+    /** True when the preview scratch buffer must be replaced for a new downscaled render size. */
+    fun needsPreviewScratchReplace(
+        scratchWidth: Int?,
+        scratchHeight: Int?,
+        renderWidth: Int,
+        renderHeight: Int,
+    ): Boolean = scratchWidth == null || scratchHeight == null ||
+        scratchWidth != renderWidth || scratchHeight != renderHeight
+
     /** Formats *c* as `a + bi` / `a - bi` with trailing zeros stripped. */
     fun formatConstant(real: Double, imag: Double): String {
         val realPart = formatNumber(real)
