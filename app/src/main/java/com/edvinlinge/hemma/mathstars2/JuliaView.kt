@@ -469,7 +469,15 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
             offsetX = state.offsetX
             offsetY = state.offsetY
             zoomCallback?.invoke(zoom)
-            renderGeneration++
+            val invalidation = JuliaMath.viewportRestoreRenderInvalidation(
+                currentGeneration = renderGeneration,
+                jobActive = renderJob?.isActive == true,
+            )
+            renderGeneration = invalidation.nextGeneration
+            if (invalidation.shouldCancelJob) {
+                renderJob?.cancel()
+                renderJob = null
+            }
             requestFullRender()
         } else {
             super.onRestoreInstanceState(state)

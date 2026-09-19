@@ -324,6 +324,17 @@ class JuliaMathTest {
     }
 
     @Test
+    fun `viewport restore always bumps render generation`() {
+        val idle = JuliaMath.viewportRestoreRenderInvalidation(currentGeneration = 4L, jobActive = false)
+        assertEquals(5L, idle.nextGeneration)
+        assertFalse(idle.shouldCancelJob)
+
+        val active = JuliaMath.viewportRestoreRenderInvalidation(currentGeneration = 4L, jobActive = true)
+        assertEquals(5L, active.nextGeneration)
+        assertTrue(active.shouldCancelJob)
+    }
+
+    @Test
     fun `format constant uses a plus or minus before the imaginary part`() {
         assertEquals("-0.123 + 0.745i", JuliaMath.formatConstant(-0.123, 0.745))
         assertEquals("0 + 1i", JuliaMath.formatConstant(0.0, 1.0))
