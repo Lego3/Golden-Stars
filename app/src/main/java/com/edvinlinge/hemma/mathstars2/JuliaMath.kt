@@ -138,6 +138,25 @@ internal object JuliaMath {
     ): Boolean = scratchWidth == null || scratchHeight == null ||
         scratchWidth != renderWidth || scratchHeight != renderHeight
 
+    /**
+     * Render invalidation when viewport state is restored from saved instance state. Matches
+     * [com.edvinlinge.hemma.mathstars2.MandelbrotView.onRestoreInstanceState]: bump the
+     * generation and cancel any in-flight job so stale coroutines cannot apply pre-restore pixels
+     * or leave the rendering callback stuck while cancellation completes asynchronously.
+     */
+    data class ViewportRestoreRenderInvalidation(
+        val nextGeneration: Long,
+        val shouldCancelJob: Boolean,
+    )
+
+    fun viewportRestoreRenderInvalidation(
+        currentGeneration: Long,
+        jobActive: Boolean,
+    ): ViewportRestoreRenderInvalidation = ViewportRestoreRenderInvalidation(
+        nextGeneration = currentGeneration + 1L,
+        shouldCancelJob = jobActive,
+    )
+
     /** Formats *c* as `a + bi` / `a - bi` with trailing zeros stripped. */
     fun formatConstant(real: Double, imag: Double): String {
         val realPart = formatNumber(real)
