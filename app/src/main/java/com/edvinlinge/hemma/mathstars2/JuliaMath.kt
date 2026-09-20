@@ -157,6 +157,17 @@ internal object JuliaMath {
         shouldCancelJob = jobActive,
     )
 
+    /**
+     * Render invalidation when the view resizes or detaches. Unlike viewport restore, always
+     * cancel the in-flight job because the view-sized bitmap is recycled immediately afterward.
+     */
+    fun resizeOrDetachRenderInvalidation(
+        currentGeneration: Long,
+    ): ViewportRestoreRenderInvalidation = ViewportRestoreRenderInvalidation(
+        nextGeneration = currentGeneration + 1L,
+        shouldCancelJob = true,
+    )
+
     /** Formats *c* as `a + bi` / `a - bi` with trailing zeros stripped. */
     fun formatConstant(real: Double, imag: Double): String {
         val realPart = formatNumber(real)

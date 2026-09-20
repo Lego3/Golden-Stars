@@ -220,9 +220,12 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w <= 0 || h <= 0) return
 
-        renderGeneration++
-        renderJob?.cancel()
-        renderJob = null
+        val invalidation = JuliaMath.resizeOrDetachRenderInvalidation(renderGeneration)
+        renderGeneration = invalidation.nextGeneration
+        if (invalidation.shouldCancelJob) {
+            renderJob?.cancel()
+            renderJob = null
+        }
         recycleBitmaps()
         bitmap = createBitmap(w, h, Bitmap.Config.ARGB_8888)
         hasRenderedOnce = false
@@ -526,9 +529,12 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
     override fun onDetachedFromWindow() {
         // Invalidate the generation before cancellation so the old job cannot update callbacks or
         // a bitmap after a rapid detach/reattach cycle.
-        renderGeneration++
-        renderJob?.cancel()
-        renderJob = null
+        val invalidation = JuliaMath.resizeOrDetachRenderInvalidation(renderGeneration)
+        renderGeneration = invalidation.nextGeneration
+        if (invalidation.shouldCancelJob) {
+            renderJob?.cancel()
+            renderJob = null
+        }
         renderScope?.cancel()
         renderScope = null
         recycleBitmaps()
