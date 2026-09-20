@@ -335,6 +335,17 @@ class JuliaMathTest {
     }
 
     @Test
+    fun `resize or detach invalidation always bumps generation and cancels`() {
+        val invalidation = JuliaMath.resizeOrDetachRenderInvalidation(currentGeneration = 7L)
+        assertEquals(8L, invalidation.nextGeneration)
+        assertTrue(invalidation.shouldCancelJob)
+
+        val fromZero = JuliaMath.resizeOrDetachRenderInvalidation(currentGeneration = 0L)
+        assertEquals(1L, fromZero.nextGeneration)
+        assertTrue(fromZero.shouldCancelJob)
+    }
+
+    @Test
     fun `format constant uses a plus or minus before the imaginary part`() {
         assertEquals("-0.123 + 0.745i", JuliaMath.formatConstant(-0.123, 0.745))
         assertEquals("0 + 1i", JuliaMath.formatConstant(0.0, 1.0))
