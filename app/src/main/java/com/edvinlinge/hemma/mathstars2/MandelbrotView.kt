@@ -212,8 +212,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w <= 0 || h <= 0) return
-        workEpoch++
-        workJob?.cancel()
+        applyViewportWorkInvalidation()
         recycleBitmaps()
         requestFullRender()
     }
@@ -258,6 +257,15 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             jobEpoch = scheduledWorkEpoch,
             currentEpoch = workEpoch,
         )
+
+    private fun applyViewportWorkInvalidation() {
+        val invalidation = MandelbrotTiles.viewportWorkInvalidation(workEpoch)
+        workEpoch = invalidation.nextEpoch
+        if (invalidation.clearPrefetch) {
+            currentWorkIsPrefetch = false
+        }
+        workJob?.cancel()
+    }
 
     private fun ensureWorkScheduled(cancelPrefetch: Boolean = false) {
         val scope = renderScope ?: return
@@ -781,9 +789,7 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
             // Match onSizeChanged: bumping the epoch alone leaves ensureWorkScheduled
             // skipping while the pre-restore job still runs, and that job's finally block
             // will not reschedule once the epoch no longer matches.
-            workEpoch++
-            workJob?.cancel()
-            currentWorkIsPrefetch = false
+            applyViewportWorkInvalidation()
             requestFullRender()
         } else {
             super.onRestoreInstanceState(state)
@@ -830,13 +836,11 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     }
 
     override fun onDetachedFromWindow() {
-        workEpoch++
-        workJob?.cancel()
+        applyViewportWorkInvalidation()
         workJob = null
         scheduledWorkEpoch = 0L
         renderScope?.cancel()
         renderScope = null
-        currentWorkIsPrefetch = false
         tileCache.onEvicted = null
         recycleBitmaps()
         queuedVisibleKeys = emptySet()

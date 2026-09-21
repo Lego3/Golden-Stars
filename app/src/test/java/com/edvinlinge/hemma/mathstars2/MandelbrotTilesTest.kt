@@ -1669,6 +1669,31 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `viewport work invalidation bumps epoch and clears stale prefetch flag`() {
+        val invalidation = MandelbrotTiles.viewportWorkInvalidation(currentEpoch = 4L)
+        assertEquals(5L, invalidation.nextEpoch)
+        assertTrue(invalidation.clearPrefetch)
+
+        val fromZero = MandelbrotTiles.viewportWorkInvalidation(currentEpoch = 0L)
+        assertEquals(1L, fromZero.nextEpoch)
+        assertTrue(fromZero.clearPrefetch)
+    }
+
+    @Test
+    fun `viewport invalidation lets scheduling proceed while stale prefetch job still active`() {
+        val invalidation = MandelbrotTiles.viewportWorkInvalidation(currentEpoch = 2L)
+        assertFalse(
+            MandelbrotTiles.viewportRestoreWouldSkipScheduling(
+                workActive = true,
+                workIsPrefetch = true,
+                scheduledWorkEpoch = 2L,
+                currentWorkEpoch = invalidation.nextEpoch,
+            ),
+        )
+        assertTrue(invalidation.clearPrefetch)
+    }
+
+    @Test
     fun `stale work job epoch does not count as active`() {
         assertFalse(
             MandelbrotTiles.workJobCountsAsActive(

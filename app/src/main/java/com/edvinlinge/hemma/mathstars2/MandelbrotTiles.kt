@@ -724,6 +724,23 @@ internal object MandelbrotTiles {
     }
 
     /**
+     * Work invalidation when the Mandelbrot viewport or view size changes (rotation restore,
+     * resize, detach). Bumps [workEpoch] and clears [currentWorkIsPrefetch] so a cancelled
+     * prefetch job whose finally block never runs with a matching epoch cannot leave stale
+     * prefetch state that would suppress visible sharpening after the view relayouts.
+     */
+    data class ViewportWorkInvalidation(
+        val nextEpoch: Long,
+        val clearPrefetch: Boolean,
+    )
+
+    fun viewportWorkInvalidation(currentEpoch: Long): ViewportWorkInvalidation =
+        ViewportWorkInvalidation(
+            nextEpoch = currentEpoch + 1L,
+            clearPrefetch = true,
+        )
+
+    /**
      * True when an in-flight coroutine should block [ensureWorkScheduled]. Jobs from a prior
      * [workEpoch] (for example after rotation) may still report active until cancellation
      * completes asynchronously; those must not suppress a fresh launch.
