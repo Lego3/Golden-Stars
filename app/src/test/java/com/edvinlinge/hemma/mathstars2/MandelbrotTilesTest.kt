@@ -364,6 +364,114 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `best covering source prefers parent full over grandparent preview`() {
+        val parentFull = MandelbrotTiles.TileKey(1, -1, 0, 256, 600, preview = false)
+        val grandPreview = MandelbrotTiles.TileKey(0, -1, 0, 256, 600, preview = true)
+        val draw = MandelbrotTiles.bestCoveringSource(
+            tileX = -2,
+            tileY = 0,
+            tileStep = 2,
+            tilePixelSize = 256,
+            viewMinEdge = 600,
+            available = setOf(parentFull, grandPreview),
+        )!!
+        assertEquals(parentFull, draw.key)
+        assertEquals(
+            MandelbrotTiles.sourceRectInAncestor(
+                tileX = -2,
+                tileY = 0,
+                tileStep = 2,
+                ancestorX = parentFull.tileX,
+                ancestorY = parentFull.tileY,
+                ancestorStep = parentFull.zoomStep,
+                ancestorPixelSize = MandelbrotTiles.pixelSize(parentFull),
+            ),
+            draw.src,
+        )
+    }
+
+    @Test
+    fun `best covering source prefers full tile over preview at the same ancestor level`() {
+        val ancestorFull = MandelbrotTiles.TileKey(1, -1, 0, 256, 600, preview = false)
+        val ancestorPreview = ancestorFull.copy(preview = true)
+        val draw = MandelbrotTiles.bestCoveringSource(
+            tileX = -2,
+            tileY = 0,
+            tileStep = 2,
+            tilePixelSize = 256,
+            viewMinEdge = 600,
+            available = setOf(ancestorFull, ancestorPreview),
+        )!!
+        assertEquals(ancestorFull, draw.key)
+    }
+
+    @Test
+    fun `best covering source returns null when no ancestor is cached`() {
+        assertNull(
+            MandelbrotTiles.bestCoveringSource(
+                tileX = 0,
+                tileY = 0,
+                tileStep = 1,
+                tilePixelSize = 256,
+                viewMinEdge = 600,
+                available = emptySet(),
+            ),
+        )
+    }
+
+    @Test
+    fun `best covering source uses distant preview with the matching crop rect`() {
+        val grandPreview = MandelbrotTiles.TileKey(0, -1, 0, 256, 600, preview = true)
+        val draw = MandelbrotTiles.bestCoveringSource(
+            tileX = -2,
+            tileY = 0,
+            tileStep = 2,
+            tilePixelSize = 256,
+            viewMinEdge = 600,
+            available = setOf(grandPreview),
+        )!!
+        assertEquals(grandPreview, draw.key)
+        assertEquals(
+            MandelbrotTiles.sourceRectInAncestor(
+                tileX = -2,
+                tileY = 0,
+                tileStep = 2,
+                ancestorX = grandPreview.tileX,
+                ancestorY = grandPreview.tileY,
+                ancestorStep = grandPreview.zoomStep,
+                ancestorPixelSize = MandelbrotTiles.pixelSize(grandPreview),
+            ),
+            draw.src,
+        )
+    }
+
+    @Test
+    fun `best covering source stays stable for negative tile indices`() {
+        val parentFull = MandelbrotTiles.TileKey(0, -1, -1, 256, 600, preview = false)
+        val draw = MandelbrotTiles.bestCoveringSource(
+            tileX = -1,
+            tileY = -2,
+            tileStep = 1,
+            tilePixelSize = 256,
+            viewMinEdge = 600,
+            available = setOf(parentFull),
+        )!!
+        assertEquals(parentFull, draw.key)
+        assertEquals(
+            MandelbrotTiles.sourceRectInAncestor(
+                tileX = -1,
+                tileY = -2,
+                tileStep = 1,
+                ancestorX = parentFull.tileX,
+                ancestorY = parentFull.tileY,
+                ancestorStep = parentFull.zoomStep,
+                ancestorPixelSize = MandelbrotTiles.pixelSize(parentFull),
+            ),
+            draw.src,
+        )
+    }
+
+    @Test
     fun `compose draw list is empty when nothing is available`() {
         val draws = MandelbrotTiles.composeDrawList(
             zoom = 1.0,
