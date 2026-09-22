@@ -946,7 +946,7 @@ internal object MandelbrotTiles {
         return false
     }
 
-    private fun bestCoveringSource(
+    fun bestCoveringSource(
         tileX: Long,
         tileY: Long,
         tileStep: Int,
