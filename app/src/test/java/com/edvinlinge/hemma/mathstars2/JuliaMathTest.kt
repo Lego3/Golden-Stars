@@ -252,6 +252,12 @@ class JuliaMathTest {
     }
 
     @Test
+    fun `preview render waits for an idle job so gestures do not restart in-flight work`() {
+        assertFalse(JuliaMath.shouldStartPreviewRender(jobActive = true))
+        assertTrue(JuliaMath.shouldStartPreviewRender(jobActive = false))
+    }
+
+    @Test
     fun `view bitmap recreate follows resize detach and recycle guards`() {
         assertFalse(
             JuliaMath.needsViewBitmapRecreate(
