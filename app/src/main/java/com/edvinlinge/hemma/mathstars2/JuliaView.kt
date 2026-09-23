@@ -261,7 +261,7 @@ class JuliaView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
      * restarting stops a continuous gesture from cancelling the render it just started.
      */
     private fun requestPreviewRender() {
-        if (renderJob?.isActive == true) return
+        if (!JuliaMath.shouldStartPreviewRender(renderJob?.isActive == true)) return
         startRender(preview = true)
     }
 

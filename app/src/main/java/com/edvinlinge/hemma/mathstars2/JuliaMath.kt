@@ -113,6 +113,13 @@ internal object JuliaMath {
         jobGeneration == currentGeneration
 
     /**
+     * True when a low-resolution preview pass should start. While any render job is still active,
+     * starting another preview would cancel the in-flight pass and make continuous gestures
+     * stutter; full renders are scheduled separately when the viewport settles.
+     */
+    fun shouldStartPreviewRender(jobActive: Boolean): Boolean = !jobActive
+
+    /**
      * True when the view-sized bitmap must be recreated on attach or resize. A recycled bitmap or
      * a size mismatch means stale coroutines could touch freed memory if the buffer were reused.
      */
