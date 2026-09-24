@@ -1513,10 +1513,39 @@ class MandelbrotTilesTest {
     }
 
     @Test
-    fun `select next work stays idle during gestures when the viewport is already covered`() {
+    fun `select next work defers full res sharpening during gestures even when full tiles are queued`() {
+        val full = listOf(
+            MandelbrotTiles.TileKey(0, 0, 0, 256, 600, false),
+            MandelbrotTiles.TileKey(0, 1, 0, 256, 600, false),
+        )
+        val preview = listOf(
+            MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = true),
+        )
         val plan = MandelbrotTiles.RenderPlan(
-            visibleFull = emptyList(),
-            visiblePreview = listOf(MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = true)),
+            visibleFull = full,
+            visiblePreview = preview,
+            prefetch = emptyList(),
+        )
+        val work = MandelbrotTiles.selectNextWork(
+            plan = plan,
+            isInteracting = true,
+            viewportCovered = false,
+            memoryBytes = 0L,
+            maxMemoryBytes = 64L * 1024L * 1024L,
+        )
+        assertEquals(
+            MandelbrotTiles.WorkSelection(keys = preview, preview = true, prefetch = false),
+            work,
+        )
+    }
+
+    @Test
+    fun `select next work stays idle during gestures when the viewport is already covered`() {
+        val full = listOf(MandelbrotTiles.TileKey(0, 1, 0, 256, 600, false))
+        val preview = listOf(MandelbrotTiles.TileKey(0, 0, 0, 256, 600, preview = true))
+        val plan = MandelbrotTiles.RenderPlan(
+            visibleFull = full,
+            visiblePreview = preview,
             prefetch = emptyList(),
         )
         assertNull(
