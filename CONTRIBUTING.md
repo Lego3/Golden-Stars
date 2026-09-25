@@ -117,6 +117,13 @@ scales with zoom (`MandelbrotMath.iterationsFor`) and is capped to keep frames b
    colour filter over a greyscale escape map, so changing colour does not rerender.
 5. Pixel buffers are written on a background dispatcher; `bufferJob` serializes access
    so a detached view never races with a new attach.
+6. Each render captures a `renderGeneration` token; stale jobs bail before touching
+   the bitmap or clearing the rendering callback. On `onSizeChanged` and
+   `onDetachedFromWindow`, the generation is bumped, in-flight work is cancelled, and
+   the view-sized bitmap plus preview scratch are recycled. `onAttachedToWindow`
+   recreates the bitmap via `ensureViewBitmap` and calls `requestFullRender` because
+   the viewport or *c* may have changed while detached. Viewport restore also bumps
+   the generation before scheduling a full pass.
 
 `MandelbrotView` composites **tiles** instead of one full-view bitmap. Cached tiles live
 on power-of-two zoom steps (`MandelbrotTiles`), in an in-memory LRU plus an on-disk
@@ -153,11 +160,21 @@ deleted just because it was written first. Last-use times are copied onto file m
 with a 30 s throttle (`MandelbrotTileCache.shouldFlushDiskAccessTime`) so gestures do
 not hammer the filesystem.
 
-On viewport restore (`onRestoreInstanceState`), `MandelbrotView` bumps `workEpoch` and
-cancels the in-flight `workJob`, matching `onSizeChanged`. Bumping the epoch alone left
-`ensureWorkScheduled` skipping while the pre-restore coroutine still ran; that job's
-`finally` block would not reschedule once the epoch no longer matched, leaving tiles
-stuck at the wrong zoom until the user panned.
+Work scheduling tracks both `workEpoch` and `scheduledWorkEpoch`. When a job is
+launched, its epoch is stored in `scheduledWorkEpoch`; `workJobCountsAsActive` treats
+the coroutine as blocking only when `workJob.isActive` **and** those epochs match.
+Cancellation is asynchronous, so after viewport restore or detach the pre-restore job
+can still report active briefly; without the epoch guard `ensureWorkScheduled` would
+skip a fresh launch, and that stale job's `finally` block would not reschedule once
+its epoch no longer matched, leaving tiles stuck at the wrong zoom until the user
+panned.
+
+On viewport restore (`onRestoreInstanceState`), `onSizeChanged`, and
+`onDetachedFromWindow`, `MandelbrotView` bumps `workEpoch`, cancels `workJob`, and
+clears prefetch state. Size changes and detach also recycle in-memory tile bitmaps
+(the LRU/disk cache survives). `onAttachedToWindow` always calls `requestFullRender`
+so a viewport change while detached is picked up even when cached tiles paint
+immediately.
 
 ### Settings and configuration changes
 
