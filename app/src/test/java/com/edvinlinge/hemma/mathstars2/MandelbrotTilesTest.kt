@@ -1279,6 +1279,90 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `tile is covered when all four child previews exist`() {
+        val tx = 0L
+        val ty = 0L
+        val childPreviews = (0..1).flatMap { ly ->
+            (0..1).map { lx ->
+                MandelbrotTiles.TileKey(
+                    zoomStep = 1,
+                    tileX = MandelbrotTiles.childTileX(tx, lx),
+                    tileY = MandelbrotTiles.childTileY(ty, ly),
+                    tilePixelSize = 256,
+                    viewMinEdge = 600,
+                    preview = true,
+                )
+            }
+        }.toSet()
+        assertTrue(
+            MandelbrotTiles.tileIsCovered(
+                tileX = tx,
+                tileY = ty,
+                tileStep = 0,
+                tilePixelSize = 256,
+                viewMinEdge = 600,
+            ) { it in childPreviews },
+        )
+    }
+
+    @Test
+    fun `tile is covered when child previews and full tiles mix to four`() {
+        val tx = 1L
+        val ty = -1L
+        val children = (0..1).flatMap { ly ->
+            (0..1).map { lx ->
+                MandelbrotTiles.TileKey(
+                    zoomStep = 1,
+                    tileX = MandelbrotTiles.childTileX(tx, lx),
+                    tileY = MandelbrotTiles.childTileY(ty, ly),
+                    tilePixelSize = 256,
+                    viewMinEdge = 600,
+                    preview = lx == 0,
+                )
+            }
+        }.toSet()
+        assertTrue(
+            MandelbrotTiles.tileIsCovered(
+                tileX = tx,
+                tileY = ty,
+                tileStep = 0,
+                tilePixelSize = 256,
+                viewMinEdge = 600,
+            ) { it in children },
+        )
+    }
+
+    @Test
+    fun `viewport is covered when every visible tile has all four child previews`() {
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
+        val childPreviews = HashSet<MandelbrotTiles.TileKey>()
+        range.forEach { x, y ->
+            for (ly in 0..1) {
+                for (lx in 0..1) {
+                    childPreviews += MandelbrotTiles.TileKey(
+                        zoomStep = 1,
+                        tileX = MandelbrotTiles.childTileX(x, lx),
+                        tileY = MandelbrotTiles.childTileY(y, ly),
+                        tilePixelSize = 256,
+                        viewMinEdge = 600,
+                        preview = true,
+                    )
+                }
+            }
+        }
+        assertTrue(
+            MandelbrotTiles.visibleViewportCovered(
+                1.0, -0.5, 0.0, 800, 600, 256,
+            ) { it in childPreviews },
+        )
+        assertFalse(
+            MandelbrotTiles.visibleTilesComplete(
+                1.0, -0.5, 0.0, 800, 600, 256,
+            ) { it in childPreviews },
+        )
+    }
+
+    @Test
     fun `dense tile batch covers most of its bounding box`() {
         val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
         val denseKeys = MandelbrotTiles.keysForRange(range, 0, 256, 600, preview = false)
