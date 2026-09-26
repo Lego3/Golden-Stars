@@ -191,10 +191,9 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
         if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
             if (isInteracting) {
                 isInteracting = false
-                if (!visibleTilesComplete()) {
-                    requestFullRender()
-                } else {
-                    ensureWorkScheduled()
+                when (MandelbrotTiles.gestureEndWorkAction(visibleTilesComplete())) {
+                    MandelbrotTiles.GestureEndWorkAction.RequestFullRender -> requestFullRender()
+                    MandelbrotTiles.GestureEndWorkAction.EnsureScheduled -> ensureWorkScheduled()
                 }
             }
             if (event.actionMasked == MotionEvent.ACTION_UP) {

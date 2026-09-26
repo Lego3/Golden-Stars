@@ -1363,6 +1363,73 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `gesture end requests full render when visible full tiles are incomplete`() {
+        assertEquals(
+            MandelbrotTiles.GestureEndWorkAction.RequestFullRender,
+            MandelbrotTiles.gestureEndWorkAction(visibleTilesComplete = false),
+        )
+    }
+
+    @Test
+    fun `gesture end only ensures scheduling when every visible full tile is cached`() {
+        assertEquals(
+            MandelbrotTiles.GestureEndWorkAction.EnsureScheduled,
+            MandelbrotTiles.gestureEndWorkAction(visibleTilesComplete = true),
+        )
+    }
+
+    @Test
+    fun `gesture end requests full render when viewport is covered by child previews only`() {
+        val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
+        val childPreviews = HashSet<MandelbrotTiles.TileKey>()
+        range.forEach { x, y ->
+            for (ly in 0..1) {
+                for (lx in 0..1) {
+                    childPreviews += MandelbrotTiles.TileKey(
+                        zoomStep = 1,
+                        tileX = MandelbrotTiles.childTileX(x, lx),
+                        tileY = MandelbrotTiles.childTileY(y, ly),
+                        tilePixelSize = 256,
+                        viewMinEdge = 600,
+                        preview = true,
+                    )
+                }
+            }
+        }
+        val isCached = { key: MandelbrotTiles.TileKey -> key in childPreviews }
+        assertTrue(
+            MandelbrotTiles.visibleViewportCovered(
+                1.0, -0.5, 0.0, 800, 600, 256, isCached,
+            ),
+        )
+        val visibleComplete = MandelbrotTiles.visibleTilesComplete(
+            1.0, -0.5, 0.0, 800, 600, 256, isCached,
+        )
+        assertFalse(visibleComplete)
+        assertEquals(
+            MandelbrotTiles.GestureEndWorkAction.RequestFullRender,
+            MandelbrotTiles.gestureEndWorkAction(visibleComplete),
+        )
+    }
+
+    @Test
+    fun `gesture end requests full render when visible full key set is empty`() {
+        val visibleComplete = MandelbrotTiles.visibleTilesComplete(
+            zoom = 1.0,
+            offsetX = 0.0,
+            offsetY = 0.0,
+            viewWidth = 0,
+            viewHeight = 600,
+            tilePixelSize = 256,
+        ) { false }
+        assertFalse(visibleComplete)
+        assertEquals(
+            MandelbrotTiles.GestureEndWorkAction.RequestFullRender,
+            MandelbrotTiles.gestureEndWorkAction(visibleComplete),
+        )
+    }
+
+    @Test
     fun `dense tile batch covers most of its bounding box`() {
         val range = MandelbrotTiles.visibleTileRange(-0.5, 0.0, 1.0, 800, 600, 0, 256)
         val denseKeys = MandelbrotTiles.keysForRange(range, 0, 256, 600, preview = false)
