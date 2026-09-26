@@ -112,6 +112,12 @@ internal object MandelbrotTiles {
         ForceIdle,
     }
 
+    /** Whether a finished pan/pinch should force visible sharpening or only nudge prefetch. */
+    enum class GestureEndWorkAction {
+        RequestFullRender,
+        EnsureScheduled,
+    }
+
     /** Spinner visibility and progress counts reported to the Activity. */
     data class SpinnerHudState(
         val visible: Boolean,
@@ -812,6 +818,15 @@ internal object MandelbrotTiles {
             if (!isCached(key)) return false
         }
         return true
+    }
+
+    /**
+     * After [MotionEvent.ACTION_UP] or [MotionEvent.ACTION_CANCEL], visible full-res tiles must
+     * sharpen even when [visibleViewportCovered] is true from child previews alone.
+     */
+    fun gestureEndWorkAction(visibleTilesComplete: Boolean): GestureEndWorkAction = when {
+        visibleTilesComplete -> GestureEndWorkAction.EnsureScheduled
+        else -> GestureEndWorkAction.RequestFullRender
     }
 
     /**
