@@ -269,20 +269,17 @@ class MandelbrotView(context: Context, attrs: AttributeSet?) : View(context, att
     private fun ensureWorkScheduled(cancelPrefetch: Boolean = false) {
         val scope = renderScope ?: return
         if (width <= 0 || height <= 0) return
-        when (
-            MandelbrotTiles.activeWorkAction(
-                workActive = workJobCountsAsActive(),
-                cancelPrefetch = cancelPrefetch,
-                workIsPrefetch = currentWorkIsPrefetch,
-            )
-        ) {
+        val launchAction = MandelbrotTiles.activeWorkAction(
+            workActive = workJobCountsAsActive(),
+            cancelPrefetch = cancelPrefetch,
+            workIsPrefetch = currentWorkIsPrefetch,
+        )
+        when (launchAction) {
             MandelbrotTiles.ActiveWorkAction.Skip -> return
-            MandelbrotTiles.ActiveWorkAction.CancelPrefetchAndLaunch -> {
-                workEpoch++
-                workJob?.cancel()
-            }
+            MandelbrotTiles.ActiveWorkAction.CancelPrefetchAndLaunch -> workJob?.cancel()
             MandelbrotTiles.ActiveWorkAction.Launch -> Unit
         }
+        workEpoch = MandelbrotTiles.workEpochForScheduledLaunch(workEpoch, launchAction)
         val epoch = workEpoch
         scheduledWorkEpoch = epoch
         workJob = scope.launch {

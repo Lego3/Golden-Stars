@@ -1811,6 +1811,54 @@ class MandelbrotTilesTest {
     }
 
     @Test
+    fun `prefetch cancel launch bumps work epoch so stale jobs cannot reschedule`() {
+        assertEquals(
+            4L,
+            MandelbrotTiles.workEpochForScheduledLaunch(
+                currentEpoch = 3L,
+                action = MandelbrotTiles.ActiveWorkAction.CancelPrefetchAndLaunch,
+            ),
+        )
+        assertEquals(
+            3L,
+            MandelbrotTiles.workEpochForScheduledLaunch(
+                currentEpoch = 3L,
+                action = MandelbrotTiles.ActiveWorkAction.Launch,
+            ),
+        )
+        assertEquals(
+            3L,
+            MandelbrotTiles.workEpochForScheduledLaunch(
+                currentEpoch = 3L,
+                action = MandelbrotTiles.ActiveWorkAction.Skip,
+            ),
+        )
+    }
+
+    @Test
+    fun `gesture prefetch cancel leaves cancelled job epoch stale for post work guard`() {
+        val action = MandelbrotTiles.activeWorkAction(
+            workActive = true,
+            cancelPrefetch = true,
+            workIsPrefetch = true,
+        )
+        assertEquals(MandelbrotTiles.ActiveWorkAction.CancelPrefetchAndLaunch, action)
+        val scheduledEpoch = MandelbrotTiles.workEpochForScheduledLaunch(currentEpoch = 2L, action)
+        assertEquals(3L, scheduledEpoch)
+        assertFalse(
+            MandelbrotTiles.workJobCountsAsActive(
+                jobActive = true,
+                jobEpoch = 2L,
+                currentEpoch = scheduledEpoch,
+            ),
+        )
+        assertEquals(
+            MandelbrotTiles.PostWorkAction.None,
+            MandelbrotTiles.postWorkAction(epochMatches = false, hasPendingWork = true),
+        )
+    }
+
+    @Test
     fun `active work action cancels prefetch during gestures but not visible sharpening`() {
         assertEquals(
             MandelbrotTiles.ActiveWorkAction.Launch,
