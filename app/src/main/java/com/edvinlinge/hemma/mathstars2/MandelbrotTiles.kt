@@ -682,6 +682,21 @@ internal object MandelbrotTiles {
     }
 
     /**
+     * [workEpoch] assigned when launching after [activeWorkAction]. Cancelling prefetch during a
+     * gesture bumps the epoch so the cancelled job's finally block cannot reschedule with a stale
+     * epoch while visible sharpening is queued.
+     */
+    fun workEpochForScheduledLaunch(
+        currentEpoch: Long,
+        action: ActiveWorkAction,
+    ): Long = when (action) {
+        ActiveWorkAction.CancelPrefetchAndLaunch -> currentEpoch + 1L
+        ActiveWorkAction.Launch,
+        ActiveWorkAction.Skip,
+        -> currentEpoch
+    }
+
+    /**
      * A pan/zoom can enqueue new tile work after [selectNextWork] returned null but before the
      * coroutine exits; reschedule instead of leaving the frame stuck.
      */
